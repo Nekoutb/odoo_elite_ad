@@ -1,0 +1,27 @@
+# --- Python -----------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# --- Odoo -------------------------------------------------------------
+*.log
+odoo.conf.local
+filestore/
+sessions/
+.odoo_history
+
+# --- Editors / OS -----------------------------------------------------
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Local scaffolding (never deployed) -------------------------------
+*.zip
+*.sql
+*.dump
+.env

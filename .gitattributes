@@ -1,0 +1,14 @@
+# Normalise line endings: the repo is authored on Windows and deployed on
+# Linux (Odoo.sh). Everything is stored LF in Git.
+* text=auto eol=lf
+
+*.py    text eol=lf
+*.xml   text eol=lf
+*.csv   text eol=lf
+*.md    text eol=lf
+*.yml   text eol=lf
+*.conf  text eol=lf
+
+*.png   binary
+*.jpg   binary
+*.zip   binary
