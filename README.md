@@ -1,0 +1,117 @@
+# Elite Advisors — Clearance Files (Odoo 19)
+
+Odoo 19 module that runs a customs clearance and logistics services business
+as job files: one file per clearance instruction, with a documentation gate,
+out-of-pocket disbursements, employee cash advances, and client recharge
+billing that clears the balance sheet.
+
+| | |
+|---|---|
+| Module | `addons/elite_clearance` |
+| Version | `19.0.4.0.0` |
+| Odoo | 19.0 Community (lab) / 19.0 Enterprise (production, Odoo.sh) |
+| Licence | LGPL-3 |
+| Currency / locale | XAF, Cameroon (SYSCOHADA — `l10n_cm`) |
+
+---
+
+## What it does
+
+**`logistics.file` — the clearance job file.**
+`draft → in_progress → ops_closed → done`, plus `cancel`. Every file creates
+its own analytic account under the *Clearance Files* plan at creation, and
+every posting the module makes carries that account. Per-file profitability
+therefore falls out of the accounting rather than out of a spreadsheet.
+
+**The documentation gate.** Each `logistics.service.type` carries a checklist
+template. Opening a file generates the checklist; `action_start_work` refuses
+while a mandatory document is missing, unless an approver signs a waiver with
+a written justification, which is posted to the chatter. Ticking documents
+stamps one shared transaction timestamp (`env.cr.now()`) across everything
+saved together; the *Set Received Date/Time* wizard back-dates in bulk.
+
+**`logistics.expense` — out-of-pocket disbursements.**
+`draft → submitted → approved → settled`, and for advances a further
+`justified` step that requires at least one attachment.
+
+| Step | Debit | Credit |
+|---|---|---|
+| Settle, paid direct | Out-of-pocket account | Cash / bank / mobile money journal |
+| Settle, via advance | Employee advances | Cash / bank / mobile money journal |
+| Justify an advance | Out-of-pocket account | Employee advances |
+
+An unjustified advance is employee debt, not a client disbursement — it stays
+off the file's out-of-pocket total until the receipts arrive.
+
+**Billing.** From `ops_closed`, `action_create_invoice` raises a customer
+invoice with two sections: disbursements recharged at cost against the
+out-of-pocket account (clearing it, and carrying no tax — they are the
+client's own liability paid on their behalf), then the fee lines, which do
+carry the default taxes: the commission (`service_type.commission_rate` % of
+the out-of-pocket total) and the manually keyed customs service fee, as two
+separate lines. Invoice references are structured per service type
+(`EL26IM0001`); file references likewise (`2026IM0009`).
+
+A file cannot be marked complete until that invoice is posted. Reopening a
+closed file goes through a wizard that demands a manager and a written reason.
+
+**Approvals.** Waiver, expense, disbursement and billing checkpoints each
+take an explicit list of users under *Settings → Clearance*. Where no list is
+configured the security groups apply: *Clearance / Manager* for waivers and
+expense approval, *Clearance / Finance* for settlement and billing.
+
+## Repository layout
+
+```
+addons/elite_clearance/     the deliverable — the only thing that ships
+  models/                   persistent models
+  wizard/                   TransientModels and their views
+  views/                    list / form / kanban / search / settings / menus
+  security/                 groups, model access, record rules
+  data/                     sequences, the analytic plan
+  demo/                     lab sample data (DEMO- prefixed codes)
+  migrations/<version>/     pre- / post- / end- upgrade scripts
+  tests/                    the suite CI runs on every push
+  static/description/       app icon and store page
+docker/                     lab server config
+docs/                       lab setup, Odoo.sh deployment
+tools/                      repo checks used by CI
+.github/workflows/          CI
+```
+
+Everything outside `addons/` is scaffolding and never reaches production.
+
+## Working on it
+
+```bash
+docker compose up -d
+```
+
+Then http://localhost:8069 — full walkthrough in [docs/lab-setup.md](docs/lab-setup.md).
+
+Apply changes: `docker compose restart odoo` picks up Python; XML and schema
+changes additionally need *Apps → Clearance Files → Upgrade*.
+
+Run the suite against a throwaway database:
+
+```bash
+docker compose run --rm odoo odoo -d clr_test -i elite_clearance --with-demo --test-enable --test-tags /elite_clearance --stop-after-init
+```
+
+CI runs exactly that on every push. Before calling anything done: the suite
+must be green **and** the path must be exercised in the browser as a
+restricted user (Clearance / User only) — unit tests run as admin and miss
+access-rights failures.
+
+## Deploying
+
+Odoo.sh, 19.0, Enterprise. See [docs/deployment-odoo-sh.md](docs/deployment-odoo-sh.md).
+The chart of accounts (`l10n_cm`, SYSCOHADA) must be installed **before** this
+module on a production database.
+
+## Conventions
+
+- Never edit Odoo core.
+- Bump the manifest version on any schema change; upgrade scripts go under
+  `migrations/<version>/`.
+- One concern per commit.
