@@ -239,3 +239,45 @@ class TestExpensesAndBilling(TransactionCase):
             exp.with_user(manager).action_approve()   # manager but not configured
         exp.with_user(chosen).action_approve()        # configured user wins
         self.assertEqual(exp.state, 'approved')
+
+    def test_10_cancel_blocked_while_expenses_are_live(self):
+        """Cancelling a working file would strand its expenses mid-flow."""
+        exp = self._expense(300000)
+        exp.action_submit()
+        with self.assertRaises(UserError):
+            self.file.action_cancel()
+        exp.action_refuse()
+        self.file.action_cancel()
+        self.assertEqual(self.file.state, 'cancel')
+
+    def test_11_cancel_blocked_once_the_invoice_is_posted(self):
+        """Money has left the building: the correction is a credit note."""
+        exp = self._expense(400000)
+        exp.action_submit(); exp.action_approve(); exp.action_settle()
+        self.file.action_close_operations()
+        self.file.action_create_invoice()
+        self.file.invoice_id.action_post()
+        with self.assertRaises(UserError):
+            self.file.action_cancel()
+        self.assertEqual(self.file.state, 'ops_closed')
+
+    def test_12_plain_user_cannot_cancel_a_working_file(self):
+        """Cancelling past draft is an approver's decision."""
+        user = self.env['res.users'].create({
+            'name': "Ops Only 2", 'login': "ops.only2@test.example",
+            'group_ids': [(6, 0, [self.env.ref(
+                'elite_clearance.group_clearance_user').id])]})
+        with self.assertRaises(UserError):
+            self.file.with_user(user).action_cancel()
+        self.assertEqual(self.file.state, 'in_progress')
+
+    def test_13_invoice_uses_the_configured_sales_journal(self):
+        """Billing posts where the company says it should."""
+        journal = self.env['account.journal'].create({
+            'name': "Clearance Sales", 'type': 'sale', 'code': 'XCLS'})
+        self.env.company.clearance_sale_journal_id = journal
+        exp = self._expense(150000)
+        exp.action_submit(); exp.action_approve(); exp.action_settle()
+        self.file.action_close_operations()
+        self.file.action_create_invoice()
+        self.assertEqual(self.file.invoice_id.journal_id, journal)

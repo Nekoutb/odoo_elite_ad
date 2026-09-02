@@ -1,4 +1,4 @@
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class LogisticsServiceType(models.Model):
@@ -21,14 +21,13 @@ class LogisticsServiceType(models.Model):
         'res.company', default=lambda self: self.env.company, index=True,
     )
 
-    # Reserved for the billing step; not used yet, kept so the data is
-    # captured from day one rather than back-filled later.
     commission_rate = fields.Float(
         string="Commission Rate (%)",
         default=2.0,
         digits=(5, 2),
-        help="Percentage of out-of-pocket expenses charged as a service fee. "
-             "Not applied yet — the billing step is not built.",
+        help="Percentage of the file's out-of-pocket total invoiced as the "
+             "clearance commission. Billed as its own line, alongside the "
+             "manually keyed customs service fee.",
     )
 
     document_ids = fields.One2many(
@@ -42,6 +41,7 @@ class LogisticsServiceType(models.Model):
         "A service type with this code already exists for this company.",
     )
 
+    @api.depends('document_ids')
     def _compute_document_count(self):
         # Aggregate in PostgreSQL rather than looping over One2many fields.
         counts = dict(self.env['logistics.service.type.document']._read_group(

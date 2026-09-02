@@ -153,3 +153,27 @@ class TestClearanceFile(TransactionCase):
         stamps = set(file.document_ids.mapped('date_received'))
         self.assertEqual(len(stamps), 1,
                          "All lines ticked together must share one timestamp.")
+
+    def test_11_refusing_needs_a_pending_request(self):
+        """Refuse is an answer to a request, not a state you can jump to."""
+        file = self._new_file()
+        with self.assertRaises(UserError):
+            file.action_refuse_waiver()
+        self.assertEqual(file.waiver_state, 'none')
+
+    def test_12_draft_file_stays_the_authors_to_discard(self):
+        """The cancel guard must not lock a plain user out of throwing away
+        a draft they just opened by mistake."""
+        user = self.env['res.users'].create({
+            'name': "Ops Agent 3",
+            'login': "ops.agent3@test.example",
+            'group_ids': [(6, 0, [
+                self.env.ref('elite_clearance.group_clearance_user').id,
+            ])],
+        })
+        file = self.env['logistics.file'].with_user(user).create({
+            'partner_id': self.client.id,
+            'service_type_id': self.service.id,
+        })
+        file.with_user(user).action_cancel()
+        self.assertEqual(file.state, 'cancel')

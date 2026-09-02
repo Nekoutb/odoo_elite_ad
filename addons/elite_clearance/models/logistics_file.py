@@ -5,10 +5,10 @@ from odoo.exceptions import UserError, ValidationError
 class LogisticsFile(models.Model):
     """A clearance job file — the object the whole workflow hangs on.
 
-    One file = one clearance instruction from one client. Everything that
-    follows in later versions (out-of-pocket expenses, disbursement requests,
-    cash advances, the invoice) will point at this record and carry its
-    analytic account.
+    One file = one clearance instruction from one client. Out-of-pocket
+    expenses, cash advances and the client invoice all point at this record
+    and carry its analytic account, which is what makes per-file
+    profitability fall out of the accounting.
     """
 
     _name = 'logistics.file'
@@ -353,6 +353,10 @@ class LogisticsFile(models.Model):
     def action_refuse_waiver(self):
         self._check_manager()
         for file in self:
+            if file.waiver_state != 'requested':
+                raise UserError(self.env._(
+                    "No waiver is awaiting approval on %s.", file.name,
+                ))
             file.write({
                 'waiver_state': 'refused',
                 'waiver_approved_by_id': self.env.user.id,
@@ -413,6 +417,15 @@ class LogisticsFile(models.Model):
             raise UserError(self.env._(
                 "Configure the Out-of-Pocket and Fee Income accounts under "
                 "Clearance → Configuration → Settings first."))
+        journal = self.company_id.clearance_sale_journal_id
+        if not journal:
+            journal = self.env['account.journal'].search(
+                [('type', '=', 'sale'), ('company_id', '=', self.company_id.id)],
+                limit=1)
+        if not journal:
+            raise UserError(self.env._(
+                "Company %s has no sales journal to invoice from.",
+                self.company_id.name))
         analytic = ({str(self.analytic_account_id.id): 100}
                     if self.analytic_account_id else False)
         lines = [fields.Command.create({
@@ -427,6 +440,9 @@ class LogisticsFile(models.Model):
                 'quantity': 1.0,
                 'price_unit': exp.amount,
                 'account_id': oop_account.id,
+                # Disbursements are recharged at cost and carry no tax: they
+                # are the client's own liability paid on their behalf. The
+                # fee lines below deliberately keep the default taxes.
                 'tax_ids': [fields.Command.clear()],
                 'analytic_distribution': analytic,
             }))
@@ -455,6 +471,11 @@ class LogisticsFile(models.Model):
             }))
         invoice = self.env['account.move'].create({
             'move_type': 'out_invoice',
+            'journal_id': journal.id,
+            # The billing reference is imposed rather than taken from the
+            # journal sequence: Elite Advisors numbers invoices per service
+            # type (EL26IM0001). Setting it at creation makes account.move
+            # keep it through action_post().
             'name': self._next_reference('billing', self.service_type_id,
                                          self.company_id),
             'partner_id': self.partner_id.id,
@@ -491,7 +512,28 @@ class LogisticsFile(models.Model):
         return True
 
     def action_cancel(self):
-        self.write({'state': 'cancel'})
+        for file in self:
+            if file.state == 'draft':
+                # An empty draft is the author's own to throw away.
+                file.state = 'cancel'
+                continue
+            file.company_id._clearance_check_approver('waiver')
+            if file.invoice_id and file.invoice_id.state == 'posted':
+                raise UserError(self.env._(
+                    "%(file)s carries posted invoice %(inv)s. Credit-note the "
+                    "invoice from Accounting before cancelling the file.",
+                    file=file.name, inv=file.invoice_id.name))
+            unfinished = file.expense_ids.filtered(
+                lambda e: e.state not in ('draft', 'cancel'))
+            if unfinished:
+                raise UserError(self.env._(
+                    "%(name)s still carries %(count)s live expense(s): "
+                    "%(refs)s. Refuse or settle and reverse them first.",
+                    name=file.name, count=len(unfinished),
+                    refs=", ".join(unfinished.mapped('name'))))
+            file.state = 'cancel'
+            file.message_post(body=self.env._(
+                "File cancelled by %s.", self.env.user.name))
         return True
 
     def action_reset_to_draft(self):
