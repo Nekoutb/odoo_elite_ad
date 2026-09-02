@@ -23,14 +23,20 @@ setting in the project, not something derived from the branch name.
 | `staging` | Staging | Neutralised copy of production data; where an upgrade is rehearsed against real records before it touches production. |
 | `dev/<topic>` | Development | Empty or demo database per feature. Cheap to throw away. |
 
-Today the repository has a single `main` branch with one commit. Before the
-first deployment:
+`19.0` and `staging` exist on `origin` and currently point at the same commit
+as `main`. `dev/<topic>` branches are cut per feature and thrown away after
+the merge, so none is created up front.
 
-1. Create `19.0` from `main` and make it the production branch in the
-   Odoo.sh project.
-2. Create `staging` from `19.0`.
-3. Work on `dev/<topic>` branches, merge to `staging`, rehearse, then merge
-   to `19.0`.
+The flow is: cut `dev/<topic>` from `staging`, merge to `staging`, let
+Odoo.sh rebuild it against neutralised production data, read the build log,
+then fast-forward `19.0`.
+
+**Open question — retire `main`?** `main` and `19.0` are now duplicates.
+Once the Odoo.sh project is pointed at `19.0`, keeping `main` as the GitHub
+default branch means a push there looks like it deployed and did not. Either
+make `19.0` the default branch on GitHub and delete `main`, or keep `main`
+purely as the default landing page and never merge into it. Decide before the
+first production deploy, not after.
 
 CI (`.github/workflows/tests.yml`) runs the suite on all of these.
 
@@ -62,8 +68,10 @@ that new master data reaches existing databases without manual keying.
 
 ## Still to do before go-live
 
-- [ ] Create the `19.0` / `staging` / `dev` branches and point the Odoo.sh
-      project at them.
+- [x] Create the `19.0` and `staging` branches — done, both on `origin`.
+- [ ] Create the Odoo.sh project and point production at `19.0`, staging at
+      `staging`.
+- [ ] Decide whether `main` is retired in favour of `19.0` (see above).
 - [ ] Verify `l10n_cm` on 19.0 and load it before the module.
 - [ ] Import the partner list (CSV) from the old Online database.
 - [ ] Decide on OCA `account_financial_report` if Trial Balance / P&L are
