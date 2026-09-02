@@ -1,3 +1,5 @@
+# Local Odoo 19 Community lab. Disposable: the deliverable is
+# addons/elite_clearance, nothing here ships to production.
 services:
   db:
     image: postgres:16
@@ -7,11 +9,17 @@ services:
       POSTGRES_DB: postgres
     volumes:
       - odoo-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   odoo:
     image: odoo:19
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     ports:
       - "8069:8069"
     environment:
@@ -20,7 +28,9 @@ services:
       PASSWORD: odoo
     volumes:
       - odoo-data:/var/lib/odoo
-      - ./addons:/mnt/extra-addons
+      - ./addons:/mnt/extra-addons:ro
+      - ./docker/odoo.conf:/etc/odoo/odoo.conf:ro
+    command: odoo -c /etc/odoo/odoo.conf
 
 volumes:
   odoo-db:
