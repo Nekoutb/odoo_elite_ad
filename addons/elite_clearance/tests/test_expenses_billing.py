@@ -281,3 +281,16 @@ class TestExpensesAndBilling(TransactionCase):
         self.file.action_close_operations()
         self.file.action_create_invoice()
         self.assertEqual(self.file.invoice_id.journal_id, journal)
+
+    def test_14_expense_count_and_oop_total_are_independent(self):
+        """The two file totals are computed separately: the counter includes
+        every expense, the out-of-pocket total only what has actually landed
+        on the client's account."""
+        self._expense(60000)                       # draft — counted, not owed
+        settled = self._expense(90000)
+        settled.action_submit()
+        settled.action_approve()
+        settled.action_settle()
+        self.file.invalidate_recordset(['expense_count', 'oop_total'])
+        self.assertEqual(self.file.expense_count, 2)
+        self.assertEqual(self.file.oop_total, 90000)

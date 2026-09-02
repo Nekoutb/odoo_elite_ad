@@ -110,9 +110,9 @@ class LogisticsFile(models.Model):
 
     # --- out-of-pocket expenses & billing -------------------------------
     expense_ids = fields.One2many('logistics.expense', 'file_id', string="Expenses")
-    expense_count = fields.Integer(compute='_compute_expense_totals')
+    expense_count = fields.Integer(compute='_compute_expense_count')
     oop_total = fields.Monetary(
-        compute='_compute_expense_totals', store=True,
+        compute='_compute_oop_total', store=True,
         string="Out-of-Pocket Total", currency_field='currency_id',
         help="Direct expenses settled plus advances justified — the amount "
              "sitting on the out-of-pocket account for this file.",
@@ -148,10 +148,23 @@ class LogisticsFile(models.Model):
             file.missing_mandatory_count = len(missing)
             file.documents_complete = not missing
 
-    @api.depends('expense_ids.state', 'expense_ids.amount', 'expense_ids.payment_mode')
-    def _compute_expense_totals(self):
+    # expense_count and oop_total are deliberately computed by two separate
+    # methods. One method feeding both would mix a stored field with a
+    # non-stored one, and Odoo 19 warns on every registry load that reading
+    # the cheap counter can trigger a recompute-and-write of the total.
+    @api.depends('expense_ids')
+    def _compute_expense_count(self):
+        counts = dict(self.env['logistics.expense']._read_group(
+            domain=[('file_id', 'in', self.ids)],
+            groupby=['file_id'],
+            aggregates=['__count'],
+        ))
         for file in self:
-            file.expense_count = len(file.expense_ids)
+            file.expense_count = counts.get(file, 0)
+
+    @api.depends('expense_ids.state', 'expense_ids.amount', 'expense_ids.payment_mode')
+    def _compute_oop_total(self):
+        for file in self:
             file.oop_total = sum(
                 e.amount for e in file.expense_ids
                 if e.state == 'justified'

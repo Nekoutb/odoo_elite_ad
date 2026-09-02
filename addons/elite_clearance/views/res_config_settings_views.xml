@@ -53,12 +53,14 @@
         </field>
     </record>
 
+    <!-- No `target`: Odoo 19 dropped 'inline' from the act_window target
+         selection, and the settings action is expected to open in the
+         current window. Mirrors base_setup.action_general_configuration. -->
     <record id="action_clearance_config_settings" model="ir.actions.act_window">
         <field name="name">Settings</field>
         <field name="res_model">res.config.settings</field>
         <field name="view_mode">form</field>
-        <field name="target">inline</field>
-        <field name="context">{'module': 'elite_clearance'}</field>
+        <field name="context">{'module': 'elite_clearance', 'bin_size': False}</field>
     </record>
 
 </odoo>
