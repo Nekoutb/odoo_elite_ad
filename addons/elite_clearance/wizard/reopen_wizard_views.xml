@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="logistics_reopen_wizard_view_form" model="ir.ui.view">
+        <field name="name">logistics.file.reopen.wizard.form</field>
+        <field name="model">logistics.file.reopen.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Reopen File">
+                <group>
+                    <field name="file_id" invisible="1"/>
+                    <field name="reason" placeholder="Why must this closed file be reopened? This is posted to the file's audit trail."/>
+                </group>
+                <footer>
+                    <button name="action_reopen" type="object" string="Approve &amp; Reopen" class="btn-primary"/>
+                    <button string="Cancel" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_logistics_reopen_wizard" model="ir.actions.act_window">
+        <field name="name">Reopen File</field>
+        <field name="res_model">logistics.file.reopen.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

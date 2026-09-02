@@ -2,40 +2,45 @@
 <odoo>
     <data noupdate="1">
 
+        <!-- Demo only. Codes are DEMO-prefixed on purpose: the post-install
+             hook seeds Elite Advisors' real master data by matching on code,
+             so an unprefixed demo "BL" would be adopted as the real one and
+             the proper French label would never be created. -->
+
         <record id="doc_type_bl" model="logistics.document.type">
             <field name="name">Bill of Lading / Air Waybill</field>
-            <field name="code">BL</field>
+            <field name="code">DEMO-BL</field>
             <field name="sequence">10</field>
         </record>
         <record id="doc_type_invoice" model="logistics.document.type">
             <field name="name">Commercial Invoice</field>
-            <field name="code">INV</field>
+            <field name="code">DEMO-INV</field>
             <field name="sequence">20</field>
         </record>
         <record id="doc_type_packing" model="logistics.document.type">
             <field name="name">Packing List</field>
-            <field name="code">PL</field>
+            <field name="code">DEMO-PL</field>
             <field name="sequence">30</field>
         </record>
         <record id="doc_type_origin" model="logistics.document.type">
             <field name="name">Certificate of Origin</field>
-            <field name="code">COO</field>
+            <field name="code">DEMO-COO</field>
             <field name="sequence">40</field>
         </record>
         <record id="doc_type_authorisation" model="logistics.document.type">
             <field name="name">Transit Order / Authorisation</field>
-            <field name="code">AUTH</field>
+            <field name="code">DEMO-AUTH</field>
             <field name="sequence">50</field>
         </record>
         <record id="doc_type_insurance" model="logistics.document.type">
             <field name="name">Insurance Certificate</field>
-            <field name="code">INS</field>
+            <field name="code">DEMO-INS</field>
             <field name="sequence">60</field>
         </record>
 
         <record id="service_type_import_sea" model="logistics.service.type">
             <field name="name">Import clearance — sea freight</field>
-            <field name="code">IMP-SEA</field>
+            <field name="code">DEMO-IMP-SEA</field>
             <field name="sequence">10</field>
             <field name="commission_rate">2.0</field>
             <field name="description">End-to-end customs clearance for sea imports, including the customs return, settlement of clearance fees and release of the goods.</field>
@@ -73,7 +78,7 @@
 
         <record id="service_type_transit" model="logistics.service.type">
             <field name="name">Transit</field>
-            <field name="code">TRN</field>
+            <field name="code">DEMO-TRN</field>
             <field name="sequence">20</field>
             <field name="commission_rate">2.0</field>
         </record>

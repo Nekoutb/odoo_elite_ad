@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Multi-company isolation. Global rules (no groups), so they apply
+             to every user including administrators; sudo() still bypasses
+             them, which is what the analytic-account creation relies on. -->
+
+        <record id="rule_logistics_file_company" model="ir.rule">
+            <field name="name">Clearance file: own companies only</field>
+            <field name="model_id" ref="model_logistics_file"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_logistics_file_document_company" model="ir.rule">
+            <field name="name">Clearance file document: own companies only</field>
+            <field name="model_id" ref="model_logistics_file_document"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_logistics_expense_company" model="ir.rule">
+            <field name="name">Clearance expense: own companies only</field>
+            <field name="model_id" ref="model_logistics_expense"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <!-- Master data is seeded per company by the post-install hook, so it
+             needs the same isolation. company_id = False means "shared by
+             every company" and stays visible. -->
+
+        <record id="rule_logistics_document_type_company" model="ir.rule">
+            <field name="name">Clearance document type: own companies only</field>
+            <field name="model_id" ref="model_logistics_document_type"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_logistics_service_type_company" model="ir.rule">
+            <field name="name">Clearance service type: own companies only</field>
+            <field name="model_id" ref="model_logistics_service_type"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_logistics_expense_category_company" model="ir.rule">
+            <field name="name">Clearance expense category: own companies only</field>
+            <field name="model_id" ref="model_logistics_expense_category"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
+    </data>
+</odoo>

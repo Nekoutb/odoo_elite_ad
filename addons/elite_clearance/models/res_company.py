@@ -1,4 +1,24 @@
 from odoo import fields, models
+from odoo.exceptions import UserError
+
+# Every approval checkpoint in the module resolves through this table:
+#   kind -> (company field holding the explicit approver list,
+#            fallback security group when that list is empty,
+#            wording used in the refusal message)
+APPROVAL_KINDS = {
+    'waiver': ("clearance_waiver_approver_ids",
+               'elite_clearance.group_clearance_manager',
+               "approve documentation waivers"),
+    'expense': ("clearance_expense_approver_ids",
+                'elite_clearance.group_clearance_manager',
+                "approve expenses before disbursement"),
+    'finance': ("clearance_finance_approver_ids",
+                'elite_clearance.group_clearance_finance',
+                "settle and justify disbursements"),
+    'billing': ("clearance_billing_approver_ids",
+                'elite_clearance.group_clearance_finance',
+                "approve billing and completion"),
+}
 
 
 class ResCompany(models.Model):
@@ -23,6 +43,12 @@ class ResCompany(models.Model):
         domain="[('type', '=', 'general')]",
         help="Journal used for advance-justification entries.",
     )
+    clearance_sale_journal_id = fields.Many2one(
+        'account.journal', string="Clearance Sales Journal",
+        domain="[('type', '=', 'sale')]",
+        help="Journal the client clearance invoice is raised in. "
+             "Empty = the company's first sales journal.",
+    )
     clearance_waiver_approver_ids = fields.Many2many(
         'res.users', 'clearance_waiver_approver_rel', string="Waiver Approvers",
         help="Who may approve starting work with incomplete documentation. "
@@ -44,7 +70,6 @@ class ResCompany(models.Model):
         """Enforce the configured approver list for a checkpoint; fall back
         to the default security group when no list is configured."""
         self.ensure_one()
-        from odoo.exceptions import UserError
         field_name, group_xmlid, label = APPROVAL_KINDS[kind]
         approvers = self[field_name]
         user = self.env.user
@@ -56,40 +81,3 @@ class ResCompany(models.Model):
         elif not user.has_group(group_xmlid):
             raise UserError(self.env._(
                 "You do not have the rights to %(what)s.", what=label))
-
-
-APPROVAL_KINDS = {
-    'waiver': ("clearance_waiver_approver_ids",
-               'elite_clearance.group_clearance_manager',
-               "approve documentation waivers"),
-    'expense': ("clearance_expense_approver_ids",
-                'elite_clearance.group_clearance_manager',
-                "approve expenses before disbursement"),
-    'finance': ("clearance_finance_approver_ids",
-                'elite_clearance.group_clearance_finance',
-                "settle and justify disbursements"),
-    'billing': ("clearance_billing_approver_ids",
-                'elite_clearance.group_clearance_finance',
-                "approve billing and completion"),
-}
-
-
-class ResConfigSettings(models.TransientModel):
-    _inherit = 'res.config.settings'
-
-    clearance_oop_account_id = fields.Many2one(
-        related='company_id.clearance_oop_account_id', readonly=False)
-    clearance_advance_account_id = fields.Many2one(
-        related='company_id.clearance_advance_account_id', readonly=False)
-    clearance_fee_account_id = fields.Many2one(
-        related='company_id.clearance_fee_account_id', readonly=False)
-    clearance_misc_journal_id = fields.Many2one(
-        related='company_id.clearance_misc_journal_id', readonly=False)
-    clearance_waiver_approver_ids = fields.Many2many(
-        related='company_id.clearance_waiver_approver_ids', readonly=False)
-    clearance_expense_approver_ids = fields.Many2many(
-        related='company_id.clearance_expense_approver_ids', readonly=False)
-    clearance_finance_approver_ids = fields.Many2many(
-        related='company_id.clearance_finance_approver_ids', readonly=False)
-    clearance_billing_approver_ids = fields.Many2many(
-        related='company_id.clearance_billing_approver_ids', readonly=False)
