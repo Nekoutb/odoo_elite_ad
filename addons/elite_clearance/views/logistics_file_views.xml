@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="logistics_file_view_form" model="ir.ui.view">
+        <field name="name">logistics.file.form</field>
+        <field name="model">logistics.file</field>
+        <field name="arch" type="xml">
+            <form string="Clearance File">
+                <header>
+                    <button name="action_start_work" type="object" string="Start Work"
+                            class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_request_waiver" type="object" string="Request Waiver"
+                            invisible="state != 'draft' or documents_complete or waiver_state in ('requested', 'approved')"/>
+                    <button name="action_approve_waiver" type="object" string="Approve Waiver"
+                            class="oe_highlight" invisible="waiver_state != 'requested'"
+                            groups="elite_clearance.group_clearance_manager"/>
+                    <button name="action_refuse_waiver" type="object" string="Refuse Waiver"
+                            invisible="waiver_state != 'requested'"
+                            groups="elite_clearance.group_clearance_manager"/>
+                    <button name="%(action_document_date_wizard)d" type="action" string="Set Received Date/Time"
+                            invisible="state == 'cancel' or not document_ids"/>
+                    <button name="action_reload_checklist" type="object" string="Reload Checklist"
+                            invisible="state not in ('draft', 'in_progress')"/>
+                    <button name="action_close_operations" type="object" string="Close for Operations"
+                            invisible="state != 'in_progress'"/>
+                    <button name="action_create_invoice" type="object" string="Create Invoice"
+                            class="oe_highlight" invisible="state != 'ops_closed' or invoice_id"
+                            groups="elite_clearance.group_clearance_finance"/>
+                    <button name="action_mark_complete" type="object" string="Mark Complete"
+                            invisible="state != 'ops_closed' or invoice_state != 'posted'"/>
+                    <button name="%(action_logistics_reopen_wizard)d" type="action" string="Reopen (Approval)"
+                            invisible="state not in ('ops_closed', 'done')"
+                            groups="elite_clearance.group_clearance_manager"
+                            context="{'default_file_id': id}"/>
+                    <button name="action_cancel" type="object" string="Cancel"
+                            invisible="state in ('done', 'cancel')"/>
+                    <button name="action_reset_to_draft" type="object" string="Reset to Draft"
+                            invisible="state != 'cancel'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,in_progress,ops_closed,done"/>
+                </header>
+                <sheet>
+                    <field name="can_start" invisible="1"/>
+                    <field name="invoice_id" invisible="1"/>
+                    <field name="invoice_state" invisible="1"/>
+                    <field name="documents_complete" invisible="1"/>
+
+                    <div class="alert alert-warning" role="alert"
+                         invisible="state != 'draft' or documents_complete or waiver_state == 'approved'">
+                        <field name="missing_mandatory_count" class="fw-bold" nolabel="1" readonly="1"/>
+                        mandatory document(s) still missing. Work cannot start until they are received or a manager approves a waiver.
+                    </div>
+                    <div class="alert alert-info" role="alert" invisible="waiver_state != 'approved'">
+                        Working under an approved documentation waiver.
+                    </div>
+
+                    <div class="oe_title">
+                        <label for="name" string="File"/>
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group name="client">
+                            <field name="partner_id" options="{'no_quick_create': True}"/>
+                            <field name="service_type_id" options="{'no_create': True}"/>
+                            <field name="user_id" widget="many2one_avatar_user"/>
+                            <field name="company_id" groups="base.group_multi_company" options="{'no_create': True}"/>
+                        </group>
+                        <group name="refs">
+                            <field name="transit_authorisation_ref"/>
+                            <field name="customs_declaration_ref"/>
+                            <field name="bl_awb_ref"/>
+                            <field name="date_opened"/>
+                            <field name="date_target"/>
+                            <field name="date_closed" invisible="not date_closed"/>
+                            <field name="analytic_account_id" readonly="1" invisible="not analytic_account_id"/>
+                        </group>
+                    </group>
+                    <separator string="Document Checklist"/>
+                    <field name="document_ids">
+                        <list editable="bottom">
+                            <field name="sequence" widget="handle"/>
+                            <field name="document_type_id" readonly="1" force_save="1"/>
+                            <field name="is_mandatory" readonly="1" force_save="1"/>
+                            <field name="received" widget="boolean_toggle"/>
+                            <field name="date_received" readonly="1"/>
+                            <field name="reference" placeholder="Document number"/>
+                            <field name="note" optional="hide"/>
+                        </list>
+                    </field>
+
+                    <separator string="Out-of-Pocket Expenses"/>
+                    <field name="expense_ids" readonly="state not in ('draft', 'in_progress')"
+                           context="{'default_file_id': id}">
+                        <list decoration-muted="state == 'cancel'">
+                            <field name="name" readonly="1" force_save="1"/>
+                            <field name="category_id"/>
+                            <field name="description"/>
+                            <field name="vendor_id" optional="show"/>
+                            <field name="payment_mode"/>
+                            <field name="employee_id" optional="hide"/>
+                            <field name="journal_id" optional="show"/>
+                            <field name="amount" sum="Total"/>
+                            <field name="currency_id" column_invisible="1"/>
+                            <field name="state" widget="badge"
+                                   decoration-info="state in ('draft', 'submitted')"
+                                   decoration-warning="state == 'approved'"
+                                   decoration-success="state in ('settled', 'justified')"/>
+                        </list>
+                    </field>
+                    <group class="oe_subtotal_footer">
+                        <field name="oop_total" readonly="1"/>
+                    </group>
+
+                    <separator string="Billing" invisible="state == 'draft'"/>
+                    <group invisible="state == 'draft'">
+                        <group>
+                            <field name="commission_rate" readonly="1"/>
+                            <field name="commission_amount" readonly="1"/>
+                            <field name="customs_fee_amount" readonly="state not in ('in_progress', 'ops_closed')"/>
+                        </group>
+                        <group>
+                            <field name="invoice_id" readonly="1"/>
+                            <field name="invoice_state" readonly="1" invisible="not invoice_id"/>
+                            <field name="reopen_count" readonly="1" invisible="not reopen_count"/>
+                        </group>
+                    </group>
+
+                    <separator string="Documentation Waiver"
+                               invisible="waiver_state == 'none' and documents_complete"/>
+                    <group invisible="waiver_state == 'none' and documents_complete">
+                        <group>
+                            <field name="waiver_state" readonly="1"/>
+                            <field name="waiver_requested_by_id" readonly="1" invisible="waiver_state == 'none'"/>
+                            <field name="waiver_approved_by_id" readonly="1" invisible="waiver_state not in ('approved', 'refused')"/>
+                            <field name="waiver_date" readonly="1" invisible="waiver_state not in ('approved', 'refused')"/>
+                        </group>
+                    </group>
+                    <field name="waiver_reason" placeholder="Why should work begin before the file is complete? Name the missing documents and when they are expected."
+                           invisible="waiver_state == 'none' and documents_complete"/>
+
+                    <separator string="Internal Notes"/>
+                    <field name="note"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="logistics_file_view_list" model="ir.ui.view">
+        <field name="name">logistics.file.list</field>
+        <field name="model">logistics.file</field>
+        <field name="arch" type="xml">
+            <list string="Clearance Files" sample="1"
+                  decoration-danger="missing_mandatory_count &gt; 0 and waiver_state != 'approved'"
+                  decoration-muted="state == 'cancel'">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="service_type_id"/>
+                <field name="customs_declaration_ref" optional="show"/>
+                <field name="date_opened"/>
+                <field name="date_target" optional="show"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="missing_mandatory_count" string="Missing docs"/>
+                <field name="waiver_state" optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'draft'"
+                       decoration-success="state == 'done'"/>
+                <field name="activity_ids" widget="list_activity" optional="show"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="logistics_file_view_kanban" model="ir.ui.view">
+        <field name="name">logistics.file.kanban</field>
+        <field name="model">logistics.file</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" sample="1">
+                <field name="missing_mandatory_count"/>
+                <field name="waiver_state"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="d-flex justify-content-between">
+                            <field name="name" class="fw-bold fs-5"/>
+                            <field name="activity_ids" widget="kanban_activity"/>
+                        </div>
+                        <field name="partner_id"/>
+                        <div class="text-muted">
+                            <field name="service_type_id"/>
+                        </div>
+                        <div class="mt-1">
+                            <span class="badge text-bg-danger"
+                                  t-if="record.missing_mandatory_count.raw_value > 0 &amp;&amp; record.waiver_state.raw_value != 'approved'">
+                                <t t-out="record.missing_mandatory_count.value"/> docs missing
+                            </span>
+                            <span class="badge text-bg-info" t-if="record.waiver_state.raw_value == 'approved'">Waiver approved</span>
+                        </div>
+                        <footer class="pt-2">
+                            <field name="date_target" widget="remaining_days"/>
+                            <field name="user_id" widget="many2one_avatar_user" class="ms-auto"/>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="logistics_file_view_search" model="ir.ui.view">
+        <field name="name">logistics.file.search</field>
+        <field name="model">logistics.file</field>
+        <field name="arch" type="xml">
+            <search string="Clearance Files">
+                <field name="name" string="File"/>
+                <field name="partner_id"/>
+                <field name="customs_declaration_ref"/>
+                <field name="bl_awb_ref"/>
+                <field name="user_id"/>
+                <filter name="my_files" string="My Files" domain="[('user_id', '=', uid)]"/>
+                <separator/>
+                <filter name="draft" string="Draft" domain="[('state', '=', 'draft')]"/>
+                <filter name="in_progress" string="In Progress" domain="[('state', '=', 'in_progress')]"/>
+                <filter name="done" string="Closed" domain="[('state', '=', 'done')]"/>
+                <separator/>
+                <filter name="incomplete_docs" string="Documents Incomplete"
+                        domain="[('documents_complete', '=', False)]"/>
+                <filter name="waiver_pending" string="Waiver Awaiting Approval"
+                        domain="[('waiver_state', '=', 'requested')]"/>
+                <group>
+                    <filter name="group_client" string="Client" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_service" string="Service Type" context="{'group_by': 'service_type_id'}"/>
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="group_month" string="Opened" context="{'group_by': 'date_opened:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_logistics_file" model="ir.actions.act_window">
+        <field name="name">Clearance Files</field>
+        <field name="res_model">logistics.file</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="search_view_id" ref="logistics_file_view_search"/>
+        <field name="context">{'search_default_my_files': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Open your first clearance file</p>
+            <p>Choose a client and a service type; the document checklist is generated for you. Work cannot start until the mandatory documents are in, or a manager approves a waiver.</p>
+        </field>
+    </record>
+
+</odoo>

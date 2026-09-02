@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="analytic_plan_clearance" model="account.analytic.plan">
+            <field name="name">Clearance Files</field>
+            <field name="description">One analytic account per clearance file. Every out-of-pocket expense, disbursement and invoice line posted for a file carries its account, which is what makes per-file profitability possible.</field>
+        </record>
+    </data>
+</odoo>

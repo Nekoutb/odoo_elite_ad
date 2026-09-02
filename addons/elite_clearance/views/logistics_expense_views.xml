@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="logistics_expense_view_form" model="ir.ui.view">
+        <field name="name">logistics.expense.form</field>
+        <field name="model">logistics.expense</field>
+        <field name="arch" type="xml">
+            <form string="Out-of-Pocket Expense">
+                <header>
+                    <button name="action_submit" type="object" string="Submit"
+                            class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_approve" type="object" string="Approve"
+                            class="oe_highlight" invisible="state != 'submitted'"
+                            groups="elite_clearance.group_clearance_manager"/>
+                    <button name="action_refuse" type="object" string="Refuse"
+                            invisible="state != 'submitted'"
+                            groups="elite_clearance.group_clearance_manager"/>
+                    <button name="action_settle" type="object" string="Settle (Post Payment)"
+                            class="oe_highlight" invisible="state != 'approved'"
+                            groups="elite_clearance.group_clearance_finance"/>
+                    <button name="action_justify" type="object" string="Justify Advance"
+                            class="oe_highlight"
+                            invisible="state != 'settled' or payment_mode != 'advance'"
+                            groups="elite_clearance.group_clearance_finance"/>
+                    <button name="action_reset_to_draft" type="object" string="Reset to Draft"
+                            invisible="state not in ('submitted', 'cancel')"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,submitted,approved,settled,justified"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="file_id" readonly="state != 'draft'"/>
+                            <field name="category_id" readonly="state not in ('draft', 'submitted')"/>
+                            <field name="description" readonly="state not in ('draft', 'submitted')"/>
+                            <field name="amount" readonly="state not in ('draft', 'submitted')"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="company_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="payment_mode" widget="radio" readonly="state not in ('draft', 'submitted')"/>
+                            <field name="vendor_id" readonly="state == 'settled' or state == 'justified'"/>
+                            <field name="employee_id" invisible="payment_mode != 'advance'"
+                                   required="payment_mode == 'advance'"
+                                   readonly="state in ('settled', 'justified')"/>
+                            <field name="journal_id" readonly="state in ('settled', 'justified')"/>
+                            <field name="settlement_move_id" invisible="not settlement_move_id"/>
+                            <field name="justification_move_id" invisible="not justification_move_id"/>
+                            <field name="date_settled" invisible="not date_settled"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="logistics_expense_view_list" model="ir.ui.view">
+        <field name="name">logistics.expense.list</field>
+        <field name="model">logistics.expense</field>
+        <field name="arch" type="xml">
+            <list string="Out-of-Pocket Expenses" sample="1"
+                  decoration-muted="state == 'cancel'">
+                <field name="name"/>
+                <field name="file_id"/>
+                <field name="category_id"/>
+                <field name="description" optional="show"/>
+                <field name="vendor_id" optional="show"/>
+                <field name="payment_mode" optional="show"/>
+                <field name="employee_id" optional="hide"/>
+                <field name="journal_id" optional="hide"/>
+                <field name="amount" sum="Total"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="state" widget="badge"
+                       decoration-info="state in ('draft', 'submitted')"
+                       decoration-warning="state == 'approved'"
+                       decoration-success="state in ('settled', 'justified')"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="logistics_expense_view_search" model="ir.ui.view">
+        <field name="name">logistics.expense.search</field>
+        <field name="model">logistics.expense</field>
+        <field name="arch" type="xml">
+            <search string="Expenses">
+                <field name="name"/>
+                <field name="file_id"/>
+                <field name="vendor_id"/>
+                <filter name="to_approve" string="To Approve" domain="[('state', '=', 'submitted')]"/>
+                <filter name="to_settle" string="To Settle" domain="[('state', '=', 'approved')]"/>
+                <filter name="to_justify" string="Advances To Justify"
+                        domain="[('state', '=', 'settled'), ('payment_mode', '=', 'advance')]"/>
+                <group>
+                    <filter name="group_file" string="File" context="{'group_by': 'file_id'}"/>
+                    <filter name="group_category" string="Category" context="{'group_by': 'category_id'}"/>
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="group_employee" string="Advance Holder" context="{'group_by': 'employee_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_logistics_expense" model="ir.actions.act_window">
+        <field name="name">Out-of-Pocket Expenses</field>
+        <field name="res_model">logistics.expense</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Capture an out-of-pocket expense</p>
+            <p>Customs duty, port charges, transport — captured on the file, approved, settled through Cash, Bank, Mobile Money or Maviance, and recharged to the client at billing.</p>
+        </field>
+    </record>
+
+    <record id="logistics_expense_category_view_list" model="ir.ui.view">
+        <field name="name">logistics.expense.category.list</field>
+        <field name="model">logistics.expense.category</field>
+        <field name="arch" type="xml">
+            <list string="Expense Categories" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_logistics_expense_category" model="ir.actions.act_window">
+        <field name="name">Expense Categories</field>
+        <field name="res_model">logistics.expense.category</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <record id="logistics_reopen_wizard_view_form" model="ir.ui.view">
+        <field name="name">logistics.file.reopen.wizard.form</field>
+        <field name="model">logistics.file.reopen.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Reopen File">
+                <group>
+                    <field name="file_id" invisible="1"/>
+                    <field name="reason" placeholder="Why must this closed file be reopened? This is posted to the file's audit trail."/>
+                </group>
+                <footer>
+                    <button name="action_reopen" type="object" string="Approve &amp; Reopen" class="btn-primary"/>
+                    <button string="Cancel" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_logistics_reopen_wizard" model="ir.actions.act_window">
+        <field name="name">Reopen File</field>
+        <field name="res_model">logistics.file.reopen.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <record id="clearance_res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.clearance</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app string="Clearance" name="elite_clearance">
+                    <block title="Accounting">
+                        <setting string="Out-of-Pocket Expenses Account"
+                                 help="Balance-sheet account holding recoverable client disbursements until the invoice clears them.">
+                            <field name="clearance_oop_account_id"/>
+                        </setting>
+                        <setting string="Employee Advances Account"
+                                 help="Where cash advances sit until justified with supporting documents.">
+                            <field name="clearance_advance_account_id"/>
+                        </setting>
+                        <setting string="Clearance Fee Income Account"
+                                 help="Income account for the commission and the customs service fee.">
+                            <field name="clearance_fee_account_id"/>
+                        </setting>
+                        <setting string="Miscellaneous Journal"
+                                 help="Used for advance justification entries.">
+                            <field name="clearance_misc_journal_id"/>
+                        </setting>
+                    </block>
+                    <block title="Approvals">
+                        <setting string="Waiver Approvers"
+                                 help="Who may approve starting work with incomplete documentation. Empty = any Clearance Manager.">
+                            <field name="clearance_waiver_approver_ids" widget="many2many_tags"/>
+                        </setting>
+                        <setting string="Expense Approvers"
+                                 help="Who may approve expenses before disbursement. Empty = any Clearance Manager.">
+                            <field name="clearance_expense_approver_ids" widget="many2many_tags"/>
+                        </setting>
+                        <setting string="Disbursement (Finance) Approvers"
+                                 help="Who may settle disbursements and justify advances. Empty = any Clearance Finance user.">
+                            <field name="clearance_finance_approver_ids" widget="many2many_tags"/>
+                        </setting>
+                        <setting string="Billing Approvers"
+                                 help="Who may raise client invoices and mark files complete. Empty = any Clearance Finance user.">
+                            <field name="clearance_billing_approver_ids" widget="many2many_tags"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

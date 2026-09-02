@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="document_date_wizard_view_form" model="ir.ui.view">
+        <field name="name">logistics.file.document.date.wizard.form</field>
+        <field name="model">logistics.file.document.date.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Set Reception Date/Time">
+                <group>
+                    <field name="file_id" invisible="1"/>
+                    <field name="date_received"/>
+                    <field name="line_ids" widget="many2many_checkboxes"/>
+                </group>
+                <footer>
+                    <button name="action_apply" type="object" string="Apply" class="btn-primary"/>
+                    <button string="Cancel" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_document_date_wizard" model="ir.actions.act_window">
+        <field name="name">Set Reception Date/Time</field>
+        <field name="res_model">logistics.file.document.date.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

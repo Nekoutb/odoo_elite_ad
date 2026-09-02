@@ -1,0 +1,15 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_logistics_file_user,logistics.file.user,model_logistics_file,group_clearance_user,1,1,1,0
+access_logistics_file_manager,logistics.file.manager,model_logistics_file,group_clearance_manager,1,1,1,1
+access_logistics_file_document_user,logistics.file.document.user,model_logistics_file_document,group_clearance_user,1,1,1,1
+access_logistics_document_type_user,logistics.document.type.user,model_logistics_document_type,group_clearance_user,1,0,0,0
+access_logistics_document_type_manager,logistics.document.type.manager,model_logistics_document_type,group_clearance_manager,1,1,1,1
+access_logistics_service_type_user,logistics.service.type.user,model_logistics_service_type,group_clearance_user,1,0,0,0
+access_logistics_service_type_manager,logistics.service.type.manager,model_logistics_service_type,group_clearance_manager,1,1,1,1
+access_logistics_service_type_document_user,logistics.service.type.document.user,model_logistics_service_type_document,group_clearance_user,1,0,0,0
+access_logistics_service_type_document_manager,logistics.service.type.document.manager,model_logistics_service_type_document,group_clearance_manager,1,1,1,1
+access_doc_date_wizard_user,logistics.file.document.date.wizard.user,model_logistics_file_document_date_wizard,group_clearance_user,1,1,1,1
+access_logistics_expense_user,logistics.expense.user,model_logistics_expense,group_clearance_user,1,1,1,1
+access_logistics_expense_category_user,logistics.expense.category.user,model_logistics_expense_category,group_clearance_user,1,0,0,0
+access_logistics_expense_category_manager,logistics.expense.category.manager,model_logistics_expense_category,group_clearance_manager,1,1,1,1
+access_logistics_reopen_wizard_user,logistics.file.reopen.wizard.user,model_logistics_file_reopen_wizard,group_clearance_user,1,1,1,1

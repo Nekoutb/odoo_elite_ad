@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <record id="doc_type_bl" model="logistics.document.type">
+            <field name="name">Bill of Lading / Air Waybill</field>
+            <field name="code">BL</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="doc_type_invoice" model="logistics.document.type">
+            <field name="name">Commercial Invoice</field>
+            <field name="code">INV</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="doc_type_packing" model="logistics.document.type">
+            <field name="name">Packing List</field>
+            <field name="code">PL</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="doc_type_origin" model="logistics.document.type">
+            <field name="name">Certificate of Origin</field>
+            <field name="code">COO</field>
+            <field name="sequence">40</field>
+        </record>
+        <record id="doc_type_authorisation" model="logistics.document.type">
+            <field name="name">Transit Order / Authorisation</field>
+            <field name="code">AUTH</field>
+            <field name="sequence">50</field>
+        </record>
+        <record id="doc_type_insurance" model="logistics.document.type">
+            <field name="name">Insurance Certificate</field>
+            <field name="code">INS</field>
+            <field name="sequence">60</field>
+        </record>
+
+        <record id="service_type_import_sea" model="logistics.service.type">
+            <field name="name">Import clearance — sea freight</field>
+            <field name="code">IMP-SEA</field>
+            <field name="sequence">10</field>
+            <field name="commission_rate">2.0</field>
+            <field name="description">End-to-end customs clearance for sea imports, including the customs return, settlement of clearance fees and release of the goods.</field>
+        </record>
+        <record id="service_type_import_sea_doc_1" model="logistics.service.type.document">
+            <field name="service_type_id" ref="service_type_import_sea"/>
+            <field name="document_type_id" ref="doc_type_authorisation"/>
+            <field name="is_mandatory" eval="True"/>
+            <field name="sequence">10</field>
+        </record>
+        <record id="service_type_import_sea_doc_2" model="logistics.service.type.document">
+            <field name="service_type_id" ref="service_type_import_sea"/>
+            <field name="document_type_id" ref="doc_type_bl"/>
+            <field name="is_mandatory" eval="True"/>
+            <field name="sequence">20</field>
+        </record>
+        <record id="service_type_import_sea_doc_3" model="logistics.service.type.document">
+            <field name="service_type_id" ref="service_type_import_sea"/>
+            <field name="document_type_id" ref="doc_type_invoice"/>
+            <field name="is_mandatory" eval="True"/>
+            <field name="sequence">30</field>
+        </record>
+        <record id="service_type_import_sea_doc_4" model="logistics.service.type.document">
+            <field name="service_type_id" ref="service_type_import_sea"/>
+            <field name="document_type_id" ref="doc_type_packing"/>
+            <field name="is_mandatory" eval="True"/>
+            <field name="sequence">40</field>
+        </record>
+        <record id="service_type_import_sea_doc_5" model="logistics.service.type.document">
+            <field name="service_type_id" ref="service_type_import_sea"/>
+            <field name="document_type_id" ref="doc_type_origin"/>
+            <field name="is_mandatory" eval="False"/>
+            <field name="sequence">50</field>
+        </record>
+
+        <record id="service_type_transit" model="logistics.service.type">
+            <field name="name">Transit</field>
+            <field name="code">TRN</field>
+            <field name="sequence">20</field>
+            <field name="commission_rate">2.0</field>
+        </record>
+        <record id="service_type_transit_doc_1" model="logistics.service.type.document">
+            <field name="service_type_id" ref="service_type_transit"/>
+            <field name="document_type_id" ref="doc_type_authorisation"/>
+            <field name="is_mandatory" eval="True"/>
+            <field name="sequence">10</field>
+        </record>
+        <record id="service_type_transit_doc_2" model="logistics.service.type.document">
+            <field name="service_type_id" ref="service_type_transit"/>
+            <field name="document_type_id" ref="doc_type_bl"/>
+            <field name="is_mandatory" eval="True"/>
+            <field name="sequence">20</field>
+        </record>
+
+    </data>
+</odoo>

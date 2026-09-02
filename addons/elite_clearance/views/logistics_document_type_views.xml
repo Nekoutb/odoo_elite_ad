@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="logistics_document_type_view_list" model="ir.ui.view">
+        <field name="name">logistics.document.type.list</field>
+        <field name="model">logistics.document.type</field>
+        <field name="arch" type="xml">
+            <list string="Document Types" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="description" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="logistics_document_type_view_search" model="ir.ui.view">
+        <field name="name">logistics.document.type.search</field>
+        <field name="model">logistics.document.type</field>
+        <field name="arch" type="xml">
+            <search string="Document Types">
+                <field name="name"/>
+                <field name="code"/>
+                <filter name="filter_inactive" string="Archived" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_logistics_document_type" model="ir.actions.act_window">
+        <field name="name">Document Types</field>
+        <field name="res_model">logistics.document.type</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Define the documents a clearance file can require</p>
+            <p>Bill of lading, commercial invoice, packing list, certificate of origin, transit authorisation. Each service type then picks the ones it needs.</p>
+        </field>
+    </record>
+
+</odoo>

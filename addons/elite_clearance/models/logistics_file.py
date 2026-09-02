@@ -1,0 +1,583 @@
+from odoo import api, fields, models
+from odoo.exceptions import UserError, ValidationError
+
+
+class LogisticsFile(models.Model):
+    """A clearance job file — the object the whole workflow hangs on.
+
+    One file = one clearance instruction from one client. Everything that
+    follows in later versions (out-of-pocket expenses, disbursement requests,
+    cash advances, the invoice) will point at this record and carry its
+    analytic account.
+    """
+
+    _name = 'logistics.file'
+    _description = "Clearance File"
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _order = 'date_opened desc, id desc'
+    _rec_names_search = ['name', 'partner_id.name', 'customs_declaration_ref']
+
+    # --- identification -------------------------------------------------
+    name = fields.Char(
+        string="File Reference", required=True, copy=False, readonly=True,
+        default="New", index=True,
+    )
+    partner_id = fields.Many2one(
+        'res.partner', string="Client", required=True, index=True,
+        tracking=True, domain="[('is_company', '=', True)]",
+    )
+    service_type_id = fields.Many2one(
+        'logistics.service.type', string="Service Type", required=True,
+        tracking=True,
+    )
+    user_id = fields.Many2one(
+        'res.users', string="Responsible", tracking=True,
+        default=lambda self: self.env.user, domain="[('share', '=', False)]",
+    )
+    company_id = fields.Many2one(
+        'res.company', required=True, index=True,
+        default=lambda self: self.env.company,
+    )
+
+    # --- operational references ----------------------------------------
+    transit_authorisation_ref = fields.Char(
+        string="Transit Order / Authorisation", tracking=True,
+        help="The client's transit order or authorisation to act.",
+    )
+    customs_declaration_ref = fields.Char(string="Customs Declaration", tracking=True)
+    bl_awb_ref = fields.Char(string="BL / AWB")
+    date_opened = fields.Date(
+        string="Opened On", default=fields.Date.context_today, required=True,
+    )
+    date_target = fields.Date(string="Target Clearance Date", tracking=True)
+    date_closed = fields.Date(string="Closed On", readonly=True, copy=False)
+    note = fields.Html(string="Internal Notes")
+
+    # --- analytic -------------------------------------------------------
+    analytic_account_id = fields.Many2one(
+        'account.analytic.account', string="Analytic Account",
+        readonly=True, copy=False, ondelete='restrict',
+        help="Created automatically with the file. Every cost and revenue "
+             "posted later carries this tag, which is what makes per-file "
+             "profitability possible.",
+    )
+
+    # --- workflow -------------------------------------------------------
+    state = fields.Selection(
+        [
+            ('draft', "Draft"),
+            ('in_progress', "In Progress"),
+            ('ops_closed', "Closed for Operations"),
+            ('done', "Complete"),
+            ('cancel', "Cancelled"),
+        ],
+        default='draft', required=True, tracking=True, index=True,
+    )
+
+    # --- document checklist ---------------------------------------------
+    document_ids = fields.One2many(
+        'logistics.file.document', 'file_id', string="Document Checklist",
+    )
+    missing_mandatory_count = fields.Integer(
+        compute='_compute_document_status', store=True,
+        string="Missing Mandatory Documents",
+    )
+    documents_complete = fields.Boolean(
+        compute='_compute_document_status', store=True,
+        string="Documentation Complete",
+    )
+
+    # --- waiver (start work without full documentation) -----------------
+    waiver_state = fields.Selection(
+        [
+            ('none', "Not requested"),
+            ('requested', "Awaiting approval"),
+            ('approved', "Approved"),
+            ('refused', "Refused"),
+        ],
+        default='none', required=True, tracking=True, string="Waiver",
+        copy=False,
+    )
+    waiver_reason = fields.Text(
+        string="Waiver Justification", copy=False,
+        help="Why work should begin before all mandatory documents are in.",
+    )
+    waiver_requested_by_id = fields.Many2one('res.users', readonly=True, copy=False)
+    waiver_approved_by_id = fields.Many2one('res.users', readonly=True, copy=False)
+    waiver_date = fields.Datetime(readonly=True, copy=False)
+
+    can_start = fields.Boolean(compute='_compute_can_start')
+
+    # --- out-of-pocket expenses & billing -------------------------------
+    expense_ids = fields.One2many('logistics.expense', 'file_id', string="Expenses")
+    expense_count = fields.Integer(compute='_compute_expense_totals')
+    oop_total = fields.Monetary(
+        compute='_compute_expense_totals', store=True,
+        string="Out-of-Pocket Total", currency_field='currency_id',
+        help="Direct expenses settled plus advances justified — the amount "
+             "sitting on the out-of-pocket account for this file.",
+    )
+    currency_id = fields.Many2one(related='company_id.currency_id')
+    commission_rate = fields.Float(
+        related='service_type_id.commission_rate', string="Commission Rate (%)")
+    commission_amount = fields.Monetary(
+        compute='_compute_fee_amounts', store=True, currency_field='currency_id',
+        string="Commission (on OOP)")
+    customs_fee_amount = fields.Monetary(
+        string="Customs Service Fee", currency_field='currency_id', tracking=True,
+        help="Keyed by the billing agent from the customs declaration.")
+    invoice_id = fields.Many2one(
+        'account.move', string="Client Invoice", readonly=True, copy=False)
+    invoice_state = fields.Selection(related='invoice_id.state', string="Invoice Status")
+    reopen_count = fields.Integer(readonly=True, copy=False)
+
+    _name_company_uniq = models.Constraint(
+        'UNIQUE(name, company_id)',
+        "A clearance file with this reference already exists.",
+    )
+
+    # =====================================================================
+    # Computes
+    # =====================================================================
+    @api.depends('document_ids.is_mandatory', 'document_ids.received')
+    def _compute_document_status(self):
+        for file in self:
+            missing = file.document_ids.filtered(
+                lambda d: d.is_mandatory and not d.received
+            )
+            file.missing_mandatory_count = len(missing)
+            file.documents_complete = not missing
+
+    @api.depends('expense_ids.state', 'expense_ids.amount', 'expense_ids.payment_mode')
+    def _compute_expense_totals(self):
+        for file in self:
+            file.expense_count = len(file.expense_ids)
+            file.oop_total = sum(
+                e.amount for e in file.expense_ids
+                if e.state == 'justified'
+                or (e.state == 'settled' and e.payment_mode == 'direct'))
+
+    @api.depends('oop_total', 'service_type_id.commission_rate')
+    def _compute_fee_amounts(self):
+        for file in self:
+            file.commission_amount = file.currency_id.round(
+                file.oop_total * (file.service_type_id.commission_rate or 0.0) / 100.0)
+
+    @api.depends('documents_complete', 'waiver_state')
+    def _compute_can_start(self):
+        for file in self:
+            file.can_start = file.documents_complete or file.waiver_state == 'approved'
+
+    # =====================================================================
+    # Onchange
+    # =====================================================================
+    @api.onchange('service_type_id')
+    def _onchange_service_type_id(self):
+        """Populate the checklist as soon as the service type is chosen.
+
+        Guarded so that changing the service type on a live file never
+        silently discards a document already ticked as received — in that
+        case the user presses "Reload Checklist" instead.
+        """
+        if not self.service_type_id:
+            return
+        if self.document_ids.filtered('received'):
+            return {'warning': {
+                'title': self.env._("Checklist not regenerated"),
+                'message': self.env._(
+                    "Some documents are already marked as received. Use the "
+                    "Reload Checklist button to merge the new service type's "
+                    "requirements without losing them."
+                ),
+            }}
+        commands = [fields.Command.clear()]
+        for template in self.service_type_id.document_ids:
+            commands.append(fields.Command.create({
+                'document_type_id': template.document_type_id.id,
+                'is_mandatory': template.is_mandatory,
+                'sequence': template.sequence,
+            }))
+        self.document_ids = commands
+
+    # =====================================================================
+    # CRUD
+    # =====================================================================
+    @api.model
+    def _next_reference(self, kind, service_type, company):
+        """Structured references per service type, yearly:
+        files:   2026IM0009  = %(year)s + type code + 4-digit sequence
+        billing: EL26IM0001  = EL + %(y)s + type code + 4-digit sequence
+        The sequence per (kind, type, company) is created on first use and
+        resets each year; ir.sequence guarantees no duplicates."""
+        code = (service_type.code or 'XX').upper()
+        seq_code = 'logistics.%s.%s' % (kind, code)
+        Seq = self.env['ir.sequence'].sudo()
+        seq = Seq.search([('code', '=', seq_code),
+                          ('company_id', 'in', [company.id, False])], limit=1)
+        if not seq:
+            prefix = ('EL%%(y)s%s' % code) if kind == 'billing' else ('%%(year)s%s' % code)
+            seq = Seq.create({
+                'name': "Clearance %s %s" % (kind, code),
+                'code': seq_code,
+                'prefix': prefix,
+                'padding': 4,
+                'company_id': company.id,
+                'use_date_range': True,
+            })
+        return seq.next_by_id()
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('name', "New") == "New" and vals.get('service_type_id'):
+                company = self.env['res.company'].browse(
+                    vals.get('company_id') or self.env.company.id)
+                service_type = self.env['logistics.service.type'].browse(
+                    vals['service_type_id'])
+                vals['name'] = self._next_reference('file', service_type, company)
+        files = super().create(vals_list)
+        for file in files:
+            if not file.document_ids and file.service_type_id:
+                file._build_checklist()
+            if not file.analytic_account_id:
+                file._create_analytic_account()
+        return files
+
+    def unlink(self):
+        for file in self:
+            if file.state not in ('draft', 'cancel'):
+                raise UserError(self.env._(
+                    "File %s cannot be deleted once work has started. "
+                    "Cancel it instead.", file.name,
+                ))
+        return super().unlink()
+
+    # =====================================================================
+    # Helpers
+    # =====================================================================
+    def _create_analytic_account(self):
+        """One analytic account per file, under the Clearance Files plan."""
+        self.ensure_one()
+        plan = self.env.ref(
+            'elite_clearance.analytic_plan_clearance', raise_if_not_found=False,
+        )
+        if not plan:
+            return
+        # sudo(): the analytic account is a technical record the system owns,
+        # not something the ops agent is choosing to create. Without this, a
+        # clearance user without the Analytic Accounting group cannot open a
+        # file at all.
+        self.analytic_account_id = self.env['account.analytic.account'].sudo().create({
+            'name': self.name,
+            'code': self.name,
+            'plan_id': plan.id,
+            'partner_id': self.partner_id.id,
+            'company_id': self.company_id.id,
+        })
+
+    def _build_checklist(self):
+        """(Re)generate checklist lines from the service type template.
+
+        Lines already ticked as received are preserved.
+        """
+        DocLine = self.env['logistics.file.document']
+        for file in self:
+            existing = {d.document_type_id.id: d for d in file.document_ids}
+            keep = DocLine.browse()
+            new_vals = []
+            for template in file.service_type_id.document_ids:
+                line = existing.get(template.document_type_id.id)
+                if line:
+                    line.is_mandatory = template.is_mandatory
+                    keep |= line
+                else:
+                    new_vals.append({
+                        'file_id': file.id,
+                        'document_type_id': template.document_type_id.id,
+                        'is_mandatory': template.is_mandatory,
+                        'sequence': template.sequence,
+                    })
+            # Drop lines no longer in the template, unless already received.
+            stale = file.document_ids - keep
+            stale.filtered(lambda d: not d.received).unlink()
+            if new_vals:
+                DocLine.create(new_vals)
+
+    def _check_manager(self):
+        for file in self:
+            file.company_id._clearance_check_approver('waiver')
+
+    # =====================================================================
+    # Actions
+    # =====================================================================
+    def action_reload_checklist(self):
+        self._build_checklist()
+        return True
+
+    def action_request_waiver(self):
+        for file in self:
+            if file.documents_complete:
+                raise UserError(self.env._(
+                    "File %s already has complete documentation — no waiver "
+                    "is needed.", file.name,
+                ))
+            if not file.waiver_reason:
+                raise UserError(self.env._(
+                    "Give a justification before requesting a waiver on %s.",
+                    file.name,
+                ))
+            file.write({
+                'waiver_state': 'requested',
+                'waiver_requested_by_id': self.env.user.id,
+            })
+            file.message_post(body=self.env._(
+                "Documentation waiver requested: %s", file.waiver_reason,
+            ))
+        return True
+
+    def action_approve_waiver(self):
+        self._check_manager()
+        for file in self:
+            if file.waiver_state != 'requested':
+                raise UserError(self.env._(
+                    "No waiver is awaiting approval on %s.", file.name,
+                ))
+            file.write({
+                'waiver_state': 'approved',
+                'waiver_approved_by_id': self.env.user.id,
+                'waiver_date': fields.Datetime.now(),
+            })
+            file.message_post(body=self.env._("Documentation waiver approved."))
+        return True
+
+    def action_refuse_waiver(self):
+        self._check_manager()
+        for file in self:
+            file.write({
+                'waiver_state': 'refused',
+                'waiver_approved_by_id': self.env.user.id,
+                'waiver_date': fields.Datetime.now(),
+            })
+            file.message_post(body=self.env._("Documentation waiver refused."))
+        return True
+
+    def action_start_work(self):
+        for file in self:
+            if file.state != 'draft':
+                raise UserError(self.env._(
+                    "File %s is not in draft.", file.name,
+                ))
+            if not file.can_start:
+                raise UserError(self.env._(
+                    "Work cannot start on %(name)s: %(count)s mandatory "
+                    "document(s) are still missing and no waiver has been "
+                    "approved.",
+                    name=file.name, count=file.missing_mandatory_count,
+                ))
+            file.state = 'in_progress'
+        return True
+
+    def action_close_operations(self):
+        """Operations are finished: no further expenses can be captured.
+        Every expense must have reached its final state first."""
+        for file in self:
+            if file.state != 'in_progress':
+                raise UserError(self.env._(
+                    "Only a file in progress can be closed for operations "
+                    "(%s).", file.name))
+            pending = file.expense_ids.filtered(lambda e: not e.is_final)
+            if pending:
+                raise UserError(self.env._(
+                    "%(name)s still has %(count)s expense(s) not settled or "
+                    "justified: %(refs)s.",
+                    name=file.name, count=len(pending),
+                    refs=", ".join(pending.mapped('name'))))
+            file.state = 'ops_closed'
+        return True
+
+    def action_create_invoice(self):
+        """Raise the client invoice: recharge section at cost (clearing the
+        out-of-pocket account) + fee section (commission and customs fee)."""
+        self.ensure_one()
+        self.company_id._clearance_check_approver('billing')
+        if self.state != 'ops_closed':
+            raise UserError(self.env._(
+                "Close %s for operations before billing it.", self.name))
+        if self.invoice_id and self.invoice_id.state != 'cancel':
+            raise UserError(self.env._(
+                "%(file)s already has invoice %(inv)s.",
+                file=self.name, inv=self.invoice_id.name or "in draft"))
+        oop_account = self.company_id.clearance_oop_account_id
+        fee_account = self.company_id.clearance_fee_account_id
+        if not oop_account or not fee_account:
+            raise UserError(self.env._(
+                "Configure the Out-of-Pocket and Fee Income accounts under "
+                "Clearance → Configuration → Settings first."))
+        analytic = ({str(self.analytic_account_id.id): 100}
+                    if self.analytic_account_id else False)
+        lines = [fields.Command.create({
+            'display_type': 'line_section',
+            'name': self.env._("Out-of-pocket expenses recharged at cost"),
+        })]
+        for exp in self.expense_ids.filtered(
+                lambda e: e.state == 'justified'
+                or (e.state == 'settled' and e.payment_mode == 'direct')):
+            lines.append(fields.Command.create({
+                'name': "%s — %s" % (exp.category_id.name, exp.description),
+                'quantity': 1.0,
+                'price_unit': exp.amount,
+                'account_id': oop_account.id,
+                'tax_ids': [fields.Command.clear()],
+                'analytic_distribution': analytic,
+            }))
+        lines.append(fields.Command.create({
+            'display_type': 'line_section',
+            'name': self.env._("Service fees"),
+        }))
+        if self.commission_amount:
+            lines.append(fields.Command.create({
+                'name': self.env._(
+                    "Clearance commission (%(rate).2f%% of out-of-pocket)",
+                    rate=self.commission_rate),
+                'quantity': 1.0,
+                'price_unit': self.commission_amount,
+                'account_id': fee_account.id,
+                'analytic_distribution': analytic,
+            }))
+        if self.customs_fee_amount:
+            lines.append(fields.Command.create({
+                'name': self.env._("Customs service fee (per declaration %s)",
+                                   self.customs_declaration_ref or "-"),
+                'quantity': 1.0,
+                'price_unit': self.customs_fee_amount,
+                'account_id': fee_account.id,
+                'analytic_distribution': analytic,
+            }))
+        invoice = self.env['account.move'].create({
+            'move_type': 'out_invoice',
+            'name': self._next_reference('billing', self.service_type_id,
+                                         self.company_id),
+            'partner_id': self.partner_id.id,
+            'invoice_origin': self.name,
+            'ref': self.name,
+            'invoice_line_ids': lines,
+        })
+        self.invoice_id = invoice
+        self.message_post(body=self.env._(
+            "Draft invoice created: out-of-pocket %(oop)s + commission "
+            "%(com)s + customs fee %(fee)s.",
+            oop=self.oop_total, com=self.commission_amount,
+            fee=self.customs_fee_amount))
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.move',
+            'res_id': invoice.id,
+            'view_mode': 'form',
+        }
+
+    def action_mark_complete(self):
+        """Final close: only once the client invoice is posted."""
+        for file in self:
+            file.company_id._clearance_check_approver('billing')
+            if file.state != 'ops_closed':
+                raise UserError(self.env._(
+                    "%s must be closed for operations first.", file.name))
+            if not file.invoice_id or file.invoice_id.state != 'posted':
+                raise UserError(self.env._(
+                    "Post the client invoice on %s before marking it "
+                    "complete.", file.name))
+            file.write({'state': 'done',
+                        'date_closed': fields.Date.context_today(file)})
+        return True
+
+    def action_cancel(self):
+        self.write({'state': 'cancel'})
+        return True
+
+    def action_reset_to_draft(self):
+        for file in self:
+            if file.state != 'cancel':
+                raise UserError(self.env._(
+                    "Only a cancelled file can be reset to draft. A closed "
+                    "file is reopened through the approval flow (%s).",
+                    file.name))
+        self.write({'state': 'draft', 'date_closed': False})
+        return True
+
+
+class LogisticsFileDocument(models.Model):
+    """One checklist line on a clearance file."""
+
+    _name = 'logistics.file.document'
+    _description = "Clearance File Document"
+    _order = 'sequence, id'
+    _rec_name = 'document_type_id'
+
+    file_id = fields.Many2one(
+        'logistics.file', required=True, ondelete='cascade', index=True,
+    )
+    document_type_id = fields.Many2one(
+        'logistics.document.type', required=True, ondelete='restrict',
+    )
+    sequence = fields.Integer(default=10)
+    is_mandatory = fields.Boolean(string="Mandatory", default=True)
+    received = fields.Boolean(string="Received")
+    date_received = fields.Datetime(string="Received On")
+    reference = fields.Char(string="Document Ref.")
+    note = fields.Char()
+    company_id = fields.Many2one(related='file_id.company_id', store=True, index=True)
+
+    _document_per_file_uniq = models.Constraint(
+        'UNIQUE(file_id, document_type_id)',
+        "This document is already on the file's checklist.",
+    )
+
+    @api.onchange('received')
+    def _onchange_received(self):
+        for line in self:
+            if line.received and not line.date_received:
+                line.date_received = fields.Datetime.now()
+            elif not line.received:
+                line.date_received = False
+
+    @api.constrains('received', 'date_received')
+    def _check_date_received(self):
+        now = fields.Datetime.now()
+        for line in self:
+            if line.date_received and line.date_received > now:
+                raise ValidationError(self.env._(
+                    "A document cannot be received in the future (%s).",
+                    line.document_type_id.name,
+                ))
+
+    # The onchange above only fires while a person edits the form. These two
+    # hooks make the stamp reliable on EVERY path — imports, automations, the
+    # API, and the list toggle alike.
+    # self.env.cr.now() is the TRANSACTION time: constant for everything
+    # saved together. Tick five documents and press Save once — all five
+    # carry the identical timestamp, to the second.
+    @api.model_create_multi
+    def create(self, vals_list):
+        now = self.env.cr.now().replace(microsecond=0)
+        for vals in vals_list:
+            if vals.get('received') and not vals.get('date_received'):
+                vals['date_received'] = now
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if vals.get('received') and 'date_received' not in vals:
+            # Stamp only lines that have no timestamp yet; never overwrite a
+            # date someone set deliberately (or via the wizard).
+            now = self.env.cr.now().replace(microsecond=0)
+            undated = self.filtered(lambda l: not l.date_received)
+            dated = self - undated
+            res = True
+            if undated:
+                res = super(LogisticsFileDocument, undated).write(
+                    dict(vals, date_received=now))
+            if dated:
+                res = super(LogisticsFileDocument, dated).write(vals) and res
+            return res
+        if 'received' in vals and not vals['received'] and 'date_received' not in vals:
+            vals = dict(vals, date_received=False)
+        return super().write(vals)

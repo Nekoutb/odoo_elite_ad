@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <menuitem id="menu_clearance_root" name="Clearance" sequence="85"
+              web_icon="elite_clearance,static/description/icon.png"
+              groups="group_clearance_user"/>
+
+    <menuitem id="menu_clearance_files" name="Files"
+              parent="menu_clearance_root" sequence="10"/>
+
+    <menuitem id="menu_clearance_file_all" name="Clearance Files"
+              parent="menu_clearance_files" action="action_logistics_file" sequence="10"/>
+
+    <menuitem id="menu_clearance_config" name="Configuration"
+              parent="menu_clearance_root" sequence="90"
+              groups="group_clearance_manager"/>
+
+    <menuitem id="menu_clearance_service_type" name="Service Types"
+              parent="menu_clearance_config" action="action_logistics_service_type" sequence="10"/>
+
+    <menuitem id="menu_clearance_document_type" name="Document Types"
+              parent="menu_clearance_config" action="action_logistics_document_type" sequence="20"/>
+
+    <menuitem id="menu_clearance_expense_category" name="Expense Categories"
+              parent="menu_clearance_config" action="action_logistics_expense_category" sequence="30"/>
+
+</odoo>
