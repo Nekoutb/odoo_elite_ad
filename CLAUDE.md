@@ -63,6 +63,17 @@ Customs clearance job files for a logistics/clearance services provider.
   load time, so the file defining `action_x` must be listed first. The wizard
   view files therefore precede `views/logistics_file_views.xml`, and
   `views/clearance_menus.xml` is last.
+- **`target="inline"` no longer exists** on `ir.actions.act_window`: 19.0
+  offers only current / new / fullscreen / main, and an invalid value is a
+  hard install failure, not a warning. A `res.config.settings` action sets no
+  target at all and adds `'bin_size': False` to its context — copy
+  `base_setup.action_general_configuration`, not a pre-19 module.
+- **One compute method may not feed both a stored and a non-stored field.**
+  Stored computes default to `compute_sudo=True`, non-stored to `False`; the
+  registry warns twice on every load. Split the method.
+- Static checks (compile, XML well-formedness) cannot see an invalid *value*
+  in a valid tag. Only installing the module catches that — which is what CI
+  is for, and why it must stay green rather than merely exist.
 - **Never declare one xml id twice**, especially not once outside and once
   inside a `<data noupdate="1">` block: the second declaration flips
   `ir.model.data.noupdate`, which silently freezes the first one on every
@@ -80,7 +91,7 @@ Customs clearance job files for a logistics/clearance services provider.
 - Apply code changes: `docker compose restart odoo` then Apps → module → Upgrade
   (XML/schema need the Upgrade; Python needs the restart).
 - Logs: `docker compose logs odoo`
-- Tests (throwaway db, currently 25 tests, must stay green):
+- Tests (throwaway db, currently 26 tests, must stay green):
   `docker compose run --rm odoo odoo -d clr_test -i elite_clearance --with-demo --test-enable --test-tags /elite_clearance --stop-after-init`
 - Static repo checks CI also runs: `python tools/check_manifest.py addons/elite_clearance`
 
