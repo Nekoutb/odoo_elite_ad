@@ -26,20 +26,27 @@ setting in the project, not something derived from the branch name.
 
 | Branch | Stage | Purpose |
 |---|---|---|
-| `19.0` | Production | What the business runs on. Only ever fast-forwarded from `staging`. |
+| `prod` | Production | What the business runs on. GitHub default. Only ever fast-forwarded from `staging`. |
 | `staging` | Staging | Neutralised copy of production data; where an upgrade is rehearsed against real records before it touches production. |
 | `dev/<topic>` | Development | Empty or demo database per feature. Cheap to throw away. |
 
-`19.0` is the repository's default branch and the only production branch;
-`staging` tracks it. There is no `main` and no `prod` — both existed briefly
-as duplicates of `19.0` and were deleted, because a second branch that looks
-like production is a branch someone will push to expecting a deploy that
-never happens. `dev/<topic>` branches are cut per feature and thrown away
-after the merge, so none is created up front.
+**Why the production branch is called `prod` and not `19.0`.** Odoo.sh
+allows exactly one production branch per project and binds the stage to the
+branch *name*. Once `prod` had been made production in the console, every
+route to replace it failed: dragging another branch in is refused ("you can
+only have one production branch per project"), dragging `prod` out lands on
+a merge dialog, and the console refuses to delete a production branch. The
+name was not worth a support ticket or a new project, so on 03/09/2026 the
+repository adopted `prod`. `19.0` is a retired duplicate: delete it from the
+Odoo.sh console (Development stage), never from GitHub directly.
 
 The flow is: cut `dev/<topic>` from `staging`, merge to `staging`, let
 Odoo.sh rebuild it against neutralised production data, read the build log,
-then fast-forward `19.0`.
+then fast-forward `prod`:
+
+```bash
+git push origin staging:prod
+```
 
 CI (`.github/workflows/tests.yml`) runs the suite on all of these.
 
@@ -61,14 +68,16 @@ expense categories). The hook is idempotent and matches on `code`, so it is
 safe to re-run; an `end-` migration script re-runs it after every upgrade so
 that new master data reaches existing databases without manual keying.
 
-## Never delete the production branch on GitHub
+## Never delete the production branch on GitHub, and never expect to rename it
 
 Odoo.sh binds the production *stage* to a branch *name*. Deleting that
 branch on GitHub does not "move" production anywhere — it strands the stage,
 and Odoo.sh refuses every other operation until the branch is restored. The
 order is always: change the production branch in the Odoo.sh console first,
 confirm the stage change in the branch history, and only then delete the old
-branch from Git. This was learnt the hard way on 03/09/2026 with `prod`.
+branch from Git. This was learnt the hard way on 03/09/2026 with `prod`. The same day taught
+the corollary: the production branch cannot be swapped for another from the
+console either. Choose the production branch name once, at project creation.
 
 ## Upgrades
 
@@ -80,19 +89,17 @@ branch from Git. This was learnt the hard way on 03/09/2026 with `prod`.
 
 ## Still to do before go-live
 
-- [x] Create the `19.0` and `staging` branches; `19.0` is the GitHub default.
 - [x] Odoo.sh project exists and is connected to this repository.
-- [x] Production stage WAS orphaned: `prod` was its production branch and was
-      deleted on GitHub on 03/09/2026. Odoo.sh showed "REMOTE BRANCH DELETED
-      — it is imperative you restore it before doing any other operation".
-      Restored at the exact SHA it last built (`0d315e6`). The production
-      database was empty, so nothing was at risk.
-- [ ] In the console: Branches → drag `19.0` into **Production**. Only then
-      is `prod` free to go.
-- [ ] Delete `prod` again — from Git, only AFTER `19.0` is the production
-      branch in the console.
-- [ ] Confirm the branch's Odoo version is set to 19.0 in its settings.
+- [x] Production branch settled: `prod` (see *Branches* above).
+- [x] `prod` fast-forwarded to `staging` (v19.0.6.0.0) — the first real
+      promotion.
+- [ ] Console: drag `staging` from Development into the **Staging** stage,
+      so it builds on a copy of production rather than an empty database.
+- [ ] Console: delete `19.0` from the Development stage (retired duplicate).
+- [ ] Confirm the production branch's Odoo version is 19.0 in its settings.
 - [ ] Verify `l10n_cm` on 19.0 and load it before the module.
+- [ ] Configure Settings → Clearance on production (421101, 47xx, fee income,
+      journals) and create the team users.
 - [ ] Import the partner list (CSV) from the old Online database.
 - [ ] Decide on OCA `account_financial_report` if Trial Balance / P&L are
       wanted beyond what Enterprise ships.

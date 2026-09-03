@@ -128,9 +128,10 @@ Customs clearance job files for a logistics/clearance services provider.
 - Static repo checks CI also runs: `python tools/check_manifest.py addons/elite_clearance`
 
 ## Roadmap / backlog (owner-approved)
-1. Odoo.sh deploy: create `19.0` (production) / `staging` / `dev/*` branches
-   and point the project at them — see `docs/deployment-odoo-sh.md`. Load
-   `l10n_cm` before the module.
+1. Odoo.sh: project exists, production branch is `prod` (Odoo.sh pins the
+   production branch name; it could not be changed to `19.0` — see
+   `docs/deployment-odoo-sh.md`). `19.0` is a retired duplicate to delete
+   from the console. Load `l10n_cm` before the module.
 2. OOP adjustment (parked, spec agreed): `logistics.oop.adjustment` —
    non-recharged residue written off to P&L expense, over-recovery to income;
    closed reason-code list (client refused / error / duplicate / FX /
@@ -158,8 +159,11 @@ Customs clearance job files for a logistics/clearance services provider.
 - **Never delete a branch on GitHub that Odoo.sh has in a stage.** Odoo.sh
   binds the stage to the branch NAME; deleting it strands the stage and
   blocks the console until the branch is restored. Change the stage in the
-  console first, then delete. `prod` taught us this on 03/09/2026.
-- Push to `staging` only. Promoting to `19.0` is a separate, explicit step.
+  console first, then delete. `prod` taught us this on 03/09/2026 — and
+  the same day taught that the production branch cannot be swapped from
+  the console at all (one per project, drag = merge, delete refused).
+- Push to `staging` only. Promoting is `git push origin staging:prod`, a
+  separate, explicit step on the owner's word.
 - `.gitignore` and `.gitattributes` exist for a reason: never commit
   `__pycache__`, and everything is stored LF because the deploy target is
   Linux.
