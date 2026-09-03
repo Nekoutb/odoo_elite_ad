@@ -165,7 +165,7 @@ Customs clearance job files for a logistics/clearance services provider.
 - Apply code changes: `docker compose restart odoo` then Apps → module → Upgrade
   (XML/schema need the Upgrade; Python needs the restart).
 - Logs: `docker compose logs odoo`
-- Tests (throwaway db, currently 55 tests across both modules, must stay green):
+- Tests (throwaway db, currently 54 tests across both modules, must stay green):
   `docker compose run --rm odoo odoo -d clr_test -i elite_clearance,elite_clearance_teese --with-demo --test-enable --test-tags /elite_clearance,/elite_clearance_teese --stop-after-init`
 - Static repo checks CI also runs: `python tools/check_manifest.py addons/elite_clearance addons/elite_clearance_teese`
 
