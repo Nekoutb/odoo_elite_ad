@@ -163,7 +163,7 @@ Customs clearance job files for a logistics/clearance services provider.
   use `models.Constraint` class attributes (name starts with `_`).
   `groups_id`→`group_ids` — including the field that restricts an
   `ir.ui.view` to groups, which cost a CI cycle on 03/09/2026 despite
-  being written down right here; `tools/check_renamed_fields.py` now
+  being written down right here; `tools/check_view_pitfalls.py` now
   fails the static job on it. Demo data needs `--with-demo` (default
   flipped).
 - **readonly fields in one2many lists are DROPPED on save for new rows**
@@ -189,6 +189,10 @@ Customs clearance job files for a logistics/clearance services provider.
 - Static checks (compile, XML well-formedness) cannot see an invalid *value*
   in a valid tag. Only installing the module catches that — which is what CI
   is for, and why it must stay green rather than merely exist.
+- **An inherited view may NOT set groups on the record.** Odoo 19: "Inherited
+  view cannot have 'groups' defined on the record. Use 'groups' attributes
+  inside the view definition." Put `groups="..."` on the element inside the
+  arch. Guarded by `tools/check_view_pitfalls.py`.
 - **Never declare one xml id twice**, especially not once outside and once
   inside a `<data noupdate="1">` block: the second declaration flips
   `ir.model.data.noupdate`, which silently freezes the first one on every
@@ -215,7 +219,7 @@ Customs clearance job files for a logistics/clearance services provider.
   `docker compose run --rm odoo odoo -d clr_test -i elite_clearance,elite_clearance_teese --with-demo --test-enable --test-tags /elite_clearance,/elite_clearance_teese --stop-after-init`
 - Static repo checks CI also runs:
   `python tools/check_manifest.py addons/elite_clearance addons/elite_clearance_teese`
-  `python tools/check_renamed_fields.py addons/elite_clearance addons/elite_clearance_teese`
+  `python tools/check_view_pitfalls.py addons/elite_clearance addons/elite_clearance_teese`
 
 ## Roadmap / backlog (owner-approved)
 1. Odoo.sh: project exists, production branch is `prod` (Odoo.sh pins the

@@ -33,8 +33,8 @@ jobs:
           PY
       - name: Manifest declares every data file that exists
         run: python tools/check_manifest.py addons/elite_clearance addons/elite_clearance_teese
-      - name: No field names that Odoo 19 renamed
-        run: python tools/check_renamed_fields.py addons/elite_clearance addons/elite_clearance_teese
+      - name: No known Odoo 19 install-time pitfalls
+        run: python tools/check_view_pitfalls.py addons/elite_clearance addons/elite_clearance_teese
 
   odoo-tests:
     name: Odoo 19 test suite

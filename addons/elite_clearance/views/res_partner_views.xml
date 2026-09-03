@@ -1,31 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
+    <!-- One view, and `groups` on the element rather than on the record:
+         Odoo 19 refuses an inherited view that sets group_ids on the record
+         itself ("Inherited view cannot have 'groups' defined on the record.
+         Use 'groups' attributes inside the view definition"). -->
     <record id="res_partner_view_form_clearance" model="ir.ui.view">
         <field name="name">res.partner.form.inherit.clearance</field>
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='ref']" position="after">
+                <!-- Readonly for everyone: the slug is assigned by the system
+                     when the client's first file is opened and then kept, and
+                     the analytic accounts already named after it sit on posted
+                     lines. Correcting one is a deliberate exception, not a
+                     field somebody edits in passing. -->
                 <field name="clearance_slug" readonly="1"
                        groups="elite_clearance.group_clearance_user"
                        placeholder="set when the first file is opened"/>
-            </xpath>
-        </field>
-    </record>
-
-    <record id="res_partner_view_form_clearance_manager" model="ir.ui.view">
-        <field name="name">res.partner.form.inherit.clearance.manager</field>
-        <field name="model">res.partner</field>
-        <field name="inherit_id" ref="elite_clearance.res_partner_view_form_clearance"/>
-        <field name="group_ids" eval="[(4, ref('elite_clearance.group_clearance_manager'))]"/>
-        <field name="arch" type="xml">
-            <!-- A Clearance Manager may correct a slug; everyone else reads it.
-                 Correcting one does not rename analytic accounts already
-                 created, and that is deliberate: those names sit on posted
-                 lines and renaming them would rewrite history. -->
-            <xpath expr="//field[@name='clearance_slug']" position="attributes">
-                <attribute name="readonly">0</attribute>
             </xpath>
         </field>
     </record>
