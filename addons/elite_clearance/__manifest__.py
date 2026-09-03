@@ -39,7 +39,7 @@ where no explicit approver list is set, the security groups apply.
     'author': "Elite Advisors",
     'website': "https://eliteadvisors.cm-ea.com",
     'category': 'Services/Clearance',
-    'version': '19.0.15.0.0',
+    'version': '19.0.16.0.0',
     'license': 'LGPL-3',
     'depends': ['base', 'mail', 'analytic', 'account', 'hr'],
     'data': [
@@ -56,6 +56,7 @@ where no explicit approver list is set, the security groups apply.
         # exist. Menus last, for the same reason.
         'wizard/document_date_wizard_views.xml',
         'wizard/reopen_wizard_views.xml',
+        'wizard/billing_wizard_views.xml',
         'views/logistics_port_views.xml',
         'views/logistics_document_type_views.xml',
         'views/logistics_service_type_views.xml',
@@ -66,6 +67,7 @@ where no explicit approver list is set, the security groups apply.
         'views/hr_employee_views.xml',
         'views/res_config_settings_views.xml',
         'views/clearance_menus.xml',
+        'views/clearance_tasks_views.xml',
     ],
     'demo': [
         'demo/clearance_demo.xml',

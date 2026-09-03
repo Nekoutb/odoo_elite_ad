@@ -106,7 +106,7 @@ class LogisticsFile(models.Model):
         [
             ('draft', "Draft"),
             ('in_progress', "In Progress"),
-            ('ops_closed', "Closed for Operations"),
+            ('ops_closed', "OK for Billing"),
             ('done', "Complete"),
             ('imported', "Imported"),
             ('cancel', "Cancelled"),
@@ -864,9 +864,80 @@ class LogisticsFile(models.Model):
                 "Recharge adjustment refused: the invoice bills at cost."))
         return True
 
-    def action_create_invoice(self):
-        """Raise the client invoice: recharge section at cost (clearing the
-        out-of-pocket account) + fee section (commission and customs fee)."""
+    # =====================================================================
+    # Billing
+    # =====================================================================
+    def _billable_expenses(self):
+        """The disbursements this file may recharge.
+
+        Engaged means paid direct, or advanced and since justified. Legacy
+        rows were billed in the old system and never appear here.
+        """
+        self.ensure_one()
+        return self.expense_ids.filtered(
+            lambda e: not e.is_legacy and (
+                e.state == 'justified'
+                or (e.state == 'settled' and e.payment_mode != 'advance')))
+
+    def _billing_debours_lines(self):
+        """What the billing screen proposes for the disbursement section."""
+        self.ensure_one()
+        return [
+            {'name': "%s — %s" % (expense.category_id.name, expense.description),
+             'amount': expense.amount}
+            for expense in self._billable_expenses()
+        ]
+
+    def _billing_service_lines(self):
+        """What it proposes for the service section: the commission on
+        disbursements, and the customs fee keyed from the declaration."""
+        self.ensure_one()
+        fee = self.company_id.clearance_fee_account_id
+        services = []
+        if self.commission_amount:
+            services.append({
+                'name': self.env._(
+                    "Commission sur débours (%(rate).2f%%)",
+                    rate=self.commission_rate),
+                'amount': self.commission_amount,
+                'account_id': (
+                    self.company_id.clearance_commission_account_id or fee).id,
+            })
+        if self.customs_fee_amount:
+            services.append({
+                'name': self.env._(
+                    "Honoraires Agréés en Douane (déclaration %s)",
+                    self.customs_declaration_ref or "-"),
+                'amount': self.customs_fee_amount,
+                'account_id': (
+                    self.company_id.clearance_service_fee_account_id or fee).id,
+            })
+        return services
+
+    def action_open_billing(self):
+        """The Billing button on a file that is OK for billing."""
+        self.ensure_one()
+        self.company_id._clearance_check_approver('billing')
+        if self.state != 'ops_closed':
+            raise UserError(self.env._(
+                "%s is not OK for billing yet.", self.name))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': self.env._("Billing — %s", self.name),
+            'res_model': 'logistics.billing.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'active_id': self.id, 'default_file_id': self.id},
+        }
+
+    def _create_client_invoice(self, debours, services):
+        """Build the client invoice from explicit lines.
+
+        `debours` are recharged AT COST so the out-of-pocket account clears
+        in full; anything the client is charged above or below that is one
+        further line in its own P&L account. `services` are the fee lines,
+        which unlike disbursements keep their default taxes.
+        """
         self.ensure_one()
         self.company_id._clearance_check_approver('billing')
         if self.state != 'ops_closed':
@@ -877,13 +948,6 @@ class LogisticsFile(models.Model):
             raise UserError(self.env._(
                 "%(file)s already has invoice %(inv)s.",
                 file=self.name, inv=self.invoice_id.name or "in draft"))
-        oop_account = self.company_id.clearance_oop_account_id
-        fee_account = self.company_id.clearance_fee_account_id
-        # Commission and service fee are separate subdivisions of 706 when
-        # the company has named them; otherwise both fall back to the one
-        # fee account, which is how this worked before they were split.
-        commission_account = self.company_id.clearance_commission_account_id or fee_account
-        service_fee_account = self.company_id.clearance_service_fee_account_id or fee_account
         if self.recharge_state in ('requested', 'ops_approved'):
             raise UserError(self.env._(
                 "The recharge adjustment on %s is still awaiting approval.",
@@ -891,6 +955,8 @@ class LogisticsFile(models.Model):
         # Re-checked here and not only at ops-close: a file can be reopened,
         # expenses added, and closed again through the wizard.
         self._check_advances_billable()
+        oop_account = self.company_id.clearance_oop_account_id
+        fee_account = self.company_id.clearance_fee_account_id
         if not oop_account or not fee_account:
             raise UserError(self.env._(
                 "Configure the Engaged Disbursements (47xx) and Fee Income "
@@ -906,18 +972,18 @@ class LogisticsFile(models.Model):
                 self.company_id.name))
         analytic = ({str(self.analytic_account_id.id): 100}
                     if self.analytic_account_id else False)
-        lines = [fields.Command.create({
-            'display_type': 'line_section',
-            'name': self.env._("Out-of-pocket expenses recharged at cost"),
-        })]
-        for exp in self.expense_ids.filtered(
-                lambda e: not e.is_legacy and (
-                    e.state == 'justified'
-                    or (e.state == 'settled' and e.payment_mode != 'advance'))):
+
+        lines = []
+        if debours:
             lines.append(fields.Command.create({
-                'name': "%s — %s" % (exp.category_id.name, exp.description),
+                'display_type': 'line_section',
+                'name': self.env._("Out-of-pocket expenses recharged at cost"),
+            }))
+        for line in debours:
+            lines.append(fields.Command.create({
+                'name': line['name'],
                 'quantity': 1.0,
-                'price_unit': exp.amount,
+                'price_unit': line['amount'],
                 'account_id': oop_account.id,
                 # Disbursements are recharged at cost and carry no tax: they
                 # are the client's own liability paid on their behalf. The
@@ -925,11 +991,9 @@ class LogisticsFile(models.Model):
                 'tax_ids': [fields.Command.clear()],
                 'analytic_distribution': analytic,
             }))
-        # The disbursement lines above always recharge at cost, so 47xx
-        # clears in full whatever the client is charged. The difference is
-        # the company's own gain or loss and lands in its own P&L account:
-        # a negative line debits the undercharge expense, a positive one
-        # credits the overcharge income.
+
+        # 47xx clears in full whatever the client is charged; the difference
+        # is the company's own gain or loss and lands in its own account.
         adjustment = self._recharge_total() - self.oop_total
         if not self.currency_id.is_zero(adjustment):
             if adjustment < 0:
@@ -961,40 +1025,28 @@ class LogisticsFile(models.Model):
                 'tax_ids': [fields.Command.clear()],
                 'analytic_distribution': analytic,
             }))
-        lines.append(fields.Command.create({
-            'display_type': 'line_section',
-            'name': self.env._("Service fees"),
-        }))
-        if self.commission_amount:
+
+        if services:
             lines.append(fields.Command.create({
-                'name': self.env._(
-                    "Clearance commission (%(rate).2f%% of out-of-pocket)",
-                    rate=self.commission_rate),
+                'display_type': 'line_section',
+                'name': self.env._("Service fees"),
+            }))
+        for line in services:
+            lines.append(fields.Command.create({
+                'name': line['name'],
                 'quantity': 1.0,
-                'price_unit': self.commission_amount,
-                'account_id': commission_account.id,
+                'price_unit': line['amount'],
+                'account_id': line.get('account_id') or fee_account.id,
                 'analytic_distribution': analytic,
             }))
-        if self.customs_fee_amount:
-            lines.append(fields.Command.create({
-                'name': self.env._("Customs service fee (per declaration %s)",
-                                   self.customs_declaration_ref or "-"),
-                'quantity': 1.0,
-                'price_unit': self.customs_fee_amount,
-                'account_id': service_fee_account.id,
-                'analytic_distribution': analytic,
-            }))
+
         invoice = self.env['account.move'].create({
             'move_type': 'out_invoice',
             'journal_id': journal.id,
-            # The link of record: invoice_ids on the file reads this, so the
-            # invoice raised here shows in the Billing list beside imported
-            # ones. invoice_id below is the workflow's current invoice.
             'logistics_file_id': self.id,
             # The billing reference is imposed rather than taken from the
             # journal sequence: Elite Advisors numbers invoices per service
-            # type (EL26IM0001). Setting it at creation makes account.move
-            # keep it through action_post().
+            # type (EL26IM0001).
             'name': self._next_reference('billing', self.service_type_id,
                                          self.company_id),
             'partner_id': self.partner_id.id,
@@ -1004,16 +1056,23 @@ class LogisticsFile(models.Model):
         })
         self.invoice_id = invoice
         self.message_post(body=self.env._(
-            "Draft invoice created: engaged disbursements %(oop)s + "
-            "commission %(com)s + customs fee %(fee)s.",
-            oop=self.oop_total, com=self.commission_amount,
-            fee=self.customs_fee_amount))
+            "Draft invoice created: disbursements %(oop)s recharged at "
+            "%(charged)s, services %(fees)s.",
+            oop=self.oop_total, charged=self._recharge_total(),
+            fees=sum(line['amount'] for line in services)))
         if self.unjustified_advance_total:
             self.message_post(body=self.env._(
                 "Billed under an approved waiver: %(amount)s of staff "
                 "advances was NOT invoiced and stays on 421101 against the "
                 "holder, to recover separately.",
                 amount=self.unjustified_advance_total))
+        return invoice
+
+    def action_create_invoice(self):
+        """Bill at the proposed figures, without opening the screen."""
+        self.ensure_one()
+        invoice = self._create_client_invoice(
+            self._billing_debours_lines(), self._billing_service_lines())
         return {
             'type': 'ir.actions.act_window',
             'res_model': 'account.move',

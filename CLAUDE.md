@@ -15,7 +15,7 @@ working memory that is *not* obvious from the code.
   <in the Odoo.sh project settings — never in this repository, it is public>, Custom plan). The old Odoo Online db (elite-advisors,
   saas~19.3) holds no data and will lapse. Never build against 19.3 minor APIs.
 
-## The module: addons/elite_clearance (v19.0.15.0.0)
+## The module: addons/elite_clearance (v19.0.16.0.0)
 Customs clearance job files for a logistics/clearance services provider.
 - `logistics.file` — one file = one clearance job. States:
   draft → in_progress → ops_closed → done (+cancel, +imported). `imported`
@@ -166,6 +166,23 @@ Customs clearance job files for a logistics/clearance services provider.
    invocation") and left a phantom row in the file's list. The file's
    expense list is therefore `editable="bottom" open_form_view="1"`: edit
    inline, run the workflow on the record's own page.
+- **The billing screen (owner spec, 03/09/2026).** `ops_closed` now reads
+   "OK for Billing". The **Billing** button opens `logistics.billing.wizard`:
+   a disbursement section (one row per `_billable_expenses()`, columns
+   Disbursed / To Recharge / Variance) and a service section pre-filled with
+   "Commission sur débours" and "Honoraires Agréés en Douane", to which the
+   biller may add rows. Any variance makes `needs_review` true and the only
+   button becomes **Submit for Review**, which writes
+   `logistics.file.recharge_amount` and so trips the existing Ops (+ GM
+   below cost) approval. Per-line intent is persisted on
+   `logistics.expense.recharge_amount`. `action_create_invoice` and the
+   wizard share `_create_client_invoice(debours, services)`; the debours
+   lines always post AT COST so 47xx clears, and the variance is one further
+   line to the under/overcharge account.
+- **My Tasks (owner spec, 03/09/2026).** `views/clearance_tasks_views.xml`:
+   ten group-restricted actions under a "My Tasks" menu, so each role sees
+   only the queue it can act on. No new model — domains over the existing
+   states.
 - **Analytic on EVERYTHING (owner spec, 03/09/2026).** Every line of every
   move carrying `logistics_file_id` gets the file's analytic account —
   income, expense, asset, liability, the receivable and the tax lines Odoo
@@ -241,7 +258,7 @@ Customs clearance job files for a logistics/clearance services provider.
 - Apply code changes: `docker compose restart odoo` then Apps → module → Upgrade
   (XML/schema need the Upgrade; Python needs the restart).
 - Logs: `docker compose logs odoo`
-- Tests (throwaway db, currently 70 tests across both modules, must stay green):
+- Tests (throwaway db, currently 77 tests across both modules, must stay green):
   `docker compose run --rm odoo odoo -d clr_test -i elite_clearance,elite_clearance_teese --with-demo --test-enable --test-tags /elite_clearance,/elite_clearance_teese --stop-after-init`
 - Static repo checks CI also runs:
   `python tools/check_manifest.py addons/elite_clearance addons/elite_clearance_teese`

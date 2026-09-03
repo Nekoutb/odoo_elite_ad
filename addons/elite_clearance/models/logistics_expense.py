@@ -153,6 +153,12 @@ class LogisticsExpense(models.Model):
         help="When the advance was justified and reclassified from 421101 "
              "to the engaged-disbursements account.")
     is_final = fields.Boolean(compute='_compute_is_final', store=True)
+    recharge_amount = fields.Monetary(
+        string="To Recharge", currency_field='currency_id', copy=False,
+        help="What the client is charged for this disbursement, when the "
+             "biller has changed it. Empty means at cost. Recorded from the "
+             "billing screen so it is known later which disbursement was "
+             "discounted and by how much.")
 
     # --- legacy (Teese) provenance -------------------------------------
     is_legacy = fields.Boolean(

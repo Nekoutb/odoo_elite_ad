@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="billing_wizard_view_form" model="ir.ui.view">
+        <field name="name">logistics.billing.wizard.form</field>
+        <field name="model">logistics.billing.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Billing">
+                <field name="file_id" invisible="1"/>
+                <field name="currency_id" invisible="1"/>
+                <field name="needs_review" invisible="1"/>
+                <div class="alert alert-warning" role="alert" invisible="not needs_review">
+                    <b>The recharge no longer matches what was disbursed.</b>
+                    No invoice can be raised until an Operations Manager approves it — and where the
+                    recharge is <i>below</i> cost, the General Manager as well. Give the reason and
+                    send it for review.
+                </div>
+                <group>
+                    <group>
+                        <field name="partner_id" readonly="1"/>
+                    </group>
+                    <group>
+                        <field name="invoice_total" readonly="1"/>
+                    </group>
+                </group>
+
+                <separator string="Out-of-pocket expenses (débours)"/>
+                <field name="debours_line_ids">
+                    <list editable="bottom" create="0" delete="0">
+                        <field name="name"/>
+                        <field name="amount_engaged" sum="Disbursed"/>
+                        <field name="amount_recharged" sum="Recharged"/>
+                        <field name="variance" sum="Variance"
+                               decoration-danger="variance &lt; 0"
+                               decoration-success="variance &gt; 0"/>
+                        <field name="currency_id" column_invisible="1"/>
+                    </list>
+                </field>
+                <div class="text-muted mt-1" invisible="not debours_line_ids">
+                    The invoice always recharges disbursements at cost, so the out-of-pocket account
+                    clears in full. Any difference is billed as one further line — an undercharge is
+                    booked as a cost, an overcharge as revenue.
+                </div>
+
+                <separator string="Services"/>
+                <field name="service_line_ids">
+                    <list editable="bottom">
+                        <field name="name" placeholder="e.g. Honoraires Agréés en Douane"/>
+                        <field name="account_id" options="{'no_create': True}"/>
+                        <field name="amount" sum="Services"/>
+                        <field name="currency_id" column_invisible="1"/>
+                    </list>
+                </field>
+
+                <group class="oe_subtotal_footer">
+                    <field name="debours_engaged_total" readonly="1"/>
+                    <field name="debours_recharged_total" readonly="1"/>
+                    <field name="debours_variance" readonly="1"
+                           invisible="not debours_variance"/>
+                    <field name="service_total" readonly="1"/>
+                    <field name="invoice_total" readonly="1" class="oe_subtotal_footer_separator"/>
+                </group>
+
+                <field name="review_reason" invisible="not needs_review"
+                       placeholder="Why is the client charged other than what was disbursed? Required before anyone can approve it."/>
+
+                <footer>
+                    <button name="action_create_invoice" type="object" string="Create Invoice"
+                            class="btn-primary" invisible="needs_review"/>
+                    <button name="action_submit_for_review" type="object" string="Submit for Review"
+                            class="btn-primary" invisible="not needs_review"/>
+                    <button string="Cancel" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_billing_wizard" model="ir.actions.act_window">
+        <field name="name">Billing</field>
+        <field name="res_model">logistics.billing.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

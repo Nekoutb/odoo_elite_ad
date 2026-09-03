@@ -50,7 +50,7 @@
                     <button name="action_close_operations" type="object" string="Close for Operations"
                             invisible="state != 'in_progress'"
                             groups="elite_clearance.group_clearance_ops_manager"/>
-                    <button name="action_create_invoice" type="object" string="Create Invoice"
+                    <button name="action_open_billing" type="object" string="Billing"
                             class="oe_highlight" invisible="state != 'ops_closed' or invoice_id"
                             groups="elite_clearance.group_clearance_finance"/>
                     <button name="action_mark_complete" type="object" string="Mark Complete"
