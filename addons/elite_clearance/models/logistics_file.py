@@ -230,7 +230,7 @@ class LogisticsFile(models.Model):
         [
             ('none', "At cost"),
             ('requested', "Awaiting Operations Manager"),
-            ('ops_approved', "Awaiting Finance Manager"),
+            ('ops_approved', "Awaiting General Manager"),
             ('approved', "Approved"),
             ('refused', "Refused"),
         ],
@@ -238,8 +238,8 @@ class LogisticsFile(models.Model):
         string="Recharge Adjustment")
     recharge_ops_approved_by_id = fields.Many2one(
         'res.users', readonly=True, copy=False, string="Operations Approval")
-    recharge_finance_approved_by_id = fields.Many2one(
-        'res.users', readonly=True, copy=False, string="Finance Approval")
+    recharge_gm_approved_by_id = fields.Many2one(
+        'res.users', readonly=True, copy=False, string="General Manager Approval")
     recharge_approved_date = fields.Datetime(readonly=True, copy=False)
     invoice_id = fields.Many2one(
         'account.move', string="Client Invoice", readonly=True, copy=False)
@@ -342,6 +342,46 @@ class LogisticsFile(models.Model):
             file.recharge_variance = (
                 file.recharge_amount - file.oop_total
                 if file.recharge_amount else 0.0)
+
+    def write(self, vals):
+        res = super().write(vals)
+        if 'recharge_amount' in vals and not self.env.context.get(
+                'clearance_recharge_sync'):
+            for file in self:
+                file._sync_recharge_state()
+        return res
+
+    def _sync_recharge_state(self):
+        """Changing the figure IS the request.
+
+        The first version made this a button, and a button nobody presses is
+        a control that does not exist: the owner adjusted 50,000 to 45,000
+        and nothing happened. Editing the recharge now puts the file into
+        approval by itself, and any approval already given is torn up,
+        because it was given for a different number.
+        """
+        self.ensure_one()
+        variance = (self.recharge_amount - self.oop_total
+                    if self.recharge_amount else 0.0)
+        target = 'none' if self.currency_id.is_zero(variance) else 'requested'
+        if self.recharge_state == target and target == 'none':
+            return
+        self.with_context(clearance_recharge_sync=True).write({
+            'recharge_state': target,
+            'recharge_ops_approved_by_id': False,
+            'recharge_gm_approved_by_id': False,
+            'recharge_approved_date': False,
+        })
+        if target == 'requested':
+            self.message_post(body=self.env._(
+                "Recharge set to %(amount)s against a cost of %(cost)s "
+                "(%(variance)s). It needs approval before this file can be "
+                "billed, and any approval already given has lapsed.",
+                amount=self.recharge_amount, cost=self.oop_total,
+                variance=variance))
+        else:
+            self.message_post(body=self.env._(
+                "Recharge back at cost; no approval needed."))
 
     def _recharge_total(self):
         """What the invoice actually recharges: cost, unless an adjustment
@@ -751,31 +791,24 @@ class LogisticsFile(models.Model):
         return True
 
     # --- recharge adjustment --------------------------------------------
-    def action_request_recharge_adjustment(self):
-        """The billing operator proposes charging other than cost."""
-        for file in self:
-            file.company_id._clearance_check_approver('billing')
-            if not file.recharge_amount:
-                raise UserError(self.env._(
-                    "Enter what %s should recharge before requesting an "
-                    "adjustment. Leaving it empty bills at cost.", file.name))
-            if file.currency_id.is_zero(file.recharge_variance):
-                raise UserError(self.env._(
-                    "%s already recharges at cost - there is nothing to "
-                    "approve.", file.name))
-            if file.recharge_variance < 0 and not file.recharge_reason:
-                raise UserError(self.env._(
-                    "Recharging %(amount)s BELOW what was disbursed has to be "
-                    "explained before anyone can approve it (%(file)s).",
-                    amount=abs(file.recharge_variance), file=file.name))
-            file.write({'recharge_state': 'requested'})
-            file.message_post(body=self.env._(
-                "Recharge adjustment requested: %(amount)s against a cost of "
-                "%(cost)s (%(variance)s). %(reason)s",
-                amount=file.recharge_amount, cost=file.oop_total,
-                variance=file.recharge_variance,
-                reason=file.recharge_reason or ""))
-        return True
+    def _check_recharge_documented(self):
+        """Below cost the company absorbs the difference, so the file has to
+        say why in writing and carry something to show for it."""
+        self.ensure_one()
+        if self.recharge_variance >= 0:
+            return
+        if not self.recharge_reason:
+            raise UserError(self.env._(
+                "Recharging %(amount)s BELOW what was disbursed has to be "
+                "explained in writing before anyone can approve it (%(file)s).",
+                amount=abs(self.recharge_variance), file=self.name))
+        documents = self.env['ir.attachment'].search_count([
+            ('res_model', '=', self._name), ('res_id', '=', self.id)])
+        if not documents:
+            raise UserError(self.env._(
+                "Attach the supporting document for the undercharge on %s - "
+                "the client's agreement, the credit note, whatever justifies "
+                "absorbing the difference.", self.name))
 
     def action_approve_recharge_ops(self):
         """Operations signs every adjustment. Below cost it is not enough."""
@@ -785,6 +818,7 @@ class LogisticsFile(models.Model):
                 raise UserError(self.env._(
                     "No recharge adjustment is awaiting Operations on %s.",
                     file.name))
+            file._check_recharge_documented()
             below = file.recharge_variance < 0
             file.write({
                 'recharge_state': 'ops_approved' if below else 'approved',
@@ -793,26 +827,27 @@ class LogisticsFile(models.Model):
             })
             file.message_post(body=self.env._(
                 "Recharge adjustment approved by Operations.%s",
-                self.env._(" It is below cost, so the Finance Manager must "
+                self.env._(" It is below cost, so the General Manager must "
                            "approve it as well.") if below else ""))
         return True
 
-    def action_approve_recharge_finance(self):
-        """Only a below-cost recharge reaches here: the company is giving
-        away margin, so the Finance Manager signs it too."""
+    def action_approve_recharge_gm(self):
+        """Only a below-cost recharge reaches here: the company is absorbing
+        the difference, so the General Manager signs it too."""
         for file in self:
-            file.company_id._clearance_check_approver('recharge_finance')
+            file.company_id._clearance_check_approver('recharge_gm')
             if file.recharge_state != 'ops_approved':
                 raise UserError(self.env._(
-                    "No below-cost recharge is awaiting Finance on %s.",
-                    file.name))
+                    "No below-cost recharge is awaiting the General Manager "
+                    "on %s.", file.name))
+            file._check_recharge_documented()
             file.write({
                 'recharge_state': 'approved',
-                'recharge_finance_approved_by_id': self.env.user.id,
+                'recharge_gm_approved_by_id': self.env.user.id,
                 'recharge_approved_date': fields.Datetime.now(),
             })
             file.message_post(body=self.env._(
-                "Below-cost recharge approved by the Finance Manager: "
+                "Below-cost recharge approved by the General Manager: "
                 "%(amount)s against a cost of %(cost)s.",
                 amount=file.recharge_amount, cost=file.oop_total))
         return True
@@ -890,16 +925,39 @@ class LogisticsFile(models.Model):
                 'tax_ids': [fields.Command.clear()],
                 'analytic_distribution': analytic,
             }))
+        # The disbursement lines above always recharge at cost, so 47xx
+        # clears in full whatever the client is charged. The difference is
+        # the company's own gain or loss and lands in its own P&L account:
+        # a negative line debits the undercharge expense, a positive one
+        # credits the overcharge income.
         adjustment = self._recharge_total() - self.oop_total
         if not self.currency_id.is_zero(adjustment):
+            if adjustment < 0:
+                variance_account = (
+                    self.company_id.clearance_oop_undercharge_account_id)
+                label = self.env._(
+                    "Out of pocket expense undercharge (disbursed %(cost)s, "
+                    "recharged %(charged)s)", cost=self.oop_total,
+                    charged=self._recharge_total())
+                missing = "Disbursement Undercharge"
+            else:
+                variance_account = (
+                    self.company_id.clearance_oop_overcharge_account_id)
+                label = self.env._(
+                    "Out of pocket expense overcharge (disbursed %(cost)s, "
+                    "recharged %(charged)s)", cost=self.oop_total,
+                    charged=self._recharge_total())
+                missing = "Disbursement Overcharge"
+            if not variance_account:
+                raise UserError(self.env._(
+                    "Configure the %s account under Clearance → "
+                    "Configuration → Settings before billing an adjusted "
+                    "recharge.", missing))
             lines.append(fields.Command.create({
-                'name': self.env._(
-                    "Approved recharge adjustment (cost %(cost)s, recharged "
-                    "%(charged)s)", cost=self.oop_total,
-                    charged=self._recharge_total()),
+                'name': label,
                 'quantity': 1.0,
                 'price_unit': adjustment,
-                'account_id': oop_account.id,
+                'account_id': variance_account.id,
                 'tax_ids': [fields.Command.clear()],
                 'analytic_distribution': analytic,
             }))

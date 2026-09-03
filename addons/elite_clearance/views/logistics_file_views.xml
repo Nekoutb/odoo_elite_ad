@@ -17,15 +17,12 @@
                     <button name="action_refuse_waiver" type="object" string="Refuse Waiver"
                             invisible="waiver_state != 'requested'"
                             groups="elite_clearance.group_clearance_manager"/>
-                    <button name="action_request_recharge_adjustment" type="object" string="Request Recharge Adjustment"
-                            invisible="state != 'ops_closed' or recharge_state in ('requested', 'ops_approved', 'approved')"
-                            groups="elite_clearance.group_clearance_finance"/>
                     <button name="action_approve_recharge_ops" type="object" string="Approve Recharge (Operations)"
                             class="oe_highlight" invisible="recharge_state != 'requested'"
                             groups="elite_clearance.group_clearance_ops_manager"/>
-                    <button name="action_approve_recharge_finance" type="object" string="Approve Below-Cost Recharge (Finance)"
+                    <button name="action_approve_recharge_gm" type="object" string="Approve Undercharge (General Manager)"
                             class="oe_highlight" invisible="recharge_state != 'ops_approved'"
-                            groups="elite_clearance.group_clearance_finance_manager"/>
+                            groups="elite_clearance.group_clearance_manager"/>
                     <button name="action_refuse_recharge" type="object" string="Refuse Recharge"
                             invisible="recharge_state not in ('requested', 'ops_approved')"
                             groups="elite_clearance.group_clearance_ops_manager"/>
@@ -202,7 +199,7 @@
                             <field name="commission_amount" readonly="1"/>
                             <field name="customs_fee_amount" readonly="state not in ('in_progress', 'ops_closed')"/>
                             <field name="recharge_amount"
-                                   readonly="recharge_state in ('requested', 'ops_approved', 'approved')"/>
+                                   readonly="state not in ('in_progress', 'ops_closed')"/>
                             <field name="recharge_variance" readonly="1"
                                    invisible="not recharge_amount"/>
                             <field name="recharge_state" readonly="1"
@@ -252,14 +249,23 @@
                     <field name="waiver_reason" placeholder="Why should work begin before the file is complete? Name the missing documents and when they are expected."
                            invisible="waiver_state == 'none' and documents_complete"/>
 
+                    <div class="alert alert-warning" role="alert"
+                         invisible="recharge_state not in ('requested', 'ops_approved')">
+                        This file recharges
+                        <field name="recharge_amount" nolabel="1" readonly="1" class="fw-bold"/>
+                        against a cost of
+                        <field name="oop_total" nolabel="1" readonly="1" class="fw-bold"/>.
+                        It cannot be billed until the adjustment is approved. Below cost it needs a written
+                        reason, a supporting document, the Operations Manager and the General Manager.
+                    </div>
                     <separator string="Recharge Adjustment"
                                invisible="recharge_state == 'none'"/>
                     <group invisible="recharge_state == 'none'">
                         <group>
                             <field name="recharge_ops_approved_by_id" readonly="1"
                                    invisible="not recharge_ops_approved_by_id"/>
-                            <field name="recharge_finance_approved_by_id" readonly="1"
-                                   invisible="not recharge_finance_approved_by_id"/>
+                            <field name="recharge_gm_approved_by_id" readonly="1"
+                                   invisible="not recharge_gm_approved_by_id"/>
                             <field name="recharge_approved_date" readonly="1"
                                    invisible="not recharge_approved_date"/>
                         </group>

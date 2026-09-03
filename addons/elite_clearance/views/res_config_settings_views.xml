@@ -21,6 +21,14 @@
                                  help="Fallback for fee lines, used only where the two accounts below are left empty.">
                             <field name="clearance_fee_account_id"/>
                         </setting>
+                        <setting string="Disbursement Undercharge Account"
+                                 help="Expense account for what was disbursed for the client but deliberately not recharged. 47xx still clears in full; the shortfall is booked here as a cost.">
+                            <field name="clearance_oop_undercharge_account_id"/>
+                        </setting>
+                        <setting string="Disbursement Overcharge Account"
+                                 help="Income account for anything charged above what was actually disbursed, kept apart from the commission and the service fee.">
+                            <field name="clearance_oop_overcharge_account_id"/>
+                        </setting>
                         <setting string="Commission Income Account (706x)"
                                  help="Where the clearance commission is credited — the percentage of the out-of-pocket total set on the service type. A subdivision of 706.">
                             <field name="clearance_commission_account_id"/>
@@ -71,9 +79,9 @@
                                  help="Who may approve recharging the client at other than cost. Empty = any Clearance Operations Manager.">
                             <field name="clearance_recharge_ops_approver_ids" widget="many2many_tags"/>
                         </setting>
-                        <setting string="Below-Cost Recharge Approvers (Finance)"
-                                 help="Who must ALSO approve when the recharge is below what was disbursed. Empty = any Clearance Finance Manager.">
-                            <field name="clearance_recharge_finance_approver_ids" widget="many2many_tags"/>
+                        <setting string="Below-Cost Recharge Approvers (General Manager)"
+                                 help="Who must ALSO approve when the recharge is below what was disbursed — the company absorbs the difference. Empty = any Clearance Manager.">
+                            <field name="clearance_recharge_gm_approver_ids" widget="many2many_tags"/>
                         </setting>
                         <setting string="Cashiers"
                                  help="Who may disburse from a cash till once the Finance Manager has approved the settlement. Empty = any Clearance Cashier.">

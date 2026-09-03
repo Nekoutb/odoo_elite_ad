@@ -50,9 +50,9 @@ APPROVAL_KINDS = {
     'recharge_ops': ("clearance_recharge_ops_approver_ids",
                      ('elite_clearance.group_clearance_ops_manager',),
                      "approve a change to the disbursement recharge"),
-    'recharge_finance': ("clearance_recharge_finance_approver_ids",
-                         ('elite_clearance.group_clearance_finance_manager',),
-                         "approve recharging the client BELOW cost"),
+    'recharge_gm': ("clearance_recharge_gm_approver_ids",
+                    ('elite_clearance.group_clearance_manager',),
+                    "approve recharging the client BELOW cost"),
     'ops_close': ("clearance_ops_close_approver_ids",
                   ('elite_clearance.group_clearance_ops_manager',),
                   "close a file for operations"),
@@ -85,6 +85,18 @@ class ResCompany(models.Model):
         'account.account', string="Fee Income Account (default)",
         help="Fallback income account for fee lines. Used only where the "
              "commission and service-fee accounts below are left empty.",
+    )
+    clearance_oop_undercharge_account_id = fields.Many2one(
+        'account.account', string="Disbursement Undercharge Account",
+        help="Expense account carrying what was disbursed for the client "
+             "but deliberately not recharged. 47xx still clears in full; "
+             "the shortfall is booked here as a cost of the decision.",
+    )
+    clearance_oop_overcharge_account_id = fields.Many2one(
+        'account.account', string="Disbursement Overcharge Account",
+        help="Income account carrying anything charged above what was "
+             "actually disbursed. Kept apart from the commission and the "
+             "service fee so the margin taken on débours is visible.",
     )
     clearance_commission_account_id = fields.Many2one(
         'account.account', string="Commission Income Account (706x)",
@@ -146,11 +158,12 @@ class ResCompany(models.Model):
         string="Recharge Adjustment Approvers (Operations)",
         help="Who may approve recharging the client at anything other than "
              "cost. Empty = any Clearance Operations Manager.")
-    clearance_recharge_finance_approver_ids = fields.Many2many(
-        'res.users', 'clearance_recharge_finance_approver_rel',
-        string="Below-Cost Recharge Approvers (Finance)",
+    clearance_recharge_gm_approver_ids = fields.Many2many(
+        'res.users', 'clearance_recharge_gm_approver_rel',
+        string="Below-Cost Recharge Approvers (General Manager)",
         help="Who must also approve when the recharge is BELOW what was "
-             "actually disbursed. Empty = any Clearance Finance Manager.")
+             "actually disbursed - the company is absorbing the difference. "
+             "Empty = any Clearance Manager.")
     clearance_cashier_approver_ids = fields.Many2many(
         'res.users', 'clearance_cashier_approver_rel',
         string="Cashiers",

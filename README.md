@@ -8,7 +8,7 @@ billing that clears the balance sheet.
 | | |
 |---|---|
 | Module | `addons/elite_clearance` |
-| Version | `19.0.14.0.0` |
+| Version | `19.0.15.0.0` |
 | Odoo | 19.0 Community (lab) / 19.0 Enterprise (production, Odoo.sh) |
 | Licence | LGPL-3 |
 | Currency / locale | XAF, Cameroon (SYSCOHADA — `l10n_cm`) |
@@ -55,7 +55,7 @@ Each step is a different pair of hands:
 | Approve the justification | Operations **Manager** |
 | Raise the invoice | Finance |
 | Recharge above cost | Operations **Manager** |
-| Recharge **below** cost | Operations **Manager** and Finance **Manager**, with a written reason |
+| Recharge **below** cost | Operations **Manager** and the **General Manager**, with a written reason and a supporting document |
 | Close the file for operations | Operations **Manager**, and only once the customs fee is keyed |
 | Reopen an imported file | Finance requests with a reason; Operations **Manager** approves after review |
 

@@ -15,7 +15,7 @@ working memory that is *not* obvious from the code.
   <in the Odoo.sh project settings — never in this repository, it is public>, Custom plan). The old Odoo Online db (elite-advisors,
   saas~19.3) holds no data and will lapse. Never build against 19.3 minor APIs.
 
-## The module: addons/elite_clearance (v19.0.14.0.0)
+## The module: addons/elite_clearance (v19.0.15.0.0)
 Customs clearance job files for a logistics/clearance services provider.
 - `logistics.file` — one file = one clearance job. States:
   draft → in_progress → ops_closed → done (+cancel, +imported). `imported`
@@ -138,10 +138,18 @@ Customs clearance job files for a logistics/clearance services provider.
    Justifying an advance now needs the Operations Manager:
    `action_submit_justification` (Finance, needs an attachment) →
    `justification_submitted` → `action_justify` (kind `justification`).
-   Billing may recharge at other than cost via `recharge_amount`:
-   above cost needs `recharge_ops`, BELOW cost needs `recharge_ops` AND
-   `recharge_finance` plus a written reason, and the invoice carries the
-   delta as its own line. Commission and customs fee now credit separate
+   Billing may recharge at other than cost via `recharge_amount`.
+   **WRITING that field IS the request** (`_sync_recharge_state` in
+   `write()`) — the first version used a button and the owner adjusted
+   50,000 to 45,000 with nothing happening. Any existing approval is torn
+   up when the figure changes. Above cost needs `recharge_ops`; BELOW cost
+   needs `recharge_ops` AND `recharge_gm` (the GENERAL Manager, owner's
+   revision 03/09/2026 — it was the Finance Manager) plus a written reason
+   AND an attachment on the file. The disbursement lines always recharge at
+   COST so 47xx clears in full; the difference lands in its own P&L account
+   — `clearance_oop_undercharge_account_id` (expense, negative line) or
+   `clearance_oop_overcharge_account_id` (income), configured in Settings
+   and refused at billing if unset. Commission and customs fee now credit separate
    706 subdivisions (`clearance_commission_account_id`,
    `clearance_service_fee_account_id`), each falling back to the old single
    fee account. Files sort newest-first with a Created On column.
@@ -233,7 +241,7 @@ Customs clearance job files for a logistics/clearance services provider.
 - Apply code changes: `docker compose restart odoo` then Apps → module → Upgrade
   (XML/schema need the Upgrade; Python needs the restart).
 - Logs: `docker compose logs odoo`
-- Tests (throwaway db, currently 69 tests across both modules, must stay green):
+- Tests (throwaway db, currently 71 tests across both modules, must stay green):
   `docker compose run --rm odoo odoo -d clr_test -i elite_clearance,elite_clearance_teese --with-demo --test-enable --test-tags /elite_clearance,/elite_clearance_teese --stop-after-init`
 - Static repo checks CI also runs:
   `python tools/check_manifest.py addons/elite_clearance addons/elite_clearance_teese`

@@ -26,6 +26,10 @@ class ResConfigSettings(models.TransientModel):
         related='company_id.clearance_settlement_approver_ids', readonly=False)
     clearance_ops_close_approver_ids = fields.Many2many(
         related='company_id.clearance_ops_close_approver_ids', readonly=False)
+    clearance_oop_undercharge_account_id = fields.Many2one(
+        related='company_id.clearance_oop_undercharge_account_id', readonly=False)
+    clearance_oop_overcharge_account_id = fields.Many2one(
+        related='company_id.clearance_oop_overcharge_account_id', readonly=False)
     clearance_commission_account_id = fields.Many2one(
         related='company_id.clearance_commission_account_id', readonly=False)
     clearance_service_fee_account_id = fields.Many2one(
@@ -34,8 +38,8 @@ class ResConfigSettings(models.TransientModel):
         related='company_id.clearance_justification_approver_ids', readonly=False)
     clearance_recharge_ops_approver_ids = fields.Many2many(
         related='company_id.clearance_recharge_ops_approver_ids', readonly=False)
-    clearance_recharge_finance_approver_ids = fields.Many2many(
-        related='company_id.clearance_recharge_finance_approver_ids', readonly=False)
+    clearance_recharge_gm_approver_ids = fields.Many2many(
+        related='company_id.clearance_recharge_gm_approver_ids', readonly=False)
     clearance_cashier_approver_ids = fields.Many2many(
         related='company_id.clearance_cashier_approver_ids', readonly=False)
     clearance_treasury_approver_ids = fields.Many2many(

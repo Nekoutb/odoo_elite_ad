@@ -25,6 +25,12 @@ class TestVendorPayableAndRecharge(TransactionCase):
             'account_type': 'liability_payable', 'reconcile': True})
         cls.commission = Account.create({
             'code': 'X70611', 'name': "Commission income", 'account_type': 'income'})
+        cls.undercharge = Account.create({
+            'code': 'X65811', 'name': "Debours undercharge",
+            'account_type': 'expense'})
+        cls.overcharge = Account.create({
+            'code': 'X75811', 'name': "Debours overcharge",
+            'account_type': 'income'})
         cls.service_fee = Account.create({
             'code': 'X70612', 'name': "Service fee income", 'account_type': 'income'})
         cls.sale_journal = env['account.journal'].create({
@@ -36,6 +42,8 @@ class TestVendorPayableAndRecharge(TransactionCase):
             'clearance_commission_account_id': cls.commission.id,
             'clearance_service_fee_account_id': cls.service_fee.id,
             'clearance_sale_journal_id': cls.sale_journal.id,
+            'clearance_oop_undercharge_account_id': cls.undercharge.id,
+            'clearance_oop_overcharge_account_id': cls.overcharge.id,
         })
         cls.cash = env['account.journal'].create({
             'name': "Petty cash", 'type': 'cash', 'code': 'XCSH5'})
@@ -63,6 +71,7 @@ class TestVendorPayableAndRecharge(TransactionCase):
                     'elite_clearance.group_clearance_' + group).id])]})
         cls.ops_manager = user("Ops Mgr B", 'ops_manager')
         cls.finance_manager = user("Fin Mgr B", 'finance_manager')
+        cls.general_manager = user("Gen Mgr B", 'manager')
         cls.finance = user("Fin Clerk B", 'finance')
 
     def _settled(self, amount, mode='cash', vendor=True, journal=None):
@@ -168,42 +177,82 @@ class TestVendorPayableAndRecharge(TransactionCase):
         self.file.action_close_operations()
         self.assertEqual(self.file.oop_total, amount)
 
-    def test_07_above_cost_needs_operations_only(self):
+    def _document(self):
+        return self.env['ir.attachment'].create({
+            'name': "client-agreement.pdf", 'res_model': 'logistics.file',
+            'res_id': self.file.id, 'raw': b"dummy"})
+
+    def test_07_changing_the_recharge_is_the_request(self):
+        """No button: editing the figure puts the file into approval by
+        itself, and billing is blocked until somebody signs."""
         self._closed_file_with(100000)
+        self.assertEqual(self.file.recharge_state, 'none')
         self.file.recharge_amount = 120000
-        self.file.action_request_recharge_adjustment()
-        self.assertEqual(self.file.recharge_state, 'requested')
+        self.assertEqual(self.file.recharge_state, 'requested',
+                         "the edit itself must trigger the approval")
         self.assertEqual(self.file.recharge_variance, 20000)
+        with self.assertRaises(UserError):
+            self.file.action_create_invoice()
         self.file.with_user(self.ops_manager).action_approve_recharge_ops()
         self.assertEqual(self.file.recharge_state, 'approved',
                          "above cost, Operations alone is enough")
         self.file.action_create_invoice()
-        recharged = self.file.invoice_id.invoice_line_ids.filtered(
-            lambda l: l.account_id == self.engaged)
-        self.assertEqual(sum(recharged.mapped('price_subtotal')), 120000)
+        lines = self.file.invoice_id.invoice_line_ids
+        recharged = lines.filtered(lambda l: l.account_id == self.engaged)
+        self.assertEqual(sum(recharged.mapped('price_subtotal')), 100000,
+                         "47xx always clears at cost")
+        over = lines.filtered(lambda l: l.account_id == self.overcharge)
+        self.assertEqual(over.price_subtotal, 20000)
+        self.assertIn("overcharge", over.name)
 
-    def test_08_below_cost_needs_operations_and_finance_and_a_reason(self):
+    def test_07b_a_new_figure_tears_up_the_approval(self):
         self._closed_file_with(100000)
-        self.file.recharge_amount = 80000
+        self.file.recharge_amount = 120000
+        self.file.with_user(self.ops_manager).action_approve_recharge_ops()
+        self.assertEqual(self.file.recharge_state, 'approved')
+        self.file.recharge_amount = 130000
+        self.assertEqual(self.file.recharge_state, 'requested',
+                         "approval was given for a different number")
+        self.assertFalse(self.file.recharge_ops_approved_by_id)
+        # and putting it back to cost clears the whole thing
+        self.file.recharge_amount = 0
+        self.assertEqual(self.file.recharge_state, 'none')
+
+    def test_08_below_cost_needs_a_reason_a_document_ops_and_the_gm(self):
+        self._closed_file_with(100000)
+        self.file.recharge_amount = 45000
+        self.assertEqual(self.file.recharge_state, 'requested')
+        self.assertEqual(self.file.recharge_variance, -55000)
         with self.assertRaises(UserError):
-            self.file.action_request_recharge_adjustment()   # no explanation
+            self.file.with_user(self.ops_manager).action_approve_recharge_ops()
         self.file.recharge_reason = "Commercial gesture agreed with the client."
-        self.file.action_request_recharge_adjustment()
+        with self.assertRaises(UserError):
+            self.file.with_user(self.ops_manager).action_approve_recharge_ops()
+        self._document()
         self.file.with_user(self.ops_manager).action_approve_recharge_ops()
         self.assertEqual(self.file.recharge_state, 'ops_approved',
                          "below cost, Operations is not enough on its own")
-        # billing is blocked while it is only half approved
         with self.assertRaises(UserError):
             self.file.action_create_invoice()
         with self.assertRaises(UserError):
-            self.file.with_user(self.finance).action_approve_recharge_finance()
-        self.file.with_user(self.finance_manager).action_approve_recharge_finance()
+            self.file.with_user(self.finance).action_approve_recharge_gm()
+        self.file.with_user(self.general_manager).action_approve_recharge_gm()
         self.assertEqual(self.file.recharge_state, 'approved')
+        self.assertEqual(self.file.recharge_gm_approved_by_id, self.general_manager)
         self.file.action_create_invoice()
-        recharged = self.file.invoice_id.invoice_line_ids.filtered(
-            lambda l: l.account_id == self.engaged)
-        self.assertEqual(sum(recharged.mapped('price_subtotal')), 80000,
-                         "the client is charged the approved figure")
+        lines = self.file.invoice_id.invoice_line_ids
+        recharged = lines.filtered(lambda l: l.account_id == self.engaged)
+        self.assertEqual(sum(recharged.mapped('price_subtotal')), 100000,
+                         "47xx clears in full even when the client pays less")
+        under = lines.filtered(lambda l: l.account_id == self.undercharge)
+        self.assertEqual(under.price_subtotal, -55000,
+                         "the shortfall is a cost, not a smaller recharge")
+        self.assertIn("undercharge", under.name)
+        self.assertEqual(
+            sum(lines.filtered(lambda l: l.display_type == 'product')
+                .mapped('price_subtotal')),
+            45000 + 2000 + 30000,
+            "the client is billed the approved recharge plus the fees")
 
     def test_09_no_adjustment_means_at_cost(self):
         self._closed_file_with(100000)
