@@ -8,7 +8,7 @@ billing that clears the balance sheet.
 | | |
 |---|---|
 | Module | `addons/elite_clearance` |
-| Version | `19.0.10.0.0` |
+| Version | `19.0.11.0.0` |
 | Odoo | 19.0 Community (lab) / 19.0 Enterprise (production, Odoo.sh) |
 | Licence | LGPL-3 |
 | Currency / locale | XAF, Cameroon (SYSCOHADA — `l10n_cm`) |
@@ -16,6 +16,14 @@ billing that clears the balance sheet.
 ---
 
 ## What it does
+
+**Everything reaches the analytic account.** Every line of every journal
+entry and invoice the module produces carries the file's analytic account —
+income, expense, asset and liability alike, including the receivable and the
+tax lines Odoo computes for itself. The analytic account is therefore a
+complete per-file journal; because both sides of every move are tagged, its
+*balance* nets to zero by design, and per-file margin comes from the file's
+own totals or from an analytic report filtered by account type.
 
 **`logistics.file` — the clearance job file.**
 `draft → in_progress → ops_closed → done`, plus `cancel`. Every file creates

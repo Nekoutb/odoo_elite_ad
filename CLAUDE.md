@@ -15,7 +15,7 @@ working memory that is *not* obvious from the code.
   <in the Odoo.sh project settings — never in this repository, it is public>, Custom plan). The old Odoo Online db (elite-advisors,
   saas~19.3) holds no data and will lapse. Never build against 19.3 minor APIs.
 
-## The module: addons/elite_clearance (v19.0.10.0.0)
+## The module: addons/elite_clearance (v19.0.11.0.0)
 Customs clearance job files for a logistics/clearance services provider.
 - `logistics.file` — one file = one clearance job. States:
   draft → in_progress → ops_closed → done (+cancel, +imported). `imported`
@@ -114,6 +114,17 @@ Customs clearance job files for a logistics/clearance services provider.
   `skip_checklist` / `legacy_import` bypass checklist generation and the
   file-in-progress check. Judgement calls in
   `docs/legacy-migration-teese.md` — read it before touching TYPE_MAP.
+- **Analytic on EVERYTHING (owner spec, 03/09/2026).** Every line of every
+  move carrying `logistics_file_id` gets the file's analytic account —
+  income, expense, asset, liability, the receivable and the tax lines Odoo
+  computes itself. Done by `account.move._clearance_stamp_analytic()`,
+  called from `create()` and from `_post()` (the second pass catches the
+  payment-term and tax lines Odoo adds late). Existing distributions are
+  never overwritten. CONSEQUENCE, deliberate: the analytic balance per file
+  nets to ZERO — it is a per-file journal, not a per-file P&L. Margin comes
+  from the file's own totals or an analytic report filtered by account type.
+  The expense settle/justify moves now set `logistics_file_id`, and the
+  advance settlement no longer withholds the tag.
 - References are structured, not from a static ir.sequence: files
   `2026IM0009`, invoices `EL26IM0001`, one ir.sequence per
   (kind, service type, company) created on first use by
@@ -165,7 +176,7 @@ Customs clearance job files for a logistics/clearance services provider.
 - Apply code changes: `docker compose restart odoo` then Apps → module → Upgrade
   (XML/schema need the Upgrade; Python needs the restart).
 - Logs: `docker compose logs odoo`
-- Tests (throwaway db, currently 54 tests across both modules, must stay green):
+- Tests (throwaway db, currently 55 tests across both modules, must stay green):
   `docker compose run --rm odoo odoo -d clr_test -i elite_clearance,elite_clearance_teese --with-demo --test-enable --test-tags /elite_clearance,/elite_clearance_teese --stop-after-init`
 - Static repo checks CI also runs: `python tools/check_manifest.py addons/elite_clearance addons/elite_clearance_teese`
 

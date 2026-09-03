@@ -243,6 +243,55 @@ class TestExpensesAndBilling(TransactionCase):
         exp.with_user(chosen).action_approve()        # configured user wins
         self.assertEqual(exp.state, 'approved')
 
+    def test_09b_the_file_number_is_on_every_ledger_line(self):
+        """The owner's rule: every line clearance posts carries the file's
+        analytic account - both sides of the settlement, and on the invoice
+        the receivable and any tax line too, not just the revenue."""
+        tag = str(self.file.analytic_account_id.id)
+
+        exp = self._expense(500000)
+        exp.action_submit(); exp.action_approve()
+        exp.action_submit_settlement(); exp.action_approve_settlement()
+        exp.action_settle()
+        settlement = exp.settlement_move_id
+        self.assertEqual(settlement.logistics_file_id, self.file)
+        for line in settlement.line_ids:
+            self.assertEqual(
+                line.analytic_distribution, {tag: 100},
+                "%s (%s) carries no file number" % (line.account_id.code, line.display_type))
+
+        advance = self._expense(200000, mode='advance')
+        advance.action_submit(); advance.action_approve()
+        advance.action_submit_settlement(); advance.action_approve_settlement()
+        advance.action_settle()
+        for line in advance.settlement_move_id.line_ids:
+            self.assertEqual(line.analytic_distribution, {tag: 100},
+                             "the advance on 421101 must carry it too")
+        self.env['ir.attachment'].create({
+            'name': "receipt.pdf", 'res_model': 'logistics.expense',
+            'res_id': advance.id, 'raw': b"dummy"})
+        advance.action_justify()
+        for line in advance.justification_move_id.line_ids:
+            self.assertEqual(line.analytic_distribution, {tag: 100})
+
+        self.file.action_close_operations()
+        self.file.action_create_invoice()
+        invoice = self.file.invoice_id
+        invoice.action_post()
+        real = invoice.line_ids.filtered(
+            lambda l: l.display_type not in ('line_section', 'line_note'))
+        self.assertTrue(real)
+        for line in real:
+            self.assertEqual(
+                line.analytic_distribution, {tag: 100},
+                "invoice %s line (%s) carries no file number"
+                % (line.account_id.code, line.display_type))
+        receivable = invoice.line_ids.filtered(
+            lambda l: l.display_type == 'payment_term')
+        self.assertTrue(receivable, "the invoice must have a receivable line")
+        self.assertEqual(receivable.analytic_distribution, {tag: 100},
+                         "the receivable is an asset and must be tagged")
+
     def test_10_cancel_blocked_while_expenses_are_live(self):
         """Cancelling a working file would strand its expenses mid-flow."""
         exp = self._expense(300000)

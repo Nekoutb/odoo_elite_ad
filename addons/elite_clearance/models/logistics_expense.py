@@ -47,7 +47,9 @@ class LogisticsExpense(models.Model):
                                        paid it out
               -> justified             advances only, with documents
 
-    Postings (all carry the file's analytic account):
+    Postings. EVERY line of every entry below carries the file's analytic
+    account - both sides, whatever the account - so the file number is on
+    everything clearance puts in the ledger:
         direct settle:   Dr 47xx Débours engagés    / Cr settlement journal
         advance settle:  Dr 421101 Personnel        / Cr settlement journal
                             débours avancés
@@ -359,7 +361,10 @@ class LogisticsExpense(models.Model):
                 # refused, because hr only makes the work contact as a side
                 # effect of writing a work e-mail or phone.
                 partner = exp.employee_id._clearance_auxiliary_partner()
-                analytic = False  # the analytic tag lands at justification
+                # Tagged like every other line: the file number goes on
+                # everything that reaches the ledger, including the advance
+                # sitting on 421101 before it is justified.
+                analytic = exp._analytic_distribution()
             credit_account = exp.journal_id.default_account_id
             if not credit_account:
                 raise UserError(self.env._(
@@ -367,6 +372,7 @@ class LogisticsExpense(models.Model):
             move = self.env['account.move'].create({
                 'move_type': 'entry',
                 'journal_id': exp.journal_id.id,
+                'logistics_file_id': exp.file_id.id,
                 'date': fields.Date.context_today(exp),
                 'ref': self.env._("%(exp)s — %(file)s — %(desc)s",
                                   exp=exp.name, file=exp.file_id.name,
@@ -425,6 +431,7 @@ class LogisticsExpense(models.Model):
             move = self.env['account.move'].create({
                 'move_type': 'entry',
                 'journal_id': journal.id,
+                'logistics_file_id': exp.file_id.id,
                 'date': fields.Date.context_today(exp),
                 'ref': self.env._("Justification %(exp)s — %(file)s",
                                   exp=exp.name, file=exp.file_id.name),
