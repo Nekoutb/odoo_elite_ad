@@ -63,9 +63,9 @@ jobs:
             -d ci_clearance \
             --db_host=db --db_port=5432 --db_user=odoo --db_password=odoo \
             --addons-path=/usr/lib/python3/dist-packages/odoo/addons,"$GITHUB_WORKSPACE/addons" \
-            -i elite_clearance \
+            -i elite_clearance,elite_clearance_teese \
             --with-demo \
-            --test-enable --test-tags /elite_clearance \
+            --test-enable --test-tags /elite_clearance,/elite_clearance_teese \
             --log-level=test \
             --stop-after-init \
             2>&1 | tee odoo.log
@@ -74,10 +74,21 @@ jobs:
         shell: bash
         run: |
           if grep -E "odoo\.tests.*(FAIL|ERROR)" odoo.log; then
-            echo "::error::the elite_clearance suite did not pass"
+            echo "::error::the suite did not pass"
             exit 1
           fi
           echo "suite green"
+
+      - name: Both modules' suites actually ran
+        shell: bash
+        run: |
+          for cls in TestClearanceFile TestLegacyImport; do
+            if ! grep -q "Starting $cls\." odoo.log; then
+              echo "::error::$cls never started - a module was not installed or its tests were not selected"
+              exit 1
+            fi
+          done
+          echo "both suites ran"
 
       - name: Keep the server log
         if: always()
