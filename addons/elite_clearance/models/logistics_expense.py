@@ -529,13 +529,19 @@ class LogisticsExpense(models.Model):
                 raise UserError(self.env._(
                     "%s has not been submitted for justification approval "
                     "by Finance.", exp.name))
-            oop = exp._get_company_account(
+            # The decision is the Operations Manager's; the entry that
+            # follows is the system's consequence of it. They hold the
+            # operational authority, not accounting rights, so the
+            # reclassification is written under sudo - the same reason the
+            # file's analytic account is created that way.
+            booking = exp.sudo()
+            oop = booking._get_company_account(
                 'clearance_oop_account_id', "Out-of-Pocket Expenses account")
-            adv = exp._get_company_account(
+            adv = booking._get_company_account(
                 'clearance_advance_account_id', "Employee Advances account")
-            journal = exp.company_id.clearance_misc_journal_id
+            journal = booking.company_id.clearance_misc_journal_id
             if not journal:
-                journal = self.env['account.journal'].search([
+                journal = booking.env['account.journal'].search([
                     ('type', '=', 'general'),
                     ('company_id', '=', exp.company_id.id)], limit=1)
             if not journal:
@@ -543,7 +549,7 @@ class LogisticsExpense(models.Model):
                     "Configure the Clearance Miscellaneous Journal in "
                     "Settings."))
             partner = exp.employee_id._clearance_auxiliary_partner()
-            move = self.env['account.move'].create({
+            move = booking.env['account.move'].create({
                 'move_type': 'entry',
                 'journal_id': journal.id,
                 'logistics_file_id': exp.file_id.id,
@@ -567,8 +573,8 @@ class LogisticsExpense(models.Model):
                 ],
             })
             move.action_post()
-            exp.write({'justification_move_id': move.id, 'state': 'justified',
-                       'date_justified': fields.Datetime.now()})
+            booking.write({'justification_move_id': move.id, 'state': 'justified',
+                           'date_justified': fields.Datetime.now()})
             exp.message_post(body=self.env._(
                 "Advance justified: %(amount)s reclassified from 421101 "
                 "(held by %(who)s) to the engaged disbursements account. "

@@ -148,9 +148,11 @@ class TestSegregationOfDuties(TransactionCase):
         exp = exp.with_env(self.env)
         exp.action_settle()
         self.assertEqual(exp.state, 'settled')
-        self.assertEqual(
-            exp.settlement_move_id.line_ids.filtered(lambda l: l.debit > 0).account_id,
-            self.engaged)
+        # Named to a vendor, so the entry routes through that vendor's
+        # payable: the engaged account is debited among four lines, not two.
+        engaged = exp.settlement_move_id.line_ids.filtered(
+            lambda l: l.account_id == self.engaged)
+        self.assertEqual(engaged.debit, 100000)
 
     # -- who pays out -----------------------------------------------------
     def test_06b_cash_leaves_by_the_cashier_bank_by_treasury(self):
