@@ -163,6 +163,11 @@ Customs clearance job files for a logistics/clearance services provider.
   inside a `<data noupdate="1">` block: the second declaration flips
   `ir.model.data.noupdate`, which silently freezes the first one on every
   later upgrade.
+- The app icon is generated, not hand-drawn: `tools/render_clearance_icon.py`
+  writes `static/description/icon.png` (100x100, transparent, no tile) and
+  the matching `icon.svg`. Design A, "Stamp on a file", approved by the owner
+  03/09/2026. Odoo 19 core icons have NO tile and put a darker third tone
+  where two shapes overlap — re-cut with the script, never by hand.
 - The post-install hook matches master data on `code`. Demo records therefore
   use `DEMO-` prefixed codes; an unprefixed demo `BL` would be adopted as the
   real one and the proper French label would never be created.

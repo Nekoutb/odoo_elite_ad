@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- Clearance Files. Design A, "Stamp on a file", approved 03/09/2026.
+       A plum declaration, two ruled lines, and a mint stamp whose overlap
+       with the sheet goes dark teal - the Odoo 19 icon convention. -->
+  <defs>
+    <clipPath id="sheet">
+      <rect x="15" y="9" width="50" height="76" rx="6"/>
+    </clipPath>
+  </defs>
+  <rect x="15" y="9" width="50" height="76" rx="6" fill="#8C5183"/>
+  <rect x="26" y="24" width="28" height="7" rx="3.5" fill="#B47FAC"/>
+  <rect x="26" y="38" width="28" height="7" rx="3.5" fill="#B47FAC"/>
+  <circle cx="66" cy="65" r="26" fill="#1ACFB0"/>
+  <g clip-path="url(#sheet)">
+    <circle cx="66" cy="65" r="26" fill="#0E6B62"/>
+  </g>
+</svg>
