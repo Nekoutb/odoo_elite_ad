@@ -192,16 +192,22 @@ class LogisticsFile(models.Model):
         'account.move', 'logistics_file_id', string="Client Invoices",
         domain=[('move_type', 'in', ('out_invoice', 'out_refund'))])
     invoice_count = fields.Integer(compute='_compute_invoice_count')
-    # Billing done in the legacy system, for the record. Never posted.
-    legacy_invoice_ids = fields.One2many(
-        'logistics.legacy.invoice', 'file_id', string="Imported Invoices (Teese)")
+    # Billing done in the legacy system: draft invoices that can never be
+    # posted, flagged is_legacy on account.move. Totals here read the Teese
+    # figures, so the file shows revenue and disbursements side by side.
     legacy_invoice_count = fields.Integer(compute='_compute_legacy_billing')
     legacy_billed_total = fields.Monetary(
         compute='_compute_legacy_billing', currency_field='currency_id',
-        string="Imported Billing (TTC)")
+        string="Imported Billing (Teese TTC)")
     legacy_outstanding_total = fields.Monetary(
         compute='_compute_legacy_billing', currency_field='currency_id',
         string="Imported Outstanding at Export")
+    legacy_expense_total = fields.Monetary(
+        compute='_compute_legacy_billing', currency_field='currency_id',
+        string="Imported Disbursements (Teese)",
+        help="Advances the legacy system disbursed on this file, excluding "
+             "reversals. Not posted here; shown so that what was spent and "
+             "what was billed can be read together.")
     reopen_count = fields.Integer(readonly=True, copy=False)
 
     _name_company_uniq = models.Constraint(
@@ -252,14 +258,18 @@ class LogisticsFile(models.Model):
         for file in self:
             file.invoice_count = len(file.invoice_ids)
 
-    @api.depends('legacy_invoice_ids.amount_total',
-                 'legacy_invoice_ids.amount_residual')
+    @api.depends('invoice_ids.is_legacy', 'invoice_ids.legacy_amount_total',
+                 'invoice_ids.legacy_amount_residual',
+                 'expense_ids.is_legacy', 'expense_ids.amount', 'expense_ids.state')
     def _compute_legacy_billing(self):
         for file in self:
-            invs = file.legacy_invoice_ids
+            invs = file.invoice_ids.filtered('is_legacy')
             file.legacy_invoice_count = len(invs)
-            file.legacy_billed_total = sum(invs.mapped('amount_total'))
-            file.legacy_outstanding_total = sum(invs.mapped('amount_residual'))
+            file.legacy_billed_total = sum(invs.mapped('legacy_amount_total'))
+            file.legacy_outstanding_total = sum(invs.mapped('legacy_amount_residual'))
+            file.legacy_expense_total = sum(
+                e.amount for e in file.expense_ids
+                if e.is_legacy and e.state != 'cancel')
 
     @api.depends('expense_ids.state', 'expense_ids.amount',
                  'expense_ids.payment_mode')
@@ -622,7 +632,8 @@ class LogisticsFile(models.Model):
         if self.state != 'ops_closed':
             raise UserError(self.env._(
                 "Close %s for operations before billing it.", self.name))
-        if self.invoice_id and self.invoice_id.state != 'cancel':
+        if self.invoice_id and self.invoice_id.state != 'cancel' \
+                and not self.invoice_id.is_legacy:
             raise UserError(self.env._(
                 "%(file)s already has invoice %(inv)s.",
                 file=self.name, inv=self.invoice_id.name or "in draft"))

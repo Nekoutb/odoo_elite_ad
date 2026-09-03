@@ -24,12 +24,6 @@
             <field name="domain_force">[('company_id', 'in', company_ids)]</field>
         </record>
 
-        <record id="rule_logistics_legacy_invoice_company" model="ir.rule">
-            <field name="name">Imported invoice: own companies only</field>
-            <field name="model_id" ref="model_logistics_legacy_invoice"/>
-            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
-        </record>
-
         <!-- Master data is seeded per company by the post-install hook, so it
              needs the same isolation. company_id = False means "shared by
              every company" and stays visible. -->

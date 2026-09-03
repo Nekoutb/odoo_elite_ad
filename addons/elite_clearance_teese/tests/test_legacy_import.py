@@ -3,6 +3,7 @@ import csv
 import io
 import zipfile
 
+from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
 # Column headers exactly as the warehouse export writes them.
@@ -127,6 +128,15 @@ class TestLegacyImport(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        env = cls.env
+        company = env.company
+        if not company.chart_template:
+            env['account.chart.template'].try_loading('generic_coa', company)
+        Account = env['account.account']
+        cls.oop = Account.create({'code': 'X4719', 'name': "Debours engages",
+                                  'account_type': 'asset_current', 'reconcile': True})
+        cls.fee = Account.create({'code': 'X7069', 'name': "Fee income", 'account_type': 'income'})
+        company.write({'clearance_oop_account_id': cls.oop.id, 'clearance_fee_account_id': cls.fee.id})
         cls.batch = cls.env['logistics.legacy.import'].create({
             'name': "fixture", 'zip_file': base64.b64encode(build_zip()),
             'zip_filename': "fixture.zip", 'cutoff_date': "2026-08-31"})
@@ -202,39 +212,65 @@ class TestLegacyImport(TransactionCase):
         self.assertEqual(len(park.expense_ids), 1)
         self.assertEqual(park.expense_ids.description, "Timbre")
 
-    def test_05_invoices_are_records_not_accounting(self):
-        """Billing done in Teese is disclosed on the file, greyed out as
-        Imported, and never becomes an account.move."""
+    def test_05_invoices_are_drafts_that_can_never_be_posted(self):
+        """Billing done in Teese shows on the file and in Invoicing as a
+        Draft customer invoice, greyed as imported, and posting is refused."""
         moves_before = self.env['account.move'].search_count([])
         self.batch.action_import()
-        self.assertEqual(self.env['account.move'].search_count([]), moves_before,
-                         "No accounting document may be created by the import.")
+        self.assertEqual(self.env['account.move'].search_count([]) - moves_before, 3)
+        self.assertEqual(self.env['account.move'].search_count([('state', '=', 'posted'), ('is_legacy', '=', True)]), 0)
         f = self._file(8001)
+        self.assertEqual(f.invoice_count, 2)
         self.assertEqual(f.legacy_invoice_count, 2)
-        self.assertFalse(f.invoice_ids, "Real invoices stay empty.")
-        inv = f.legacy_invoice_ids.filtered(lambda i: i.name == "EL26IM228")
-        self.assertEqual(inv.state, 'imported')
-        self.assertEqual(inv.move_type, 'invoice')
+        self.assertFalse(f.invoice_id, "An imported draft is never the workflow's current invoice.")
+        inv = f.invoice_ids.filtered(lambda m: m.name == "EL26IM228")
+        self.assertEqual(inv.state, 'draft')
+        self.assertTrue(inv.is_legacy)
+        self.assertEqual(inv.move_type, 'out_invoice')
         self.assertEqual(inv.partner_id.legacy_id, 2)
-        self.assertEqual(str(inv.date_invoice), "2026-03-26")
-        self.assertEqual(inv.amount_untaxed, 52000)
-        self.assertEqual(inv.amount_total, 312010)
-        self.assertEqual(inv.amount_residual, 312010)
-        self.assertEqual(inv.payment_state, 'not_paid')
-        self.assertEqual(len(inv.line_ids), 2)
-        deb = inv.line_ids.filtered(lambda l: l.product_code == "LEG-1447")
-        self.assertTrue(deb.is_debours)
-        self.assertEqual(deb.product_label, "Débours")
-        self.assertEqual(deb.price_subtotal, 250000)
-        credit = f.legacy_invoice_ids.filtered(lambda i: i.name == "AV26IM001")
-        self.assertEqual(credit.move_type, 'refund')
-        self.assertEqual(credit.amount_total, -10000, "Kept as exported.")
+        self.assertEqual(str(inv.invoice_date), "2026-03-26")
+        self.assertEqual(inv.legacy_amount_untaxed, 52000)
+        self.assertEqual(inv.legacy_amount_total, 312010)
+        self.assertEqual(inv.legacy_amount_residual, 312010)
+        self.assertEqual(inv.legacy_payment_state, 'not_paid')
+        self.assertEqual(inv.amount_total, 312010,
+                         "The draft totals exactly what Teese invoiced (lines + a Teese VAT line).")
+        vat = inv.invoice_line_ids.filtered(lambda l: l.name.startswith("TVA"))
+        self.assertEqual(vat.price_unit, 10010)
+        deb = inv.invoice_line_ids.filtered(lambda l: "[Débours]" in l.name)
+        self.assertEqual(deb.price_unit, 250000)
+        self.assertEqual(deb.account_id, self.oop)
+        self.assertFalse(deb.tax_ids)
+        with self.assertRaises(UserError):
+            inv.action_post()
+        self.assertEqual(inv.state, 'draft', "Still a draft after the refused post.")
+        credit = f.invoice_ids.filtered(lambda m: m.name == "AV26IM001")
+        self.assertEqual(credit.move_type, 'out_refund')
+        self.assertEqual(credit.amount_total, 10000, "Refund lines are positive in Odoo.")
+        self.assertEqual(credit.legacy_amount_total, -10000, "Teese figure kept as exported.")
         self.assertEqual(f.legacy_billed_total, 302010)
         self.assertEqual(f.legacy_outstanding_total, 312010)
-        orphan = self.env['logistics.legacy.invoice'].search([('name', '=', "EL26ND045")])
+        self.assertEqual(f.legacy_expense_total, 250000,
+                         "Disbursements and revenue readable together: 50000 + 200000, reversal excluded.")
+        orphan = self.env['account.move'].search([('name', '=', "EL26ND045"), ('is_legacy', '=', True)])
         self.assertTrue(orphan, "An invoice with no dossier is still kept.")
-        self.assertFalse(orphan.file_id)
-        self.assertEqual(orphan.payment_state, 'partial')
+        self.assertFalse(orphan.logistics_file_id)
+        self.assertEqual(orphan.legacy_payment_state, 'partial')
+
+    def test_05b_a_real_invoice_can_still_be_raised_on_a_legacy_file(self):
+        """The imported drafts must not block billing new work on a file
+        that is still open."""
+        self.batch.action_import()
+        f = self._file(8001)
+        self.assertFalse(f.invoice_id)
+        # nothing billable yet -> the guard that fires must be the state or
+        # the accounts, not "already has invoice"
+        f.customs_fee_amount = 1000
+        f.state = 'ops_closed'
+        f.action_create_invoice()
+        self.assertTrue(f.invoice_id)
+        self.assertFalse(f.invoice_id.is_legacy)
+        self.assertEqual(f.invoice_count, 3)
 
     def test_06_sequence_jumps_past_the_imported_numbers(self):
         self.batch.action_import()
@@ -255,7 +291,7 @@ class TestLegacyImport(TransactionCase):
         self.assertEqual(again.count_invoices, 0)
         self.assertEqual(again.count_partners, 0)
         self.assertEqual(self.env['logistics.file'].search_count([('legacy_id', '!=', 0)]), 4)
-        self.assertEqual(self.env['logistics.legacy.invoice'].search_count([]), 3)
+        self.assertEqual(self.env['account.move'].search_count([('is_legacy', '=', True)]), 3)
 
     def test_08_validations_are_archived_not_imported(self):
         self.batch.action_import()
@@ -271,5 +307,5 @@ class TestLegacyImport(TransactionCase):
         self.assertEqual(batch.state, 'done', batch.log)
         self.assertEqual(batch.count_after_cutoff, 1)
         self.assertIn("dated after the cutoff", batch.log)
-        late = self.env['logistics.legacy.invoice'].search([('name', '=', "EL26IM900")])
+        late = self.env['account.move'].search([('name', '=', "EL26IM900"), ('is_legacy', '=', True)])
         self.assertTrue(late, "Still imported for the record.")

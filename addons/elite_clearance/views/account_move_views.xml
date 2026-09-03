@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_move_form_clearance_legacy" model="ir.ui.view">
+        <field name="name">account.move.form.inherit.clearance.legacy</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <widget name="web_ribbon" title="Imported" bg_color="text-bg-secondary"
+                        invisible="not is_legacy"/>
+            </xpath>
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-secondary mb-0" role="alert" invisible="not is_legacy">
+                    Issued by the legacy system (Teese) and kept as a draft for the record.
+                    It cannot be posted: its revenue is in the trial balance uploaded at the cutoff date.
+                    <field name="legacy_amount_total" readonly="1" nolabel="1" class="fw-bold ms-2"/>
+                    was the total as invoiced;
+                    <field name="legacy_amount_residual" readonly="1" nolabel="1" class="fw-bold ms-2"/>
+                    was still outstanding at export.
+                </div>
+            </xpath>
+            <xpath expr="//field[@name='ref']" position="after">
+                <field name="logistics_file_id" invisible="not logistics_file_id"/>
+                <field name="is_legacy" invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_account_invoice_filter_clearance_legacy" model="ir.ui.view">
+        <field name="name">account.move.search.inherit.clearance.legacy</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_account_invoice_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='draft']" position="before">
+                <filter name="clearance_legacy" string="Imported (Teese)" domain="[('is_legacy', '=', True)]"/>
+                <filter name="clearance_not_legacy" string="Issued in Odoo" domain="[('is_legacy', '=', False)]"/>
+                <separator/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

@@ -8,7 +8,7 @@ billing that clears the balance sheet.
 | | |
 |---|---|
 | Module | `addons/elite_clearance` |
-| Version | `19.0.8.0.0` |
+| Version | `19.0.9.0.0` |
 | Odoo | 19.0 Community (lab) / 19.0 Enterprise (production, Odoo.sh) |
 | Licence | LGPL-3 |
 | Currency / locale | XAF, Cameroon (SYSCOHADA — `l10n_cm`) |
@@ -92,9 +92,9 @@ Where no list is configured the security groups above apply.
 
 `addons/elite_clearance_teese` is a one-off importer for the Teese warehouse
 export: upload the zip on *Clearance → Configuration → Teese Legacy Import*.
-It is record-keeping only — legacy invoices are a read-only *Imported*
-model, never `account.move`, and nothing is posted; the balances arrive as
-a trial balance at the 31/08/2026 cutoff. It is idempotent and never puts
+It is record-keeping only — legacy invoices arrive as **draft** customer
+invoices that a server-side guard refuses to post, and nothing is posted;
+the balances arrive as a trial balance at the 31/08/2026 cutoff. It is idempotent and never puts
 the data in this repository. The mapping,
 every judgement call and the reconciliation figures are in
 [docs/legacy-migration-teese.md](docs/legacy-migration-teese.md). Uninstall

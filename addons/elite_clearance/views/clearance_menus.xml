@@ -12,8 +12,6 @@
     <menuitem id="menu_clearance_file_all" name="Clearance Files"
               parent="menu_clearance_files" action="action_logistics_file" sequence="10"/>
 
-    <menuitem id="menu_clearance_legacy_invoice" name="Imported Invoices (Teese)"
-              parent="menu_clearance_files" action="action_logistics_legacy_invoice" sequence="20"/>
 
     <menuitem id="menu_clearance_expenses" name="Expenses"
               parent="menu_clearance_root" sequence="20"/>

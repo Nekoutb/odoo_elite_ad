@@ -23,11 +23,11 @@ the import creates may therefore touch the ledger:
 
 - legacy expenses carry no journal entry (`is_legacy`, excluded from every
   billing total);
-- legacy invoices are **not** `account.move` records at all. They are
-  `logistics.legacy.invoice`, a read-only model with one state — *Imported* —
-  that cannot be posted by anyone. A draft `account.move` could have been
-  posted by mistake and counted revenue and a receivable twice against the
-  uploaded balances; a model that cannot post removes the possibility.
+- legacy invoices are **draft customer invoices** (`account.move`, state
+  *Draft*), flagged `is_legacy`, and **`action_post` refuses them**: a
+  server-side guard, not a convention. They appear in Invoicing and on their
+  file with the billing reference the client knows, and can never count
+  revenue or a receivable twice against the uploaded balances.
 
 The import records when the export was synchronised from Teese and warns
 if that predates the cutoff. **This export was synced on 26/08/2026 — five
@@ -43,8 +43,8 @@ trial balance covers the money; the missing days would only be missing
 | `wh_dim_partner` | 190 | `res.partner` (customers) |
 | `wh_fact_dossier` | 3,644 | `logistics.file` |
 | `wh_fact_advance` | 7,272 | `logistics.expense`, flagged legacy |
-| `wh_fact_invoice` | 1,258 | `logistics.legacy.invoice` — for the record, never posted |
-| `wh_fact_invoice_line` | 6,308 | `logistics.legacy.invoice.line` |
+| `wh_fact_invoice` | 1,258 | `account.move` — **draft**, `is_legacy`, cannot be posted |
+| `wh_fact_invoice_line` | 6,308 | `account.move.line` (tax-free, plus one Teese-VAT line per invoice) |
 | `wh_fact_validation` | 10,713 | archived as an attachment; not data |
 
 Not in the export, so not migrated: employees and departments as masters
@@ -54,7 +54,7 @@ dossier **step history** (`fait_etape_dossier`, 12,375 rows), cash
 movements, purchases, and any general ledger. If the live server ever
 answers again, those are the tables to ask TS Consulting for.
 
-## Fields and models added to `elite_clearance` (v19.0.8.0.0)
+## Fields added to `elite_clearance` (v19.0.9.0.0)
 
 | Model | Field | From |
 |---|---|---|
@@ -67,12 +67,10 @@ answers again, those are the tables to ask TS Consulting for.
 | | `importer_name` | `importer` |
 | | `invoice_ids` (several invoices per file) via `account.move.logistics_file_id` | one dossier carries up to 8 invoices |
 | | `legacy_id`, `legacy_type_name` | provenance |
-| | `legacy_invoice_ids`, `legacy_billed_total`, `legacy_outstanding_total` | the Imported Billing block |
+| | `legacy_invoice_count`, `legacy_billed_total`, `legacy_outstanding_total`, `legacy_expense_total` | the Billing block: revenue and disbursements side by side |
 | `logistics.expense` | `date_requested` | `requested_date` |
 | | `is_legacy`, `legacy_id`, `legacy_justified`, `legacy_reversal` | provenance |
-| `logistics.legacy.invoice` (new, read-only, state *Imported*) | billing reference, client, file, dates, fee base, total, outstanding at export, payment state, `legacy_id` | `wh_fact_invoice` |
-| `logistics.legacy.invoice.line` (new) | label, legacy product label/code, disbursement flag, quantity, unit price, subtotal | `wh_fact_invoice_line` |
-| `account.move` | `logistics_file_id` (real invoices only; nothing legacy) | |
+| `account.move` | `logistics_file_id`; `is_legacy`, `legacy_id`, `legacy_amount_untaxed`, `legacy_amount_total`, `legacy_amount_residual`, `legacy_payment_state`; `action_post` refuses `is_legacy` | `wh_fact_invoice` |
 | `res.partner` | `legacy_id` | |
 
 `legacy_id` is what makes every re-run idempotent: rows already present are
@@ -130,27 +128,37 @@ partner name, created as suppliers otherwise. *RANDY* (129 lines) looks like
 a staff member, not a supplier — a business question, not one the import
 can answer.
 
-**Invoices for the record.** Each of the 1,258 legacy invoices becomes a
-`logistics.legacy.invoice` carrying its Teese **billing reference**
-(`EL26IM228`), dates, client, fee base (HT), total (TTC), outstanding at
-export, payment state and every line — with the four legacy products kept
-as labels, no product created:
+**Invoices as drafts that cannot be posted.** Each of the 1,258 legacy
+invoices becomes a **draft customer invoice** carrying its Teese **billing
+reference** (`EL26IM228`), date, client, and every line as exported, tax-free,
+each labelled with its legacy product:
 
 | Legacy product | Label on the line | Pass-through |
 |---|---|---|
-| 1447 | Débours | yes |
-| 1449 | Honoraires | no |
+| 1447 | Débours | yes — out-of-pocket account |
+| 1449 | Honoraires | no — fee income account |
 | 5538 | Débours douane — vacation / liquidation | yes |
 | 5541 | Droits de douane | yes |
 
-Opening a legacy file shows them in an **Imported Billing (Teese)** block,
-greyed out, state *Imported*, with the billed and outstanding totals. They
-are also listed under *Clearance → Files → Imported Invoices (Teese)*; the
-44 that Teese never tied to a dossier are there with no file.
+Teese's own VAT is not reproducible from a rate — it is 4.7% of the fee base
+overall, so exemptions were applied per line — so one extra line, *TVA (as
+invoiced in Teese)*, carries the difference between the Teese total and the
+sum of the lines. The draft therefore totals **exactly what the client was
+invoiced**. The Teese figures themselves (fee base, total, outstanding at
+export, payment state) are kept on the move as `legacy_*` fields.
 
-Amounts are kept exactly as exported, including the three credit notes with
-negative totals. `amount_untaxed` (1.14 Md) is Teese's fee base; the line
-subtotals (3.37 Md) include débours.
+`is_legacy` does three things: `account.move.action_post` **refuses** it; it
+is greyed out with an *Imported* ribbon and an explanatory banner; and the
+file workflow ignores it — `invoice_id` (the invoice *Mark Complete* waits
+on) is never set to an imported draft, and *Create Invoice* on a still-open
+legacy file raises a real invoice beside the imported ones.
+
+Opening a file shows every invoice — imported and issued in Odoo — in the
+**Billing** block, with *Imported Billing (Teese TTC)* and *Outstanding at
+Export* totals, and directly above it the expenses with an *Imported
+Disbursements (Teese)* total, so revenue and out-of-pocket read together.
+In Invoicing, the *Imported (Teese)* / *Issued in Odoo* filters separate
+them; the 44 invoices Teese never tied to a dossier are there with no file.
 
 **Validations** (approval circuits, 10,713 steps) are history about a
 workflow that is being rebuilt as Odoo approvals. Archived as a CSV
@@ -167,16 +175,18 @@ attachment on the import record.
 | of which cancelled reversals | 299 | `legacy_reversal` |
 | of which parked | 554 | on `LEGACY-UNALLOCATED` |
 | Advances total, positive rows | 2,652,615,630 XAF | sum of legacy expenses not cancelled |
-| Imported invoices | 1,258 (3 credit notes, 44 without a file) | Clearance → Files → Imported Invoices (Teese) |
-| Imported invoice lines | 6,308 | |
-| Imported billing total (TTC) | 3,426,779,457 XAF | list footer, *Total* |
-| Outstanding at export | 2,975,319,557 XAF | list footer, *Outstanding* — informational; the receivable is in the trial balance |
+| Imported invoices | 1,258 (3 credit notes, 44 without a file) | Invoicing → Customers → Invoices, filter *Imported (Teese)* — all **Draft** |
+| Imported invoice lines | 6,308 (+ one Teese-VAT line where VAT ≠ 0) | |
+| Imported billing total (TTC) | 3,426,779,457 XAF | that list's *Total* footer |
+| Outstanding at export | 2,975,319,557 XAF | sum of *Outstanding at Export* — informational; the receivable is in the trial balance |
+| Posted invoices among them | **0**, and *Confirm* is refused | try it on one |
 | Rows dated after 31/08/2026 | 0 expected | `count_after_cutoff` on the import record |
-| `account.move` created by the import | **0** | Invoicing — nothing new |
 
 ## Runbook (staging first)
 
-1. Nothing to configure in accounting first: the import posts nothing.
+1. Settings → Clearance: the out-of-pocket and fee-income accounts and the
+   sales journal, so the draft lines land on the right accounts. Nothing is
+   posted either way.
 2. Apps → install *Clearance Files — Teese Legacy Import*.
 3. Clearance → Configuration → Teese Legacy Import → New → upload the zip →
    Import. Expect a few minutes. If the request times out, open the record

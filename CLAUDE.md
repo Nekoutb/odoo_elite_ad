@@ -15,7 +15,7 @@ working memory that is *not* obvious from the code.
   <in the Odoo.sh project settings — never in this repository, it is public>, Custom plan). The old Odoo Online db (elite-advisors,
   saas~19.3) holds no data and will lapse. Never build against 19.3 minor APIs.
 
-## The module: addons/elite_clearance (v19.0.8.0.0)
+## The module: addons/elite_clearance (v19.0.9.0.0)
 Customs clearance job files for a logistics/clearance services provider.
 - `logistics.file` — one file = one clearance job. States:
   draft → in_progress → ops_closed → done (+cancel). Gate: cannot start work
@@ -88,10 +88,14 @@ Customs clearance job files for a logistics/clearance services provider.
   advance gate and new invoices (`is_legacy` in every compute).
   **Record-keeping only (owner, 03/09/2026): no trial-balance impact.**
   Cutoff 31/08/2026, TB uploaded as of that date. Legacy invoices are
-  `logistics.legacy.invoice` (read-only, one state `imported`, shown greyed
-  on the file under "Imported Billing (Teese)") — NEVER account.move. The
-  importer records `export_synced_at` (26/08 for the first export: 5 days
-  short of cutoff) and counts rows after cutoff. Context
+  DRAFT `account.move` with `is_legacy=True` (owner's choice, 03/09/2026,
+  over a separate read-only model); `account.move.action_post` REFUSES
+  is_legacy, so "not posted" is enforced, not hoped. The draft totals
+  exactly the Teese TTC via one "TVA (as invoiced in Teese)" line. The file
+  never sets `invoice_id` to an imported draft, and `action_create_invoice`
+  ignores legacy invoices in its already-has-invoice check. The importer
+  records `export_synced_at` (26/08 for the first export: 5 days short of
+  cutoff) and counts rows after cutoff. Context
   `skip_checklist` / `legacy_import` bypass checklist generation and the
   file-in-progress check. Judgement calls in
   `docs/legacy-migration-teese.md` — read it before touching TYPE_MAP.
@@ -146,7 +150,7 @@ Customs clearance job files for a logistics/clearance services provider.
 - Apply code changes: `docker compose restart odoo` then Apps → module → Upgrade
   (XML/schema need the Upgrade; Python needs the restart).
 - Logs: `docker compose logs odoo`
-- Tests (throwaway db, currently 50 tests across both modules, must stay green):
+- Tests (throwaway db, currently 51 tests across both modules, must stay green):
   `docker compose run --rm odoo odoo -d clr_test -i elite_clearance,elite_clearance_teese --with-demo --test-enable --test-tags /elite_clearance,/elite_clearance_teese --stop-after-init`
 - Static repo checks CI also runs: `python tools/check_manifest.py addons/elite_clearance addons/elite_clearance_teese`
 

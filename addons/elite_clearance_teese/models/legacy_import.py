@@ -519,17 +519,33 @@ class LogisticsLegacyImport(models.Model):
             % (len(tables['advance']), created_total, skipped, parked, UNALLOCATED_FILE, reversals, justified))
 
     # ------------------------------------------------------------------
-    # invoices: for the record, never posted
+    # invoices: draft customer invoices that can never be posted
     # ------------------------------------------------------------------
     def _import_invoices(self, E, tables, ctx):
-        Inv = E['logistics.legacy.invoice']
+        """Each legacy invoice becomes a DRAFT account.move flagged is_legacy,
+        so it shows in Invoicing and on its file under the billing reference
+        the client knows. account.move.action_post refuses is_legacy: the
+        revenue is in the trial balance uploaded at the cutoff.
+
+        The draft is built to total exactly what Teese invoiced: the lines as
+        exported, tax-free, plus one "TVA (as invoiced in Teese)" line for
+        the difference between the Teese total and the sum of its lines.
+        Nothing here is accounting; it is the invoice as the client saw it.
+        """
+        Move = E['account.move']
         company = ctx['company']
         maps = ctx['maps']
         log = ctx['log']
+        journal = company.clearance_sale_journal_id or E['account.journal'].search(
+            [('type', '=', 'sale'), ('company_id', '=', company.id)], limit=1)
+        if not journal:
+            raise UserError(self.env._("Company %s has no sales journal.", company.name))
+        oop_account = company.clearance_oop_account_id
+        fee_account = company.clearance_fee_account_id
         lines_by_move = defaultdict(list)
         for r in tables['line']:
             lines_by_move[r['move_odoo_id']].append(r)
-        existing = set(Inv.search([('company_id', '=', company.id)]).mapped('legacy_id'))
+        existing = set(Move.search([('is_legacy', '=', True), ('company_id', '=', company.id)]).mapped('legacy_id'))
         vals_list, skipped, refunds, unlinked, nlines = [], 0, 0, 0, 0
         for r in tables['invoice']:
             lid = int(r['odoo_id'])
@@ -539,6 +555,7 @@ class LogisticsLegacyImport(models.Model):
             total = _f(r['amount_total'])
             is_refund = total < 0
             refunds += is_refund
+            sign = -1.0 if is_refund else 1.0
             file = maps['file'].get(int(r['dossier_odoo_id'])) if r['dossier_odoo_id'] else None
             if not file:
                 unlinked += 1
@@ -548,44 +565,62 @@ class LogisticsLegacyImport(models.Model):
                 partner = company.partner_id
             inv_date = _d(r['invoice_date'])
             self._after_cutoff(ctx, inv_date)
-            line_cmds = []
+            analytic = {str(file.analytic_account_id.id): 100} if file and file.analytic_account_id else False
+            line_cmds, lines_sum = [], 0.0
             for lr in lines_by_move.get(r['odoo_id'], []):
                 code, label, is_debours = PRODUCTS.get(
                     lr['product_odoo_id'],
                     ("LEG-%s" % lr['product_odoo_id'], "Legacy product %s" % lr['product_odoo_id'], lr['is_debours'] == '1'))
-                line_cmds.append(fields.Command.create({
-                    'name': (lr['label'].strip() or label)[:500],
-                    'product_code': code,
-                    'product_label': label,
-                    'is_debours': is_debours or lr['is_debours'] == '1',
-                    'quantity': _f(lr['quantity']) or 1.0,
-                    'price_unit': _f(lr['price_unit']),
-                    'price_subtotal': _f(lr['price_subtotal']),
-                    'legacy_id': int(lr['odoo_id']),
-                }))
+                is_debours = is_debours or lr['is_debours'] == '1'
+                qty = _f(lr['quantity']) or 1.0
+                unit = _f(lr['price_unit'])
+                lines_sum += _f(lr['price_subtotal'])
+                lv = {
+                    'name': "%s [%s]" % ((lr['label'].strip() or label)[:480], label),
+                    'quantity': qty,
+                    'price_unit': sign * unit,
+                    'tax_ids': [fields.Command.clear()],
+                    'analytic_distribution': analytic,
+                }
+                if is_debours and oop_account:
+                    lv['account_id'] = oop_account.id
+                elif not is_debours and fee_account:
+                    lv['account_id'] = fee_account.id
+                line_cmds.append(fields.Command.create(lv))
                 nlines += 1
+            vat = total - lines_sum
+            if abs(vat) >= 0.5:
+                lv = {'name': "TVA (as invoiced in Teese)", 'quantity': 1.0,
+                      'price_unit': sign * vat, 'tax_ids': [fields.Command.clear()]}
+                if fee_account:
+                    lv['account_id'] = fee_account.id
+                line_cmds.append(fields.Command.create(lv))
             payment_state = r['payment_state'].strip()
             vals_list.append({
-                'name': r['name'].strip(),
+                'move_type': 'out_refund' if is_refund else 'out_invoice',
+                'journal_id': journal.id,
                 'company_id': company.id,
-                'file_id': file.id if file else False,
+                'name': r['name'].strip(),
                 'partner_id': partner.id,
-                'move_type': 'refund' if is_refund else 'invoice',
-                'date_invoice': inv_date,
-                'date_due': _d(r['invoice_date_due']),
-                'amount_untaxed': _f(r['amount_untaxed']),
-                'amount_total': total,
-                'amount_residual': _f(r['amount_residual']),
-                'payment_state': payment_state if payment_state in PAYMENT_STATES else 'not_paid',
+                'invoice_date': inv_date,
+                'invoice_date_due': _d(r['invoice_date_due']) or inv_date,
+                'invoice_origin': file.name if file else False,
+                'ref': file.name if file else False,
+                'logistics_file_id': file.id if file else False,
+                'is_legacy': True,
                 'legacy_id': lid,
-                'line_ids': line_cmds,
+                'legacy_amount_untaxed': _f(r['amount_untaxed']),
+                'legacy_amount_total': total,
+                'legacy_amount_residual': _f(r['amount_residual']),
+                'legacy_payment_state': payment_state if payment_state in PAYMENT_STATES else 'not_paid',
+                'invoice_line_ids': line_cmds,
             })
         created_total = 0
         for i in range(0, len(vals_list), CHUNK):
-            created_total += len(Inv.create(vals_list[i:i + CHUNK]))
+            created_total += len(Move.create(vals_list[i:i + CHUNK]))
         ctx['counts']['invoices'] = created_total
         ctx['counts']['lines'] = nlines
-        log("%d invoices in export, %d created for the record (%d credit notes), %d already present, %d not tied to a file, %d lines - nothing posted"
+        log("%d invoices in export, %d created as DRAFT customer invoices (%d credit notes), %d already present, %d not tied to a file, %d lines - none posted, none postable"
             % (len(tables['invoice']), created_total, refunds, skipped, unlinked, nlines))
 
     # ------------------------------------------------------------------
