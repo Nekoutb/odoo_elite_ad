@@ -702,6 +702,10 @@ class LogisticsFile(models.Model):
         invoice = self.env['account.move'].create({
             'move_type': 'out_invoice',
             'journal_id': journal.id,
+            # The link of record: invoice_ids on the file reads this, so the
+            # invoice raised here shows in the Billing list beside imported
+            # ones. invoice_id below is the workflow's current invoice.
+            'logistics_file_id': self.id,
             # The billing reference is imposed rather than taken from the
             # journal sequence: Elite Advisors numbers invoices per service
             # type (EL26IM0001). Setting it at creation makes account.move
