@@ -14,7 +14,7 @@ class LogisticsFile(models.Model):
     _name = 'logistics.file'
     _description = "Clearance File"
     _inherit = ['mail.thread', 'mail.activity.mixin']
-    _order = 'date_opened desc, id desc'
+    _order = 'date_opened desc, create_date desc, id desc'
     _rec_names_search = ['name', 'partner_id.name', 'customs_declaration_ref']
 
     # --- identification -------------------------------------------------
@@ -212,6 +212,35 @@ class LogisticsFile(models.Model):
     advance_waiver_approved_by_id = fields.Many2one(
         'res.users', readonly=True, copy=False)
     advance_waiver_date = fields.Datetime(readonly=True, copy=False)
+    # --- recharging the client at other than cost -----------------------
+    recharge_amount = fields.Monetary(
+        string="Recharge to the Client", currency_field='currency_id',
+        tracking=True, copy=False,
+        help="What the client is actually charged for disbursements. Left at "
+             "zero the invoice recharges at cost; any other figure is an "
+             "adjustment and has to be approved before the invoice is raised.")
+    recharge_variance = fields.Monetary(
+        compute='_compute_recharge_variance', store=True,
+        currency_field='currency_id', string="Adjustment vs Cost",
+        help="Positive: the client is charged more than was disbursed. "
+             "Negative: the company is absorbing part of the cost.")
+    recharge_reason = fields.Text(
+        string="Why the recharge differs from cost", copy=False)
+    recharge_state = fields.Selection(
+        [
+            ('none', "At cost"),
+            ('requested', "Awaiting Operations Manager"),
+            ('ops_approved', "Awaiting Finance Manager"),
+            ('approved', "Approved"),
+            ('refused', "Refused"),
+        ],
+        default='none', required=True, tracking=True, copy=False,
+        string="Recharge Adjustment")
+    recharge_ops_approved_by_id = fields.Many2one(
+        'res.users', readonly=True, copy=False, string="Operations Approval")
+    recharge_finance_approved_by_id = fields.Many2one(
+        'res.users', readonly=True, copy=False, string="Finance Approval")
+    recharge_approved_date = fields.Datetime(readonly=True, copy=False)
     invoice_id = fields.Many2one(
         'account.move', string="Client Invoice", readonly=True, copy=False)
     invoice_state = fields.Selection(related='invoice_id.state', string="Invoice Status")
@@ -278,7 +307,7 @@ class LogisticsFile(models.Model):
                 e.amount for e in file.expense_ids
                 if not e.is_legacy and (
                     e.state == 'justified'
-                    or (e.state == 'settled' and e.payment_mode == 'direct')))
+                    or (e.state == 'settled' and e.payment_mode != 'advance')))
 
     @api.depends('invoice_ids')
     def _compute_invoice_count(self):
@@ -306,6 +335,21 @@ class LogisticsFile(models.Model):
                 e.amount for e in file.expense_ids
                 if not e.is_legacy
                 and e.payment_mode == 'advance' and e.state == 'settled')
+
+    @api.depends('recharge_amount', 'oop_total')
+    def _compute_recharge_variance(self):
+        for file in self:
+            file.recharge_variance = (
+                file.recharge_amount - file.oop_total
+                if file.recharge_amount else 0.0)
+
+    def _recharge_total(self):
+        """What the invoice actually recharges: cost, unless an adjustment
+        has been approved."""
+        self.ensure_one()
+        if self.recharge_state == 'approved' and self.recharge_amount:
+            return self.recharge_amount
+        return self.oop_total
 
     @api.depends('oop_total', 'service_type_id.commission_rate')
     def _compute_fee_amounts(self):
@@ -706,6 +750,85 @@ class LogisticsFile(models.Model):
             file.state = 'ops_closed'
         return True
 
+    # --- recharge adjustment --------------------------------------------
+    def action_request_recharge_adjustment(self):
+        """The billing operator proposes charging other than cost."""
+        for file in self:
+            file.company_id._clearance_check_approver('billing')
+            if not file.recharge_amount:
+                raise UserError(self.env._(
+                    "Enter what %s should recharge before requesting an "
+                    "adjustment. Leaving it empty bills at cost.", file.name))
+            if file.currency_id.is_zero(file.recharge_variance):
+                raise UserError(self.env._(
+                    "%s already recharges at cost - there is nothing to "
+                    "approve.", file.name))
+            if file.recharge_variance < 0 and not file.recharge_reason:
+                raise UserError(self.env._(
+                    "Recharging %(amount)s BELOW what was disbursed has to be "
+                    "explained before anyone can approve it (%(file)s).",
+                    amount=abs(file.recharge_variance), file=file.name))
+            file.write({'recharge_state': 'requested'})
+            file.message_post(body=self.env._(
+                "Recharge adjustment requested: %(amount)s against a cost of "
+                "%(cost)s (%(variance)s). %(reason)s",
+                amount=file.recharge_amount, cost=file.oop_total,
+                variance=file.recharge_variance,
+                reason=file.recharge_reason or ""))
+        return True
+
+    def action_approve_recharge_ops(self):
+        """Operations signs every adjustment. Below cost it is not enough."""
+        for file in self:
+            file.company_id._clearance_check_approver('recharge_ops')
+            if file.recharge_state != 'requested':
+                raise UserError(self.env._(
+                    "No recharge adjustment is awaiting Operations on %s.",
+                    file.name))
+            below = file.recharge_variance < 0
+            file.write({
+                'recharge_state': 'ops_approved' if below else 'approved',
+                'recharge_ops_approved_by_id': self.env.user.id,
+                'recharge_approved_date': fields.Datetime.now(),
+            })
+            file.message_post(body=self.env._(
+                "Recharge adjustment approved by Operations.%s",
+                self.env._(" It is below cost, so the Finance Manager must "
+                           "approve it as well.") if below else ""))
+        return True
+
+    def action_approve_recharge_finance(self):
+        """Only a below-cost recharge reaches here: the company is giving
+        away margin, so the Finance Manager signs it too."""
+        for file in self:
+            file.company_id._clearance_check_approver('recharge_finance')
+            if file.recharge_state != 'ops_approved':
+                raise UserError(self.env._(
+                    "No below-cost recharge is awaiting Finance on %s.",
+                    file.name))
+            file.write({
+                'recharge_state': 'approved',
+                'recharge_finance_approved_by_id': self.env.user.id,
+                'recharge_approved_date': fields.Datetime.now(),
+            })
+            file.message_post(body=self.env._(
+                "Below-cost recharge approved by the Finance Manager: "
+                "%(amount)s against a cost of %(cost)s.",
+                amount=file.recharge_amount, cost=file.oop_total))
+        return True
+
+    def action_refuse_recharge(self):
+        for file in self:
+            file.company_id._clearance_check_approver('recharge_ops')
+            if file.recharge_state not in ('requested', 'ops_approved'):
+                raise UserError(self.env._(
+                    "No recharge adjustment is awaiting approval on %s.",
+                    file.name))
+            file.write({'recharge_state': 'refused'})
+            file.message_post(body=self.env._(
+                "Recharge adjustment refused: the invoice bills at cost."))
+        return True
+
     def action_create_invoice(self):
         """Raise the client invoice: recharge section at cost (clearing the
         out-of-pocket account) + fee section (commission and customs fee)."""
@@ -721,6 +844,15 @@ class LogisticsFile(models.Model):
                 file=self.name, inv=self.invoice_id.name or "in draft"))
         oop_account = self.company_id.clearance_oop_account_id
         fee_account = self.company_id.clearance_fee_account_id
+        # Commission and service fee are separate subdivisions of 706 when
+        # the company has named them; otherwise both fall back to the one
+        # fee account, which is how this worked before they were split.
+        commission_account = self.company_id.clearance_commission_account_id or fee_account
+        service_fee_account = self.company_id.clearance_service_fee_account_id or fee_account
+        if self.recharge_state in ('requested', 'ops_approved'):
+            raise UserError(self.env._(
+                "The recharge adjustment on %s is still awaiting approval.",
+                self.name))
         # Re-checked here and not only at ops-close: a file can be reopened,
         # expenses added, and closed again through the wizard.
         self._check_advances_billable()
@@ -746,7 +878,7 @@ class LogisticsFile(models.Model):
         for exp in self.expense_ids.filtered(
                 lambda e: not e.is_legacy and (
                     e.state == 'justified'
-                    or (e.state == 'settled' and e.payment_mode == 'direct'))):
+                    or (e.state == 'settled' and e.payment_mode != 'advance'))):
             lines.append(fields.Command.create({
                 'name': "%s — %s" % (exp.category_id.name, exp.description),
                 'quantity': 1.0,
@@ -755,6 +887,19 @@ class LogisticsFile(models.Model):
                 # Disbursements are recharged at cost and carry no tax: they
                 # are the client's own liability paid on their behalf. The
                 # fee lines below deliberately keep the default taxes.
+                'tax_ids': [fields.Command.clear()],
+                'analytic_distribution': analytic,
+            }))
+        adjustment = self._recharge_total() - self.oop_total
+        if not self.currency_id.is_zero(adjustment):
+            lines.append(fields.Command.create({
+                'name': self.env._(
+                    "Approved recharge adjustment (cost %(cost)s, recharged "
+                    "%(charged)s)", cost=self.oop_total,
+                    charged=self._recharge_total()),
+                'quantity': 1.0,
+                'price_unit': adjustment,
+                'account_id': oop_account.id,
                 'tax_ids': [fields.Command.clear()],
                 'analytic_distribution': analytic,
             }))
@@ -769,7 +914,7 @@ class LogisticsFile(models.Model):
                     rate=self.commission_rate),
                 'quantity': 1.0,
                 'price_unit': self.commission_amount,
-                'account_id': fee_account.id,
+                'account_id': commission_account.id,
                 'analytic_distribution': analytic,
             }))
         if self.customs_fee_amount:
@@ -778,7 +923,7 @@ class LogisticsFile(models.Model):
                                    self.customs_declaration_ref or "-"),
                 'quantity': 1.0,
                 'price_unit': self.customs_fee_amount,
-                'account_id': fee_account.id,
+                'account_id': service_fee_account.id,
                 'analytic_distribution': analytic,
             }))
         invoice = self.env['account.move'].create({

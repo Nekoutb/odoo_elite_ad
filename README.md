@@ -8,7 +8,7 @@ billing that clears the balance sheet.
 | | |
 |---|---|
 | Module | `addons/elite_clearance` |
-| Version | `19.0.11.0.0` |
+| Version | `19.0.14.0.0` |
 | Odoo | 19.0 Community (lab) / 19.0 Enterprise (production, Odoo.sh) |
 | Licence | LGPL-3 |
 | Currency / locale | XAF, Cameroon (SYSCOHADA — `l10n_cm`) |
@@ -48,10 +48,14 @@ Each step is a different pair of hands:
 |---|---|
 | Key and submit | Operations, Customer Service or Transit team — **never Finance** |
 | Approve | Operations, Customer Service or Transit **Manager** |
-| Set how it is paid (mode, vendor, holder, journal) and send it on | Finance — the originator cannot even see these fields |
+| Set how it is paid (cash / electronic / advance, vendor **or** holder, journal) and send it on | Finance — the originator cannot even see these fields |
 | Sign the settlement, or return it to Finance | Finance **Manager** |
 | Disburse cash / pay from the bank | **Cashier** (tills) / **Treasury** (bank, mobile money) |
-| Justify an advance, raise the invoice | Finance |
+| Submit an advance's justification | Finance |
+| Approve the justification | Operations **Manager** |
+| Raise the invoice | Finance |
+| Recharge above cost | Operations **Manager** |
+| Recharge **below** cost | Operations **Manager** and Finance **Manager**, with a written reason |
 | Close the file for operations | Operations **Manager**, and only once the customs fee is keyed |
 | Reopen an imported file | Finance requests with a reason; Operations **Manager** approves after review |
 

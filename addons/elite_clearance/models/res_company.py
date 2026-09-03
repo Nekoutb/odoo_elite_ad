@@ -39,6 +39,20 @@ APPROVAL_KINDS = {
     'reopen_imported': ("clearance_reopen_imported_approver_ids",
                         ('elite_clearance.group_clearance_ops_manager',),
                         "approve reopening an imported file"),
+    # Reclassifying an advance to the billable account is an operational
+    # judgement about whether the documents really support it.
+    'justification': ("clearance_justification_approver_ids",
+                      ('elite_clearance.group_clearance_ops_manager',),
+                      "approve the justification of a staff advance"),
+    # Recharging the client at anything other than cost. Above cost needs
+    # Operations; below cost needs Operations AND the Finance Manager,
+    # because the company is giving margin away.
+    'recharge_ops': ("clearance_recharge_ops_approver_ids",
+                     ('elite_clearance.group_clearance_ops_manager',),
+                     "approve a change to the disbursement recharge"),
+    'recharge_finance': ("clearance_recharge_finance_approver_ids",
+                         ('elite_clearance.group_clearance_finance_manager',),
+                         "approve recharging the client BELOW cost"),
     'ops_close': ("clearance_ops_close_approver_ids",
                   ('elite_clearance.group_clearance_ops_manager',),
                   "close a file for operations"),
@@ -68,8 +82,21 @@ class ResCompany(models.Model):
              "the client's, and it is never invoiced from here.",
     )
     clearance_fee_account_id = fields.Many2one(
-        'account.account', string="Clearance Fee Income Account",
-        help="Income account for the commission and the customs service fee.",
+        'account.account', string="Fee Income Account (default)",
+        help="Fallback income account for fee lines. Used only where the "
+             "commission and service-fee accounts below are left empty.",
+    )
+    clearance_commission_account_id = fields.Many2one(
+        'account.account', string="Commission Income Account (706x)",
+        help="Where the clearance commission is credited - the percentage "
+             "of the out-of-pocket total set on the service type. A "
+             "subdivision of 706 Services vendus.",
+    )
+    clearance_service_fee_account_id = fields.Many2one(
+        'account.account', string="Service Fee Income Account (706x)",
+        help="Where the customs service fee keyed from the declaration is "
+             "credited. Also a subdivision of 706, kept apart from the "
+             "commission so the two revenue streams are reportable.",
     )
     clearance_misc_journal_id = fields.Many2one(
         'account.journal', string="Clearance Miscellaneous Journal",
@@ -109,6 +136,21 @@ class ResCompany(models.Model):
         string="Operations Close Approvers",
         help="Who may close a file for operations. Empty = any Clearance "
              "Operations Manager.")
+    clearance_justification_approver_ids = fields.Many2many(
+        'res.users', 'clearance_justification_approver_rel',
+        string="Justification Approvers",
+        help="Who may approve that the documents attached to a staff advance "
+             "really justify it. Empty = any Clearance Operations Manager.")
+    clearance_recharge_ops_approver_ids = fields.Many2many(
+        'res.users', 'clearance_recharge_ops_approver_rel',
+        string="Recharge Adjustment Approvers (Operations)",
+        help="Who may approve recharging the client at anything other than "
+             "cost. Empty = any Clearance Operations Manager.")
+    clearance_recharge_finance_approver_ids = fields.Many2many(
+        'res.users', 'clearance_recharge_finance_approver_rel',
+        string="Below-Cost Recharge Approvers (Finance)",
+        help="Who must also approve when the recharge is BELOW what was "
+             "actually disbursed. Empty = any Clearance Finance Manager.")
     clearance_cashier_approver_ids = fields.Many2many(
         'res.users', 'clearance_cashier_approver_rel',
         string="Cashiers",

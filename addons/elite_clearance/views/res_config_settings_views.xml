@@ -17,9 +17,17 @@
                                  help="Where cash advances sit until justified with supporting documents.">
                             <field name="clearance_advance_account_id"/>
                         </setting>
-                        <setting string="Clearance Fee Income Account"
-                                 help="Income account for the commission and the customs service fee.">
+                        <setting string="Fee Income Account (default)"
+                                 help="Fallback for fee lines, used only where the two accounts below are left empty.">
                             <field name="clearance_fee_account_id"/>
+                        </setting>
+                        <setting string="Commission Income Account (706x)"
+                                 help="Where the clearance commission is credited — the percentage of the out-of-pocket total set on the service type. A subdivision of 706.">
+                            <field name="clearance_commission_account_id"/>
+                        </setting>
+                        <setting string="Service Fee Income Account (706x)"
+                                 help="Where the customs service fee keyed from the declaration is credited. Also a subdivision of 706, kept apart from the commission so the two revenue streams are reportable.">
+                            <field name="clearance_service_fee_account_id"/>
                         </setting>
                         <setting string="Miscellaneous Journal"
                                  help="Used for advance justification entries.">
@@ -54,6 +62,18 @@
                         <setting string="Operations Close Approvers"
                                  help="Who may close a file for operations. Empty = any Clearance Operations Manager.">
                             <field name="clearance_ops_close_approver_ids" widget="many2many_tags"/>
+                        </setting>
+                        <setting string="Justification Approvers"
+                                 help="Who may approve that the documents attached to a staff advance really justify it. Empty = any Clearance Operations Manager.">
+                            <field name="clearance_justification_approver_ids" widget="many2many_tags"/>
+                        </setting>
+                        <setting string="Recharge Adjustment Approvers (Operations)"
+                                 help="Who may approve recharging the client at other than cost. Empty = any Clearance Operations Manager.">
+                            <field name="clearance_recharge_ops_approver_ids" widget="many2many_tags"/>
+                        </setting>
+                        <setting string="Below-Cost Recharge Approvers (Finance)"
+                                 help="Who must ALSO approve when the recharge is below what was disbursed. Empty = any Clearance Finance Manager.">
+                            <field name="clearance_recharge_finance_approver_ids" widget="many2many_tags"/>
                         </setting>
                         <setting string="Cashiers"
                                  help="Who may disburse from a cash till once the Finance Manager has approved the settlement. Empty = any Clearance Cashier.">

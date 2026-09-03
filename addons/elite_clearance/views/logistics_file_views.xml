@@ -17,6 +17,18 @@
                     <button name="action_refuse_waiver" type="object" string="Refuse Waiver"
                             invisible="waiver_state != 'requested'"
                             groups="elite_clearance.group_clearance_manager"/>
+                    <button name="action_request_recharge_adjustment" type="object" string="Request Recharge Adjustment"
+                            invisible="state != 'ops_closed' or recharge_state in ('requested', 'ops_approved', 'approved')"
+                            groups="elite_clearance.group_clearance_finance"/>
+                    <button name="action_approve_recharge_ops" type="object" string="Approve Recharge (Operations)"
+                            class="oe_highlight" invisible="recharge_state != 'requested'"
+                            groups="elite_clearance.group_clearance_ops_manager"/>
+                    <button name="action_approve_recharge_finance" type="object" string="Approve Below-Cost Recharge (Finance)"
+                            class="oe_highlight" invisible="recharge_state != 'ops_approved'"
+                            groups="elite_clearance.group_clearance_finance_manager"/>
+                    <button name="action_refuse_recharge" type="object" string="Refuse Recharge"
+                            invisible="recharge_state not in ('requested', 'ops_approved')"
+                            groups="elite_clearance.group_clearance_ops_manager"/>
                     <button name="action_request_reopen_imported" type="object" string="Request Reopening"
                             invisible="state != 'imported' or reopen_request_state == 'requested'"
                             groups="elite_clearance.group_clearance_finance"/>
@@ -171,7 +183,7 @@
                             <field name="is_legacy" column_invisible="1"/>
                             <field name="state" widget="badge" readonly="1"
                                    decoration-info="state in ('draft', 'submitted')"
-                                   decoration-warning="state in ('approved', 'settlement_submitted', 'settlement_approved')"
+                                   decoration-warning="state in ('approved', 'settlement_submitted', 'settlement_approved', 'justification_submitted')"
                                    decoration-success="state in ('settled', 'justified')"/>
                         </list>
                     </field>
@@ -189,6 +201,12 @@
                             <field name="commission_rate" readonly="1"/>
                             <field name="commission_amount" readonly="1"/>
                             <field name="customs_fee_amount" readonly="state not in ('in_progress', 'ops_closed')"/>
+                            <field name="recharge_amount"
+                                   readonly="recharge_state in ('requested', 'ops_approved', 'approved')"/>
+                            <field name="recharge_variance" readonly="1"
+                                   invisible="not recharge_amount"/>
+                            <field name="recharge_state" readonly="1"
+                                   invisible="recharge_state == 'none'"/>
                         </group>
                         <group>
                             <field name="invoice_id" readonly="1"/>
@@ -233,6 +251,22 @@
                     </group>
                     <field name="waiver_reason" placeholder="Why should work begin before the file is complete? Name the missing documents and when they are expected."
                            invisible="waiver_state == 'none' and documents_complete"/>
+
+                    <separator string="Recharge Adjustment"
+                               invisible="recharge_state == 'none'"/>
+                    <group invisible="recharge_state == 'none'">
+                        <group>
+                            <field name="recharge_ops_approved_by_id" readonly="1"
+                                   invisible="not recharge_ops_approved_by_id"/>
+                            <field name="recharge_finance_approved_by_id" readonly="1"
+                                   invisible="not recharge_finance_approved_by_id"/>
+                            <field name="recharge_approved_date" readonly="1"
+                                   invisible="not recharge_approved_date"/>
+                        </group>
+                    </group>
+                    <field name="recharge_reason"
+                           placeholder="Why is the client charged other than what was disbursed? Required when charging BELOW cost."
+                           invisible="recharge_state == 'none' and not recharge_amount"/>
 
                     <separator string="Reopening of an Imported File"
                                invisible="state != 'imported' and reopen_request_state == 'none'"/>
@@ -290,6 +324,7 @@
                 <field name="port_id" optional="show"/>
                 <field name="customs_declaration_ref" optional="show"/>
                 <field name="date_opened"/>
+                <field name="create_date" string="Created On" optional="show"/>
                 <field name="date_target" optional="show"/>
                 <field name="user_id" widget="many2one_avatar_user"/>
                 <field name="missing_mandatory_count" string="Missing docs"/>

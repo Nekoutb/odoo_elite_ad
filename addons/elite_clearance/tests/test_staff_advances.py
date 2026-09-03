@@ -117,6 +117,7 @@ class TestStaffAdvances(TransactionCase):
         exp.action_approve(); exp.action_submit_settlement(); exp.action_approve_settlement()
         exp.action_settle()
         self._receipt(exp)
+        exp.action_submit_justification()
         exp.action_justify()
         move = exp.justification_move_id
         debit = move.line_ids.filtered(lambda l: l.debit > 0)
@@ -167,6 +168,7 @@ class TestStaffAdvances(TransactionCase):
         justified.action_approve(); justified.action_submit_settlement(); justified.action_approve_settlement()
         justified.action_settle()
         self._receipt(justified)
+        justified.action_submit_justification()
         justified.action_justify()
 
         stranded = self._advance(150000)

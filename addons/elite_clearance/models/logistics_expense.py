@@ -84,10 +84,13 @@ class LogisticsExpense(models.Model):
         help="The third party ultimately receiving the money — customs, "
              "terminal, shipping line, transporter.")
     payment_mode = fields.Selection(
-        [('direct', "Direct (bank / cash / mobile money)"),
+        [('cash', "Cash"),
+         ('electronic', "Electronic (bank / mobile money)"),
          ('advance', "Via employee cash advance")],
         tracking=True,
-        help="Set by Finance once the expense is approved. Blank until then.")
+        help="How the money leaves. Set by Finance once the expense is "
+             "approved by the team manager - never by the team that keyed "
+             "it. Blank until then.")
     journal_id = fields.Many2one(
         'account.journal', string="Settlement Journal",
         domain="[('type', 'in', ('cash', 'bank'))]", check_company=True,
@@ -103,6 +106,7 @@ class LogisticsExpense(models.Model):
          ('settlement_submitted', "Awaiting Finance Manager"),
          ('settlement_approved', "Settlement Approved"),
          ('settled', "Settled"),
+         ('justification_submitted', "Justification Awaiting Approval"),
          ('justified', "Justified"),
          ('cancel', "Cancelled")],
         default='draft', required=True, tracking=True, index=True)
@@ -140,6 +144,10 @@ class LogisticsExpense(models.Model):
         string="Documents Received On", readonly=True, copy=False,
         help="When the first supporting document was attached to this "
              "expense. Stamped by the upload itself.")
+    date_justification_submitted = fields.Datetime(
+        string="Justification Submitted On", readonly=True, copy=False,
+        help="When Finance sent the supporting documents to the Operations "
+             "Manager for review.")
     date_justified = fields.Datetime(
         string="Justification Approved On", readonly=True, copy=False,
         help="When the advance was justified and reclassified from 421101 "
@@ -173,8 +181,25 @@ class LogisticsExpense(models.Model):
         for exp in self:
             exp.is_final = (
                 exp.state == 'justified'
-                or (exp.state == 'settled' and exp.payment_mode == 'direct')
+                or (exp.state == 'settled' and exp.payment_mode != 'advance')
                 or exp.state == 'cancel')
+
+    @api.constrains('vendor_id', 'employee_id', 'payment_mode')
+    def _check_one_counterparty(self):
+        """Money goes to a vendor or to a staff member, never to both.
+
+        Enforced here as well as greyed out in the form, because the form is
+        a courtesy and the constraint is the rule.
+        """
+        for exp in self:
+            if exp.vendor_id and exp.employee_id:
+                raise ValidationError(self.env._(
+                    "%s names both a vendor and an advance holder. It is one "
+                    "or the other: a disbursement paid to a third party, or "
+                    "cash handed to a staff member.", exp.name))
+            if exp.payment_mode == 'advance' and exp.vendor_id:
+                raise ValidationError(self.env._(
+                    "%s is a staff advance, so it has no vendor.", exp.name))
 
     @api.constrains('payment_mode', 'employee_id')
     def _check_advance_holder(self):
@@ -274,6 +299,20 @@ class LogisticsExpense(models.Model):
         for exp in self:
             exp.company_id._clearance_check_approver('finance')
 
+    def _vendor_payable_account(self):
+        """The payable account the selected vendor is auxiliarised to.
+
+        Odoo carries it per partner (`property_account_payable_id`), which
+        for Elimelec resolves to 401100 Suppliers unless a vendor has been
+        given one of their own. Advances have no vendor, and a vendor with
+        no payable account falls back to a plain two-line entry rather than
+        failing the disbursement.
+        """
+        self.ensure_one()
+        if self.payment_mode == 'advance' or not self.vendor_id:
+            return False
+        return self.vendor_id.property_account_payable_id or False
+
     def _check_disburser(self):
         """Cash leaves through the Cashier, bank money through Treasury."""
         for exp in self:
@@ -321,7 +360,7 @@ class LogisticsExpense(models.Model):
                 missing.append(exp._fields['payment_mode'].string)
             if not exp.journal_id:
                 missing.append(exp._fields['journal_id'].string)
-            if exp.payment_mode == 'direct' and not exp.vendor_id:
+            if exp.payment_mode in ('cash', 'electronic') and not exp.vendor_id:
                 missing.append(exp._fields['vendor_id'].string)
             if exp.payment_mode == 'advance' and not exp.employee_id:
                 missing.append(exp._fields['employee_id'].string)
@@ -382,7 +421,7 @@ class LogisticsExpense(models.Model):
                 raise UserError(self.env._(
                     "Choose the settlement journal on %s — Cash, Bank, "
                     "Mobile Money or Maviance.", exp.name))
-            if exp.payment_mode == 'direct':
+            if exp.payment_mode != 'advance':
                 debit_account = exp._get_company_account(
                     'clearance_oop_account_id', "Out-of-Pocket Expenses account")
                 partner = exp.vendor_id
@@ -402,6 +441,20 @@ class LogisticsExpense(models.Model):
             if not credit_account:
                 raise UserError(self.env._(
                     "Journal %s has no default account.", exp.journal_id.name))
+
+            # (account, partner, debit, credit)
+            postings = [(debit_account, partner, exp.amount, 0.0)]
+            payable = exp._vendor_payable_account()
+            if payable:
+                # The vendor's own payable account, with the vendor as the
+                # auxiliary, so every third party has a ledger of what was
+                # charged to them and what was paid. Recognised and settled
+                # in the same move: 401100 nets to nil for this expense and
+                # the money still leaves today.
+                postings.append((payable, exp.vendor_id, 0.0, exp.amount))
+                postings.append((payable, exp.vendor_id, exp.amount, 0.0))
+            postings.append((credit_account, partner, 0.0, exp.amount))
+
             move = self.env['account.move'].create({
                 'move_type': 'entry',
                 'journal_id': exp.journal_id.id,
@@ -413,17 +466,12 @@ class LogisticsExpense(models.Model):
                 'line_ids': [
                     fields.Command.create({
                         'name': exp.description,
-                        'account_id': debit_account.id,
-                        'partner_id': partner.id if partner else False,
-                        'debit': exp.amount, 'credit': 0.0,
+                        'account_id': account.id,
+                        'partner_id': counterparty.id if counterparty else False,
+                        'debit': debit, 'credit': credit,
                         'analytic_distribution': analytic,
-                    }),
-                    fields.Command.create({
-                        'name': exp.description,
-                        'account_id': credit_account.id,
-                        'partner_id': partner.id if partner else False,
-                        'debit': 0.0, 'credit': exp.amount,
-                    }),
+                    })
+                    for account, counterparty, debit, credit in postings
                 ],
             })
             move.action_post()
@@ -433,9 +481,13 @@ class LogisticsExpense(models.Model):
                 'date_settled': fields.Datetime.now(),
             })
 
-    def action_justify(self):
-        """Supporting documents are in: move the advance onto the file's
-        out-of-pocket account. Requires at least one attachment."""
+    def action_submit_justification(self):
+        """Finance sends the supporting documents up for review.
+
+        Attaching a receipt is not the same as the receipt being accepted:
+        the reclassification that makes an advance billable is an
+        operational judgement, so it goes to the Operations Manager.
+        """
         self._check_finance()
         for exp in self:
             if exp.state != 'settled' or exp.payment_mode != 'advance':
@@ -445,8 +497,38 @@ class LogisticsExpense(models.Model):
                 ('res_model', '=', self._name), ('res_id', '=', exp.id)])
             if not attachments:
                 raise UserError(self.env._(
-                    "Attach the supporting documents to %s before "
-                    "justifying the advance.", exp.name))
+                    "Attach the supporting documents to %s before sending "
+                    "the justification for approval.", exp.name))
+            exp.write({'state': 'justification_submitted',
+                       'date_justification_submitted': fields.Datetime.now()})
+            exp.message_post(body=self.env._(
+                "Justification submitted with %(count)s supporting "
+                "document(s), for the Operations Manager to review.",
+                count=attachments))
+
+    def action_refuse_justification(self):
+        """The documents do not support the advance; back to Finance."""
+        for exp in self:
+            exp.company_id._clearance_check_approver('justification')
+            if exp.state != 'justification_submitted':
+                raise UserError(self.env._(
+                    "No justification is awaiting approval on %s.", exp.name))
+            exp.write({'state': 'settled',
+                       'date_justification_submitted': False})
+            exp.message_post(body=self.env._(
+                "Justification refused: the advance stays on 421101 against "
+                "the holder and is not billable."))
+
+    def action_justify(self):
+        """The Operations Manager accepts the documents; the advance is
+        reclassified from 421101 to the engaged account and becomes
+        billable."""
+        for exp in self:
+            exp.company_id._clearance_check_approver('justification')
+            if exp.state != 'justification_submitted':
+                raise UserError(self.env._(
+                    "%s has not been submitted for justification approval "
+                    "by Finance.", exp.name))
             oop = exp._get_company_account(
                 'clearance_oop_account_id', "Out-of-Pocket Expenses account")
             adv = exp._get_company_account(

@@ -96,7 +96,7 @@ class TestSegregationOfDuties(TransactionCase):
 
     def test_04_originator_cannot_touch_the_settlement_fields(self):
         vals = self._vals()
-        vals['payment_mode'] = 'direct'
+        vals['payment_mode'] = 'cash'
         with self.assertRaises(UserError):
             self.env['logistics.expense'].with_user(self.ops).create(vals)
         exp = self._keyed_by_ops()
@@ -129,7 +129,7 @@ class TestSegregationOfDuties(TransactionCase):
         with self.assertRaises(UserError):
             exp.with_user(self.finance_manager).action_approve_settlement()
         exp.with_user(self.finance).write({
-            'payment_mode': 'direct',
+            'payment_mode': 'cash',
             'journal_id': self.journal.id,
             'vendor_id': self.vendor.id,
         })
@@ -163,7 +163,8 @@ class TestSegregationOfDuties(TransactionCase):
             exp.with_user(self.ops).action_submit()
             exp.with_user(self.cs_manager).action_approve()
             exp.with_user(self.finance).write({
-                'payment_mode': 'direct', 'journal_id': journal.id,
+                'payment_mode': 'cash' if journal.type == 'cash' else 'electronic',
+                'journal_id': journal.id,
                 'vendor_id': self.vendor.id})
             exp.with_user(self.finance).action_submit_settlement()
             exp.with_user(self.finance_manager).action_approve_settlement()

@@ -52,7 +52,7 @@ class TestExpensesAndBilling(TransactionCase):
         cls.file.state = 'in_progress'
         cls.file.customs_fee_amount = 75000   # closing requires it keyed
 
-    def _expense(self, amount, mode='direct', journal=None):
+    def _expense(self, amount, mode='cash', journal=None):
         vals = {
             'file_id': self.file.id,
             'category_id': self.category.id,
@@ -96,10 +96,12 @@ class TestExpensesAndBilling(TransactionCase):
                          "Unjustified advance is employee debt, not OOP.")
         # justification refused without supporting documents
         with self.assertRaises(UserError):
-            exp.action_justify()
+            exp.action_submit_justification()
         self.env['ir.attachment'].create({
             'name': "receipt.pdf", 'res_model': 'logistics.expense',
             'res_id': exp.id, 'raw': b"dummy"})
+        exp.action_submit_justification()
+        self.assertEqual(exp.state, 'justification_submitted')
         exp.action_justify()
         self.assertEqual(exp.state, 'justified')
         jmove = exp.justification_move_id
@@ -196,7 +198,7 @@ class TestExpensesAndBilling(TransactionCase):
         exp = self.env['logistics.expense'].create({
             'file_id': f1.id, 'category_id': self.category.id,
             'description': "Duty", 'amount': 100000,
-            'payment_mode': 'direct', 'vendor_id': self.customs.id,
+            'payment_mode': 'cash', 'vendor_id': self.customs.id,
             'journal_id': self.momo_journal.id})
         exp.action_submit(); exp.action_approve(); exp.action_submit_settlement(); exp.action_approve_settlement(); exp.action_settle()
         f1.action_close_operations()
@@ -270,6 +272,7 @@ class TestExpensesAndBilling(TransactionCase):
         self.env['ir.attachment'].create({
             'name': "receipt.pdf", 'res_model': 'logistics.expense',
             'res_id': advance.id, 'raw': b"dummy"})
+        advance.action_submit_justification()
         advance.action_justify()
         for line in advance.justification_move_id.line_ids:
             self.assertEqual(line.analytic_distribution, {tag: 100})
@@ -330,6 +333,8 @@ class TestExpensesAndBilling(TransactionCase):
         self.assertEqual(exp.date_documents_submitted, first,
                          "only the FIRST document dates the submission")
 
+        exp.action_submit_justification()
+        self.assertTrue(exp.date_justification_submitted)
         exp.action_justify()
         self.assertTrue(exp.date_justified)
         self.assertLessEqual(exp.date_submitted, exp.date_settled,

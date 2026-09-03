@@ -15,7 +15,7 @@ working memory that is *not* obvious from the code.
   <in the Odoo.sh project settings — never in this repository, it is public>, Custom plan). The old Odoo Online db (elite-advisors,
   saas~19.3) holds no data and will lapse. Never build against 19.3 minor APIs.
 
-## The module: addons/elite_clearance (v19.0.13.0.0)
+## The module: addons/elite_clearance (v19.0.14.0.0)
 Customs clearance job files for a logistics/clearance services provider.
 - `logistics.file` — one file = one clearance job. States:
   draft → in_progress → ops_closed → done (+cancel, +imported). `imported`
@@ -127,6 +127,24 @@ Customs clearance job files for a logistics/clearance services provider.
    collisions break on the third character. It is UNIQUE across partners and
    only a Clearance Manager can correct it — correcting it does NOT rename
    analytic accounts already created, since those names sit on posted lines.
+- **Owner spec 03/09/2026, second pass.** `payment_mode` is now
+   cash / electronic / advance (no more `direct`; a pre- migration splits it
+   by journal type and empties it on legacy rows). A vendor and an advance
+   holder are mutually EXCLUSIVE, greyed in the form and enforced by
+   `_check_one_counterparty`. Paying a vendor routes through that vendor's
+   own `property_account_payable_id` (401100): the settlement move is four
+   lines — Dr 47xx / Cr 401100(vendor), Dr 401100(vendor) / Cr journal — so
+   the supplier ledger works and the cash still leaves the same day.
+   Justifying an advance now needs the Operations Manager:
+   `action_submit_justification` (Finance, needs an attachment) →
+   `justification_submitted` → `action_justify` (kind `justification`).
+   Billing may recharge at other than cost via `recharge_amount`:
+   above cost needs `recharge_ops`, BELOW cost needs `recharge_ops` AND
+   `recharge_finance` plus a written reason, and the invoice carries the
+   delta as its own line. Commission and customs fee now credit separate
+   706 subdivisions (`clearance_commission_account_id`,
+   `clearance_service_fee_account_id`), each falling back to the old single
+   fee account. Files sort newest-first with a Created On column.
 - **The expense timeline (owner spec, 03/09/2026).** One readonly stamp per
    step, written by the action that performs it: `date_requested` (default
    today, at keying), `date_submitted`, `date_approved`,
@@ -215,7 +233,7 @@ Customs clearance job files for a logistics/clearance services provider.
 - Apply code changes: `docker compose restart odoo` then Apps → module → Upgrade
   (XML/schema need the Upgrade; Python needs the restart).
 - Logs: `docker compose logs odoo`
-- Tests (throwaway db, currently 59 tests across both modules, must stay green):
+- Tests (throwaway db, currently 69 tests across both modules, must stay green):
   `docker compose run --rm odoo odoo -d clr_test -i elite_clearance,elite_clearance_teese --with-demo --test-enable --test-tags /elite_clearance,/elite_clearance_teese --stop-after-init`
 - Static repo checks CI also runs:
   `python tools/check_manifest.py addons/elite_clearance addons/elite_clearance_teese`

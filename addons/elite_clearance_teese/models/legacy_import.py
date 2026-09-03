@@ -499,11 +499,10 @@ class LogisticsLegacyImport(models.Model):
                 'category_id': cat.id,
                 'description': (r['label'].strip() or "Avance de frais")[:250],
                 'amount': abs(amount),
-                # Payment mode and holder were not exported; the money left
-                # in the legacy system and was billed there. Settled-direct
-                # is the neutral reading, and is_legacy keeps it out of every
-                # total that matters. No journal entry is ever created.
-                'payment_mode': 'direct',
+                # The export carries no payment mode, so none is invented:
+                # the field stays empty. is_legacy keeps these out of every
+                # total that matters and no journal entry is ever created.
+                'payment_mode': False,
                 'state': 'cancel' if reversal else 'settled',
                 'vendor_id': self._supplier(E, ctx, r['supplier_name']).id if r['supplier_name'].strip() else False,
                 'date_requested': _d(r['requested_date']),
