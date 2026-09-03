@@ -54,7 +54,7 @@ dossier **step history** (`fait_etape_dossier`, 12,375 rows), cash
 movements, purchases, and any general ledger. If the live server ever
 answers again, those are the tables to ask TS Consulting for.
 
-## Fields added to `elite_clearance` (v19.0.7.0.0)
+## Fields and models added to `elite_clearance` (v19.0.8.0.0)
 
 | Model | Field | From |
 |---|---|---|
@@ -67,9 +67,12 @@ answers again, those are the tables to ask TS Consulting for.
 | | `importer_name` | `importer` |
 | | `invoice_ids` (several invoices per file) via `account.move.logistics_file_id` | one dossier carries up to 8 invoices |
 | | `legacy_id`, `legacy_type_name` | provenance |
+| | `legacy_invoice_ids`, `legacy_billed_total`, `legacy_outstanding_total` | the Imported Billing block |
 | `logistics.expense` | `date_requested` | `requested_date` |
 | | `is_legacy`, `legacy_id`, `legacy_justified`, `legacy_reversal` | provenance |
-| `account.move` | `logistics_file_id`, `legacy_id`, `legacy_amount_total`, `legacy_amount_residual` | |
+| `logistics.legacy.invoice` (new, read-only, state *Imported*) | billing reference, client, file, dates, fee base, total, outstanding at export, payment state, `legacy_id` | `wh_fact_invoice` |
+| `logistics.legacy.invoice.line` (new) | label, legacy product label/code, disbursement flag, quantity, unit price, subtotal | `wh_fact_invoice_line` |
+| `account.move` | `logistics_file_id` (real invoices only; nothing legacy) | |
 | `res.partner` | `legacy_id` | |
 
 `legacy_id` is what makes every re-run idempotent: rows already present are
