@@ -55,7 +55,8 @@ class TestStaffAdvances(TransactionCase):
             'description': "Terminal charges",
             'amount': amount,
             'payment_mode': 'advance',
-            'vendor_id': self.vendor.id,
+            # no vendor: an advance is money handed to a staff member, and
+            # naming a third party as well is refused by the constraint
             'journal_id': self.journal.id,
             'employee_id': (employee or self.employee).id,
         })

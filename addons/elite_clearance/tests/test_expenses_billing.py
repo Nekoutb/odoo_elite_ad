@@ -59,11 +59,14 @@ class TestExpensesAndBilling(TransactionCase):
             'description': "Duty on declaration",
             'amount': amount,
             'payment_mode': mode,
-            'vendor_id': self.customs.id,
             'journal_id': (journal or self.momo_journal).id,
         }
+        # A vendor OR an advance holder, never both: the counterparty
+        # constraint refuses an expense that names two.
         if mode == 'advance':
             vals['employee_id'] = self.employee.id
+        else:
+            vals['vendor_id'] = self.customs.id
         return self.env['logistics.expense'].create(vals)
 
     def test_01_direct_expense_posts_oop_vs_journal(self):
@@ -72,16 +75,18 @@ class TestExpensesAndBilling(TransactionCase):
         self.assertEqual(exp.state, 'settled')
         move = exp.settlement_move_id
         self.assertEqual(move.state, 'posted')
-        debit = move.line_ids.filtered(lambda l: l.debit > 0)
-        credit = move.line_ids.filtered(lambda l: l.credit > 0)
-        self.assertEqual(debit.account_id, self.oop_account)
-        self.assertEqual(credit.account_id, self.momo_journal.default_account_id)
-        self.assertEqual(debit.debit, 500000)
+        # Named to a vendor, so the entry routes through that vendor's
+        # payable account and has four lines rather than two.
+        engaged = move.line_ids.filtered(lambda l: l.account_id == self.oop_account)
+        self.assertEqual(engaged.debit, 500000)
+        cash = move.line_ids.filtered(
+            lambda l: l.account_id == self.momo_journal.default_account_id)
+        self.assertEqual(cash.credit, 500000)
         self.assertEqual(sum(move.line_ids.mapped('debit')),
                          sum(move.line_ids.mapped('credit')))
         # analytic tag = the file
         self.assertIn(str(self.file.analytic_account_id.id),
-                      debit.analytic_distribution or {})
+                      engaged.analytic_distribution or {})
         self.assertEqual(self.file.oop_total, 500000)
 
     def test_02_advance_sits_on_employee_until_justified(self):
