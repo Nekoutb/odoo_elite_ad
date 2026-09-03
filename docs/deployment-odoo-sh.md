@@ -61,6 +61,15 @@ expense categories). The hook is idempotent and matches on `code`, so it is
 safe to re-run; an `end-` migration script re-runs it after every upgrade so
 that new master data reaches existing databases without manual keying.
 
+## Never delete the production branch on GitHub
+
+Odoo.sh binds the production *stage* to a branch *name*. Deleting that
+branch on GitHub does not "move" production anywhere — it strands the stage,
+and Odoo.sh refuses every other operation until the branch is restored. The
+order is always: change the production branch in the Odoo.sh console first,
+confirm the stage change in the branch history, and only then delete the old
+branch from Git. This was learnt the hard way on 03/09/2026 with `prod`.
+
 ## Upgrades
 
 - Bump `version` in `__manifest__.py` on every schema change.
@@ -73,13 +82,15 @@ that new master data reaches existing databases without manual keying.
 
 - [x] Create the `19.0` and `staging` branches; `19.0` is the GitHub default.
 - [x] Odoo.sh project exists and is connected to this repository.
-- [ ] **Check the Production stage is not orphaned.** `main` and `prod` were
-      deleted from this repository on 02/09/2026 and both deletions were
-      delivered to Odoo.sh. If its Production stage pointed at either, it is
-      now pointing at a branch that no longer exists.
-- [ ] Point Production at `19.0` and Staging at `staging` (Odoo.sh →
-      Branches → drag the branch into the stage). Console-only; it cannot be
-      done from Git.
+- [x] Production stage WAS orphaned: `prod` was its production branch and was
+      deleted on GitHub on 03/09/2026. Odoo.sh showed "REMOTE BRANCH DELETED
+      — it is imperative you restore it before doing any other operation".
+      Restored at the exact SHA it last built (`0d315e6`). The production
+      database was empty, so nothing was at risk.
+- [ ] In the console: Branches → drag `19.0` into **Production**. Only then
+      is `prod` free to go.
+- [ ] Delete `prod` again — from Git, only AFTER `19.0` is the production
+      branch in the console.
 - [ ] Confirm the branch's Odoo version is set to 19.0 in its settings.
 - [ ] Verify `l10n_cm` on 19.0 and load it before the module.
 - [ ] Import the partner list (CSV) from the old Online database.

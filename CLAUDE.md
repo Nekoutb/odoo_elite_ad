@@ -139,6 +139,11 @@ Customs clearance job files for a logistics/clearance services provider.
   scripts under migrations/<version>/ (pre-/post-/end-). One thing per
   commit; run the test suite before calling anything done; test as a
   restricted user (Clearance/User only) before delivering.
+- **Never delete a branch on GitHub that Odoo.sh has in a stage.** Odoo.sh
+  binds the stage to the branch NAME; deleting it strands the stage and
+  blocks the console until the branch is restored. Change the stage in the
+  console first, then delete. `prod` taught us this on 03/09/2026.
+- Push to `staging` only. Promoting to `19.0` is a separate, explicit step.
 - `.gitignore` and `.gitattributes` exist for a reason: never commit
   `__pycache__`, and everything is stored LF because the deploy target is
   Linux.
