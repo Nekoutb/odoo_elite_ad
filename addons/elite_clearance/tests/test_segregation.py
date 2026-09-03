@@ -119,9 +119,10 @@ class TestSegregationOfDuties(TransactionCase):
         exp = self._keyed_by_ops()
         exp.with_user(self.ops).action_submit()
         exp.with_user(self.cs_manager).action_approve()
-        # nothing can be settled on an unsigned settlement
+        # nothing can be settled on an unsigned settlement - even from the
+        # superuser env, so it is the STATE that refuses, not the rights
         with self.assertRaises(UserError):
-            exp.action_settle()
+            exp.with_env(self.env).action_settle()
         # the Finance Manager cannot sign a blank settlement
         with self.assertRaises(UserError):
             exp.with_user(self.finance_manager).action_approve_settlement()
@@ -135,6 +136,9 @@ class TestSegregationOfDuties(TransactionCase):
             exp.with_user(self.finance).action_approve_settlement()
         exp.with_user(self.finance_manager).action_approve_settlement()
         self.assertEqual(exp.state, 'settlement_approved')
+        # exp is still bound to the Ops agent env it was created under;
+        # settle from the superuser env, as the other suites do
+        exp = exp.with_env(self.env)
         exp.action_settle()
         self.assertEqual(exp.state, 'settled')
         self.assertEqual(
