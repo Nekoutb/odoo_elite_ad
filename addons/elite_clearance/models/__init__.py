@@ -3,6 +3,7 @@ from . import res_config_settings
 from . import hr_employee
 from . import res_partner
 from . import account_move
+from . import ir_attachment
 from . import logistics_port
 from . import logistics_document_type
 from . import logistics_service_type

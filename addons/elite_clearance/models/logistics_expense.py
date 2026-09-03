@@ -110,11 +110,40 @@ class LogisticsExpense(models.Model):
         'account.move', string="Settlement Entry", readonly=True, copy=False)
     justification_move_id = fields.Many2one(
         'account.move', string="Justification Entry", readonly=True, copy=False)
+    # --- the timeline ---------------------------------------------------
+    # One stamp per step, written by the action that performs it, so the
+    # disbursement lag and the justification lag are facts rather than
+    # recollections. All readonly: nobody types these.
     date_requested = fields.Date(
-        string="Requested On", copy=False,
-        help="When the disbursement was asked for. With Settled On, this is "
-             "the disbursement lag.")
-    date_settled = fields.Datetime(readonly=True, copy=False)
+        string="Requested On", copy=False, readonly=True,
+        default=fields.Date.context_today,
+        help="When the disbursement was asked for. Set when the expense is "
+             "keyed; with Paid On this gives the disbursement lag.")
+    date_submitted = fields.Datetime(
+        string="Submitted On", readonly=True, copy=False,
+        help="When the originating team sent it for approval.")
+    date_approved = fields.Datetime(
+        string="Approved On", readonly=True, copy=False,
+        help="When the team manager approved it.")
+    date_settlement_submitted = fields.Datetime(
+        string="Sent to Finance Manager On", readonly=True, copy=False,
+        help="When Finance had keyed the payment mode, the counterparty and "
+             "the journal, and sent it for approval.")
+    date_settlement_approved = fields.Datetime(
+        string="Settlement Approved On", readonly=True, copy=False,
+        help="When the Finance Manager approved how it would be paid.")
+    date_settled = fields.Datetime(
+        string="Paid On", readonly=True, copy=False,
+        help="When the Cashier or Treasury actually paid it out and the "
+             "journal entry was posted.")
+    date_documents_submitted = fields.Datetime(
+        string="Documents Received On", readonly=True, copy=False,
+        help="When the first supporting document was attached to this "
+             "expense. Stamped by the upload itself.")
+    date_justified = fields.Datetime(
+        string="Justification Approved On", readonly=True, copy=False,
+        help="When the advance was justified and reclassified from 421101 "
+             "to the engaged-disbursements account.")
     is_final = fields.Boolean(compute='_compute_is_final', store=True)
 
     # --- legacy (Teese) provenance -------------------------------------
@@ -262,7 +291,8 @@ class LogisticsExpense(models.Model):
         for exp in self:
             if exp.state != 'draft':
                 raise UserError(self.env._("%s is not in draft.", exp.name))
-            exp.state = 'submitted'
+            exp.write({'state': 'submitted',
+                       'date_submitted': fields.Datetime.now()})
 
     def action_approve(self):
         self._check_manager()
@@ -270,7 +300,8 @@ class LogisticsExpense(models.Model):
             if exp.state != 'submitted':
                 raise UserError(self.env._(
                     "%s has not been submitted for approval.", exp.name))
-            exp.state = 'approved'
+            exp.write({'state': 'approved',
+                       'date_approved': fields.Datetime.now()})
 
     def action_refuse(self):
         self._check_manager()
@@ -298,7 +329,8 @@ class LogisticsExpense(models.Model):
                 raise UserError(self.env._(
                     "Key %(what)s on %(exp)s before sending it to the "
                     "Finance Manager.", what=", ".join(missing), exp=exp.name))
-            exp.state = 'settlement_submitted'
+            exp.write({'state': 'settlement_submitted',
+                       'date_settlement_submitted': fields.Datetime.now()})
             exp.message_post(body=self.env._(
                 "Settlement sent to the Finance Manager for approval."))
 
@@ -325,7 +357,8 @@ class LogisticsExpense(models.Model):
                 raise UserError(self.env._(
                     "Finance must set the payment mode and the settlement "
                     "journal on %s before it can be approved.", exp.name))
-            exp.state = 'settlement_approved'
+            exp.write({'state': 'settlement_approved',
+                       'date_settlement_approved': fields.Datetime.now()})
             labels = dict(exp._fields['payment_mode'].selection)
             holder = ""
             if exp.payment_mode == 'advance':
@@ -452,7 +485,8 @@ class LogisticsExpense(models.Model):
                 ],
             })
             move.action_post()
-            exp.write({'justification_move_id': move.id, 'state': 'justified'})
+            exp.write({'justification_move_id': move.id, 'state': 'justified',
+                       'date_justified': fields.Datetime.now()})
             exp.message_post(body=self.env._(
                 "Advance justified: %(amount)s reclassified from 421101 "
                 "(held by %(who)s) to the engaged disbursements account. "

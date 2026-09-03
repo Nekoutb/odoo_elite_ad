@@ -292,6 +292,49 @@ class TestExpensesAndBilling(TransactionCase):
         self.assertEqual(receivable.analytic_distribution, {tag: 100},
                          "the receivable is an asset and must be tagged")
 
+    def test_09c_every_step_stamps_its_own_date(self):
+        """The owner's rule: each step dates itself, whatever the payment
+        mode. Nobody types these."""
+        exp = self._expense(120000, mode='advance')
+        self.assertEqual(exp.date_requested, fields.Date.context_today(exp),
+                         "Requested On is set when the expense is keyed.")
+        for field in ('date_submitted', 'date_approved',
+                      'date_settlement_submitted', 'date_settlement_approved',
+                      'date_settled', 'date_documents_submitted',
+                      'date_justified'):
+            self.assertFalse(exp[field], "%s should start empty" % field)
+
+        exp.action_submit()
+        self.assertTrue(exp.date_submitted)
+        exp.action_approve()
+        self.assertTrue(exp.date_approved)
+        exp.action_submit_settlement()
+        self.assertTrue(exp.date_settlement_submitted)
+        exp.action_approve_settlement()
+        self.assertTrue(exp.date_settlement_approved)
+        exp.action_settle()
+        self.assertTrue(exp.date_settled)
+
+        # attaching the supporting document is what dates its arrival
+        self.assertFalse(exp.date_documents_submitted)
+        self.env['ir.attachment'].create({
+            'name': "receipt.pdf", 'res_model': 'logistics.expense',
+            'res_id': exp.id, 'raw': b"dummy"})
+        exp.invalidate_recordset(['date_documents_submitted'])
+        first = exp.date_documents_submitted
+        self.assertTrue(first, "the upload must stamp the expense")
+        self.env['ir.attachment'].create({
+            'name': "second.pdf", 'res_model': 'logistics.expense',
+            'res_id': exp.id, 'raw': b"dummy"})
+        exp.invalidate_recordset(['date_documents_submitted'])
+        self.assertEqual(exp.date_documents_submitted, first,
+                         "only the FIRST document dates the submission")
+
+        exp.action_justify()
+        self.assertTrue(exp.date_justified)
+        self.assertLessEqual(exp.date_submitted, exp.date_settled,
+                             "the timeline must run forwards")
+
     def test_10_cancel_blocked_while_expenses_are_live(self):
         """Cancelling a working file would strand its expenses mid-flow."""
         exp = self._expense(300000)

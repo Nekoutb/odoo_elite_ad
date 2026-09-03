@@ -146,9 +146,18 @@
                     </field>
 
                     <separator string="Out-of-Pocket Expenses"/>
+                    <!-- editable inline, and open_form_view for the arrow that
+                         opens the record full-page. Deliberately NOT a dialog:
+                         this form carries nine conditionally-visible header
+                         buttons, a statusbar and a chatter, and saving all of
+                         that inside an o2m dialog crashed the Owl renderer
+                         (VToggler.remove, "Illegal invocation") and left a
+                         phantom row behind. Editing happens inline; the
+                         workflow happens on the record's own page. -->
                     <field name="expense_ids" readonly="state not in ('draft', 'in_progress')"
                            context="{'default_file_id': id}">
-                        <list decoration-muted="state == 'cancel'">
+                        <list editable="bottom" open_form_view="1"
+                              decoration-muted="state == 'cancel' or is_legacy">
                             <field name="name" readonly="1" force_save="1"/>
                             <field name="category_id"/>
                             <field name="description"/>
@@ -158,7 +167,8 @@
                             <field name="journal_id" optional="show" groups="elite_clearance.group_clearance_finance"/>
                             <field name="amount" sum="Total"/>
                             <field name="currency_id" column_invisible="1"/>
-                            <field name="state" widget="badge"
+                            <field name="is_legacy" column_invisible="1"/>
+                            <field name="state" widget="badge" readonly="1"
                                    decoration-info="state in ('draft', 'submitted')"
                                    decoration-warning="state in ('approved', 'settlement_submitted', 'settlement_approved')"
                                    decoration-success="state in ('settled', 'justified')"/>

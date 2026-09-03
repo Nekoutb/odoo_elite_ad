@@ -56,10 +56,22 @@
                                    required="payment_mode == 'advance'"
                                    readonly="state != 'approved'"/>
                             <field name="journal_id" readonly="state != 'approved'"/>
-                            <field name="date_requested"/>
                             <field name="settlement_move_id" invisible="not settlement_move_id"/>
                             <field name="justification_move_id" invisible="not justification_move_id"/>
-                            <field name="date_settled" invisible="not date_settled"/>
+                        </group>
+                    </group>
+                    <group string="Timeline">
+                        <group>
+                            <field name="date_requested"/>
+                            <field name="date_submitted"/>
+                            <field name="date_approved"/>
+                            <field name="date_settlement_submitted"/>
+                        </group>
+                        <group>
+                            <field name="date_settlement_approved"/>
+                            <field name="date_settled"/>
+                            <field name="date_documents_submitted"/>
+                            <field name="date_justified"/>
                         </group>
                     </group>
                 </sheet>
@@ -84,6 +96,9 @@
                 <field name="journal_id" optional="hide"/>
                 <field name="amount" sum="Total"/>
                 <field name="currency_id" column_invisible="1"/>
+                <field name="date_requested" optional="hide"/>
+                <field name="date_settled" optional="hide"/>
+                <field name="date_justified" optional="hide"/>
                 <field name="is_legacy" optional="hide"/>
                 <field name="state" widget="badge"
                        decoration-info="state in ('draft', 'submitted')"
