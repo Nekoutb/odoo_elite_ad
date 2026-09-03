@@ -18,7 +18,7 @@
         <field name="name">res.partner.form.inherit.clearance.manager</field>
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="elite_clearance.res_partner_view_form_clearance"/>
-        <field name="groups_id" eval="[(4, ref('elite_clearance.group_clearance_manager'))]"/>
+        <field name="group_ids" eval="[(4, ref('elite_clearance.group_clearance_manager'))]"/>
         <field name="arch" type="xml">
             <!-- A Clearance Manager may correct a slug; everyone else reads it.
                  Correcting one does not rename analytic accounts already

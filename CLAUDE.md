@@ -161,7 +161,11 @@ Customs clearance job files for a logistics/clearance services provider.
 - `<group expand="0">` invalid in search views. Kanban template is
   `<t t-name="card">`. `t-esc`→`t-out`. `_sql_constraints` is IGNORED —
   use `models.Constraint` class attributes (name starts with `_`).
-  `groups_id`→`group_ids`. Demo data needs `--with-demo` (default flipped).
+  `groups_id`→`group_ids` — including the field that restricts an
+  `ir.ui.view` to groups, which cost a CI cycle on 03/09/2026 despite
+  being written down right here; `tools/check_renamed_fields.py` now
+  fails the static job on it. Demo data needs `--with-demo` (default
+  flipped).
 - **readonly fields in one2many lists are DROPPED on save for new rows**
   unless `force_save="1"` — this caused our worst bug. Always browser-test
   the real save path; unit tests run as admin and miss access errors.
@@ -209,7 +213,9 @@ Customs clearance job files for a logistics/clearance services provider.
 - Logs: `docker compose logs odoo`
 - Tests (throwaway db, currently 59 tests across both modules, must stay green):
   `docker compose run --rm odoo odoo -d clr_test -i elite_clearance,elite_clearance_teese --with-demo --test-enable --test-tags /elite_clearance,/elite_clearance_teese --stop-after-init`
-- Static repo checks CI also runs: `python tools/check_manifest.py addons/elite_clearance addons/elite_clearance_teese`
+- Static repo checks CI also runs:
+  `python tools/check_manifest.py addons/elite_clearance addons/elite_clearance_teese`
+  `python tools/check_renamed_fields.py addons/elite_clearance addons/elite_clearance_teese`
 
 ## Roadmap / backlog (owner-approved)
 1. Odoo.sh: project exists, production branch is `prod` (Odoo.sh pins the
