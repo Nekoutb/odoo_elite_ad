@@ -380,7 +380,10 @@ class LogisticsLegacyImport(models.Model):
                 'partner_id': partner.id,
                 'service_type_id': service.id,
                 'company_id': company.id,
-                'state': 'done' if closed else 'in_progress',
+                # A record, not live work. Reopening is an explicit,
+                # approved exception - see
+                # logistics.file.action_request_reopen_imported.
+                'state': 'imported',
                 'date_opened': opened,
                 'date_closed': _d(r['closed_date']) if closed else False,
                 'port_id': maps['port'].get(r['port_name'].strip().upper()).id if r['port_name'].strip() else False,
@@ -413,7 +416,7 @@ class LogisticsLegacyImport(models.Model):
                 'partner_id': company.partner_id.id,
                 'service_type_id': maps['service_type'].get('AUTRE', next(iter(maps['service_type'].values()))).id,
                 'company_id': company.id,
-                'state': 'in_progress',
+                'state': 'imported',
                 'date_opened': fields.Date.context_today(self),
                 'legacy_id': UNALLOCATED_LEGACY_ID,
                 'legacy_type_name': "Advances with no dossier in Teese",

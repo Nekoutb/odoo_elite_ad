@@ -17,6 +17,23 @@
                     <button name="action_refuse_waiver" type="object" string="Refuse Waiver"
                             invisible="waiver_state != 'requested'"
                             groups="elite_clearance.group_clearance_manager"/>
+                    <button name="action_request_reopen_imported" type="object" string="Request Reopening"
+                            invisible="state != 'imported' or reopen_request_state == 'requested'"
+                            groups="elite_clearance.group_clearance_finance"/>
+                    <button name="action_approve_reopen_imported" type="object" string="Approve Reopening"
+                            class="oe_highlight" invisible="reopen_request_state != 'requested'"
+                            groups="elite_clearance.group_clearance_ops_manager"/>
+                    <button name="action_refuse_reopen_imported" type="object" string="Refuse Reopening"
+                            invisible="reopen_request_state != 'requested'"
+                            groups="elite_clearance.group_clearance_ops_manager"/>
+                    <button name="action_request_advance_waiver" type="object" string="Request Advance Waiver"
+                            invisible="not unjustified_advance_total or advance_waiver_state in ('requested', 'approved') or state not in ('in_progress', 'ops_closed')"/>
+                    <button name="action_approve_advance_waiver" type="object" string="Approve Advance Waiver"
+                            class="oe_highlight" invisible="advance_waiver_state != 'requested'"
+                            groups="elite_clearance.group_clearance_ops_manager"/>
+                    <button name="action_refuse_advance_waiver" type="object" string="Refuse Advance Waiver"
+                            invisible="advance_waiver_state != 'requested'"
+                            groups="elite_clearance.group_clearance_ops_manager"/>
                     <button name="%(action_document_date_wizard)d" type="action" string="Set Received Date/Time"
                             invisible="state == 'cancel' or not document_ids"/>
                     <button name="action_reload_checklist" type="object" string="Reload Checklist"
@@ -34,7 +51,7 @@
                             groups="elite_clearance.group_clearance_manager"
                             context="{'default_file_id': id}"/>
                     <button name="action_cancel" type="object" string="Cancel"
-                            invisible="state in ('done', 'cancel')"/>
+                            invisible="state in ('done', 'cancel', 'imported')"/>
                     <button name="action_reset_to_draft" type="object" string="Reset to Draft"
                             invisible="state != 'cancel'"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,in_progress,ops_closed,done"/>
@@ -54,6 +71,11 @@
                     </div>
                     <div class="alert alert-info" role="alert" invisible="waiver_state != 'approved'">
                         Working under an approved documentation waiver.
+                    </div>
+                    <div class="alert alert-secondary" role="alert" invisible="state != 'imported'">
+                        <b>Imported record.</b> Brought over from the legacy system as history — no work and no
+                        billing happen on it here. If something remains to be billed, the billing agent requests
+                        reopening and an Operations Manager approves it after review.
                     </div>
                     <div class="alert alert-danger" role="alert"
                          invisible="not unjustified_advance_total or advance_waiver_state == 'approved'">
@@ -201,6 +223,24 @@
                     <field name="waiver_reason" placeholder="Why should work begin before the file is complete? Name the missing documents and when they are expected."
                            invisible="waiver_state == 'none' and documents_complete"/>
 
+                    <separator string="Reopening of an Imported File"
+                               invisible="state != 'imported' and reopen_request_state == 'none'"/>
+                    <group invisible="state != 'imported' and reopen_request_state == 'none'">
+                        <group>
+                            <field name="reopen_request_state" readonly="1"/>
+                            <field name="reopen_requested_by_id" readonly="1"
+                                   invisible="reopen_request_state == 'none'"/>
+                            <field name="reopen_approved_by_id" readonly="1"
+                                   invisible="reopen_request_state not in ('approved', 'refused')"/>
+                            <field name="reopen_request_date" readonly="1"
+                                   invisible="reopen_request_state not in ('approved', 'refused')"/>
+                        </group>
+                    </group>
+                    <field name="reopen_request_reason"
+                           placeholder="What remains to be done or billed on this imported file, and why should it be worked in Odoo?"
+                           invisible="state != 'imported' and reopen_request_state == 'none'"
+                           readonly="state != 'imported'"/>
+
                     <separator string="Unjustified Staff Advances"
                                invisible="advance_waiver_state == 'none' and not unjustified_advance_total"/>
                     <group invisible="advance_waiver_state == 'none' and not unjustified_advance_total">
@@ -306,6 +346,8 @@
                 <filter name="draft" string="Draft" domain="[('state', '=', 'draft')]"/>
                 <filter name="in_progress" string="In Progress" domain="[('state', '=', 'in_progress')]"/>
                 <filter name="done" string="Closed" domain="[('state', '=', 'done')]"/>
+                <filter name="imported" string="Imported (Teese)" domain="[('state', '=', 'imported')]"/>
+                <filter name="reopen_pending" string="Reopening Awaiting Approval" domain="[('reopen_request_state', '=', 'requested')]"/>
                 <separator/>
                 <filter name="incomplete_docs" string="Documents Incomplete"
                         domain="[('documents_complete', '=', False)]"/>

@@ -15,10 +15,15 @@ working memory that is *not* obvious from the code.
   <in the Odoo.sh project settings — never in this repository, it is public>, Custom plan). The old Odoo Online db (elite-advisors,
   saas~19.3) holds no data and will lapse. Never build against 19.3 minor APIs.
 
-## The module: addons/elite_clearance (v19.0.9.0.0)
+## The module: addons/elite_clearance (v19.0.10.0.0)
 Customs clearance job files for a logistics/clearance services provider.
 - `logistics.file` — one file = one clearance job. States:
-  draft → in_progress → ops_closed → done (+cancel). Gate: cannot start work
+  draft → in_progress → ops_closed → done (+cancel, +imported). `imported`
+  = brought over from Teese as a record: no work, no new expense, no
+  billing, no cancelling. Billing one is an exception — the billing agent
+  (Finance) requests reopening with a reason, an Operations Manager approves
+  (`reopen_request_*`, approval kind `reopen_imported`) → in_progress.
+  Owner spec 03/09/2026. Gate: cannot start work
   with mandatory documents missing unless an approver signs a waiver
   (reason logged to chatter). Each file auto-creates an analytic account
   (plan "Clearance Files"); EVERY posting carries it.
@@ -26,7 +31,17 @@ Customs clearance job files for a logistics/clearance services provider.
   Receiving stamps ONE shared transaction timestamp (env.cr.now()) for all
   lines saved together; bulk override via the Set Received Date/Time wizard.
 - `logistics.expense` — out-of-pocket expenses. draft → submitted →
-  approved → settlement_approved → settled [→ justified, advances only].
+  approved → settlement_submitted → settlement_approved → settled
+  [→ justified, advances only]. Finance keys mode / vendor-or-holder /
+  journal on an `approved` expense and SENDS it
+  (`action_submit_settlement`); the Finance Manager approves or returns
+  (`action_return_settlement`); the money then leaves through the
+  **Cashier** for a cash journal or **Treasury** for bank/mobile money
+  (`_check_disburser` routes on `journal_id.type`; kinds `cash_disburse` /
+  `bank_disburse`). Both groups imply Finance. **Administrators
+  (`base.group_system`) are exempt from the "Finance never keys" creator
+  gate** — admin is seeded into every group, so it fired on the owner in
+  the lab; administrators configure, they do not operate.
 - **Segregation of duties (owner spec, 03/09/2026).** Groups are TEAMS:
   Operations / Customer Service / Transit (each with a Manager), Finance,
   Finance Manager, plus the older general Manager (config, doc waivers,
@@ -150,7 +165,7 @@ Customs clearance job files for a logistics/clearance services provider.
 - Apply code changes: `docker compose restart odoo` then Apps → module → Upgrade
   (XML/schema need the Upgrade; Python needs the restart).
 - Logs: `docker compose logs odoo`
-- Tests (throwaway db, currently 51 tests across both modules, must stay green):
+- Tests (throwaway db, currently 55 tests across both modules, must stay green):
   `docker compose run --rm odoo odoo -d clr_test -i elite_clearance,elite_clearance_teese --with-demo --test-enable --test-tags /elite_clearance,/elite_clearance_teese --stop-after-init`
 - Static repo checks CI also runs: `python tools/check_manifest.py addons/elite_clearance addons/elite_clearance_teese`
 

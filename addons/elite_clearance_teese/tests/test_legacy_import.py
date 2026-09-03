@@ -168,7 +168,7 @@ class TestLegacyImport(TransactionCase):
         self.assertEqual(f.incoterm_id.code, "CIF")
         self.assertEqual(f.customs_regime, "EX1")
         self.assertEqual(f.legacy_type_name, "MISE A LA CONSOMMATION")
-        self.assertEqual(f.state, 'in_progress')
+        self.assertEqual(f.state, 'imported', "History, not live work.")
         self.assertFalse(f.document_ids, "Historical files carry no checklist.")
         self.assertTrue(f.analytic_account_id)
 
@@ -182,7 +182,7 @@ class TestLegacyImport(TransactionCase):
     def test_03_closed_and_undated_dossier(self):
         self.batch.action_import()
         f = self._file(8003)
-        self.assertEqual(f.state, 'done')
+        self.assertEqual(f.state, 'imported')
         self.assertEqual(str(f.date_closed), "2026-08-21")
         self.assertEqual(str(f.date_opened), "2025-01-01", "Year of the code when no date was exported.")
         self.assertEqual(f.service_type_id.code, "ES")
@@ -263,6 +263,7 @@ class TestLegacyImport(TransactionCase):
         self.batch.action_import()
         f = self._file(8001)
         self.assertFalse(f.invoice_id)
+        self.assertEqual(f.state, 'imported')
         # nothing billable yet -> the guard that fires must be the state or
         # the accounts, not "already has invoice"
         f.customs_fee_amount = 1000
@@ -298,6 +299,49 @@ class TestLegacyImport(TransactionCase):
         att = self.env['ir.attachment'].search([
             ('res_model', '=', 'logistics.legacy.import'), ('res_id', '=', self.batch.id)])
         self.assertIn("wh_fact_validation.csv", att.mapped('name'))
+
+    def test_08b_an_imported_file_is_reopened_on_request_and_approval(self):
+        """An imported file takes no work. Billing one is an exception: the
+        billing agent asks with a reason, the Operations Manager approves
+        after review, and only then is it in the normal workflow."""
+        self.batch.action_import()
+        f = self._file(8001)
+        self.assertEqual(f.state, 'imported')
+        G = 'elite_clearance.group_clearance_'
+
+        def user(name, group):
+            return self.env['res.users'].create({
+                'name': name,
+                'login': name.lower().replace(' ', '.') + "@reopen.test",
+                'group_ids': [(6, 0, [self.env.ref(G + group).id])]})
+        finance = user("Billing Agent", 'finance')
+        ops_manager = user("Ops Manager R", 'ops_manager')
+        plain = user("Plain R", 'user')
+
+        # no new work on a record
+        with self.assertRaises(UserError):
+            self.env['logistics.expense'].create({
+                'file_id': f.id,
+                'category_id': f.expense_ids[0].category_id.id,
+                'description': "New work", 'amount': 1000})
+        # and it cannot be cancelled either - it is history
+        with self.assertRaises(UserError):
+            f.action_cancel()
+
+        with self.assertRaises(UserError):
+            f.with_user(finance).action_request_reopen_imported()   # no reason
+        f.write({'reopen_request_reason': "Client asked for the final invoice."})
+        f.with_user(finance).action_request_reopen_imported()
+        self.assertEqual(f.reopen_request_state, 'requested')
+        self.assertEqual(f.reopen_requested_by_id, finance)
+        self.assertEqual(f.state, 'imported', "Still a record until approved.")
+
+        with self.assertRaises(UserError):
+            f.with_user(plain).action_approve_reopen_imported()
+        f.with_user(ops_manager).action_approve_reopen_imported()
+        self.assertEqual(f.state, 'in_progress')
+        self.assertEqual(f.reopen_request_state, 'approved')
+        self.assertEqual(f.reopen_approved_by_id, ops_manager)
 
     def test_09_rows_after_the_cutoff_are_counted_and_flagged(self):
         batch = self.env['logistics.legacy.import'].create({

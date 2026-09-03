@@ -8,7 +8,7 @@ billing that clears the balance sheet.
 | | |
 |---|---|
 | Module | `addons/elite_clearance` |
-| Version | `19.0.9.0.0` |
+| Version | `19.0.10.0.0` |
 | Odoo | 19.0 Community (lab) / 19.0 Enterprise (production, Odoo.sh) |
 | Licence | LGPL-3 |
 | Currency / locale | XAF, Cameroon (SYSCOHADA — `l10n_cm`) |
@@ -31,18 +31,21 @@ stamps one shared transaction timestamp (`env.cr.now()`) across everything
 saved together; the *Set Received Date/Time* wizard back-dates in bulk.
 
 **`logistics.expense` — out-of-pocket disbursements.**
-`draft → submitted → approved → settlement_approved → settled`, and for
-advances a further `justified` step that requires at least one attachment.
+`draft → submitted → approved → settlement_submitted → settlement_approved
+→ settled`, and for advances a further `justified` step that requires at
+least one attachment.
 Each step is a different pair of hands:
 
 | Step | Who |
 |---|---|
 | Key and submit | Operations, Customer Service or Transit team — **never Finance** |
 | Approve | Operations, Customer Service or Transit **Manager** |
-| Set how it is paid (mode, vendor, holder, journal) | Finance — the originator cannot even see these fields |
-| Sign the settlement | Finance **Manager** |
-| Settle, justify, bill | Finance |
+| Set how it is paid (mode, vendor, holder, journal) and send it on | Finance — the originator cannot even see these fields |
+| Sign the settlement, or return it to Finance | Finance **Manager** |
+| Disburse cash / pay from the bank | **Cashier** (tills) / **Treasury** (bank, mobile money) |
+| Justify an advance, raise the invoice | Finance |
 | Close the file for operations | Operations **Manager**, and only once the customs fee is keyed |
+| Reopen an imported file | Finance requests with a reason; Operations **Manager** approves after review |
 
 | Step | Debit | Credit |
 |---|---|---|

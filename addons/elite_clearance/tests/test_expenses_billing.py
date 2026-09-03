@@ -68,7 +68,7 @@ class TestExpensesAndBilling(TransactionCase):
 
     def test_01_direct_expense_posts_oop_vs_journal(self):
         exp = self._expense(500000)
-        exp.action_submit(); exp.action_approve(); exp.action_approve_settlement(); exp.action_settle()
+        exp.action_submit(); exp.action_approve(); exp.action_submit_settlement(); exp.action_approve_settlement(); exp.action_settle()
         self.assertEqual(exp.state, 'settled')
         move = exp.settlement_move_id
         self.assertEqual(move.state, 'posted')
@@ -86,7 +86,7 @@ class TestExpensesAndBilling(TransactionCase):
 
     def test_02_advance_sits_on_employee_until_justified(self):
         exp = self._expense(200000, mode='advance', journal=self.maviance_journal)
-        exp.action_submit(); exp.action_approve(); exp.action_approve_settlement(); exp.action_settle()
+        exp.action_submit(); exp.action_approve(); exp.action_submit_settlement(); exp.action_approve_settlement(); exp.action_settle()
         move = exp.settlement_move_id
         debit = move.line_ids.filtered(lambda l: l.debit > 0)
         self.assertEqual(debit.account_id, self.adv_account,
@@ -114,7 +114,7 @@ class TestExpensesAndBilling(TransactionCase):
         exp.action_submit()
         with self.assertRaises(UserError):
             self.file.action_close_operations()
-        exp.action_approve(); exp.action_approve_settlement(); exp.action_settle()
+        exp.action_approve(); exp.action_submit_settlement(); exp.action_approve_settlement(); exp.action_settle()
         self.file.action_close_operations()
         self.assertEqual(self.file.state, 'ops_closed')
         # no new expenses on a closed file
@@ -123,7 +123,7 @@ class TestExpensesAndBilling(TransactionCase):
 
     def test_04_invoice_clears_oop_and_adds_fees(self):
         exp = self._expense(1000000)
-        exp.action_submit(); exp.action_approve(); exp.action_approve_settlement(); exp.action_settle()
+        exp.action_submit(); exp.action_approve(); exp.action_submit_settlement(); exp.action_approve_settlement(); exp.action_settle()
         self.file.customs_fee_amount = 75000
         self.file.action_close_operations()
         self.assertEqual(self.file.commission_amount, 20000)  # 2% of 1,000,000
@@ -163,7 +163,7 @@ class TestExpensesAndBilling(TransactionCase):
 
     def test_06_settle_requires_finance_group(self):
         exp = self._expense(50000)
-        exp.action_submit(); exp.action_approve(); exp.action_approve_settlement()
+        exp.action_submit(); exp.action_approve(); exp.action_submit_settlement(); exp.action_approve_settlement()
         # settlement is signed; only the Finance group is missing
         user = self.env['res.users'].create({
             'name': "Ops Only", 'login': "ops.only@test.example",
@@ -198,7 +198,7 @@ class TestExpensesAndBilling(TransactionCase):
             'description': "Duty", 'amount': 100000,
             'payment_mode': 'direct', 'vendor_id': self.customs.id,
             'journal_id': self.momo_journal.id})
-        exp.action_submit(); exp.action_approve(); exp.action_approve_settlement(); exp.action_settle()
+        exp.action_submit(); exp.action_approve(); exp.action_submit_settlement(); exp.action_approve_settlement(); exp.action_settle()
         f1.action_close_operations()
         f1.action_create_invoice()
         self.assertTrue(f1.invoice_id.name.startswith("EL" + yy + "IM"),
@@ -256,7 +256,7 @@ class TestExpensesAndBilling(TransactionCase):
     def test_11_cancel_blocked_once_the_invoice_is_posted(self):
         """Money has left the building: the correction is a credit note."""
         exp = self._expense(400000)
-        exp.action_submit(); exp.action_approve(); exp.action_approve_settlement(); exp.action_settle()
+        exp.action_submit(); exp.action_approve(); exp.action_submit_settlement(); exp.action_approve_settlement(); exp.action_settle()
         self.file.action_close_operations()
         self.file.action_create_invoice()
         self.file.invoice_id.action_post()
@@ -280,7 +280,7 @@ class TestExpensesAndBilling(TransactionCase):
             'name': "Clearance Sales", 'type': 'sale', 'code': 'XCLS'})
         self.env.company.clearance_sale_journal_id = journal
         exp = self._expense(150000)
-        exp.action_submit(); exp.action_approve(); exp.action_approve_settlement(); exp.action_settle()
+        exp.action_submit(); exp.action_approve(); exp.action_submit_settlement(); exp.action_approve_settlement(); exp.action_settle()
         self.file.action_close_operations()
         self.file.action_create_invoice()
         self.assertEqual(self.file.invoice_id.journal_id, journal)
@@ -292,7 +292,7 @@ class TestExpensesAndBilling(TransactionCase):
         self._expense(60000)                       # draft — counted, not owed
         settled = self._expense(90000)
         settled.action_submit()
-        settled.action_approve(); settled.action_approve_settlement()
+        settled.action_approve(); settled.action_submit_settlement(); settled.action_approve_settlement()
         settled.action_settle()
         self.file.invalidate_recordset(['expense_count', 'oop_total'])
         self.assertEqual(self.file.expense_count, 2)

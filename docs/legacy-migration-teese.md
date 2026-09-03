@@ -93,6 +93,14 @@ LA CONSOMMATION). The label is the only reliable signal:
 The raw label is kept on the file as `legacy_type_name` so the mapping can be
 revisited. The code itself is imported verbatim as the file reference.
 
+**Imported files are `imported`, not in progress.** Every dossier arrives in
+its own state, *Imported*: a record. No expense can be keyed on it, no
+invoice raised, and it cannot be cancelled — the form says so in a banner.
+If something remains to be billed, the billing agent requests reopening with
+a reason and an Operations Manager approves after review; only then is the
+file *In Progress* and inside the normal gates. The two dossiers Teese had
+closed keep their closure date as a fact.
+
 **Eight duplicate codes.** The first occurrence keeps the code; the second is
 imported as `<code>-<legacy id>` and logged. Nothing is dropped.
 

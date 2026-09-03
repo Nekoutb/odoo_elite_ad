@@ -58,6 +58,8 @@ class TestSegregationOfDuties(TransactionCase):
         cls.finance = user("Finance Clerk", G + 'finance')
         cls.finance_manager = user("Finance Manager", G + 'finance_manager')
         cls.ops_manager = user("Ops Manager", G + 'ops_manager')
+        cls.cashier = user("Till Cashier", G + 'cashier')
+        cls.treasury = user("Treasury Officer", G + 'treasury')
 
     def _vals(self, amount=100000):
         # What an originating team keys: the cost, and nothing about how it
@@ -131,6 +133,11 @@ class TestSegregationOfDuties(TransactionCase):
             'journal_id': self.journal.id,
             'vendor_id': self.vendor.id,
         })
+        # the Finance Manager cannot sign what Finance has not sent on
+        with self.assertRaises(UserError):
+            exp.with_user(self.finance_manager).action_approve_settlement()
+        exp.with_user(self.finance).action_submit_settlement()
+        self.assertEqual(exp.state, 'settlement_submitted')
         # a Finance clerk proposes; only the Finance Manager signs
         with self.assertRaises(UserError):
             exp.with_user(self.finance).action_approve_settlement()
@@ -144,6 +151,47 @@ class TestSegregationOfDuties(TransactionCase):
         self.assertEqual(
             exp.settlement_move_id.line_ids.filtered(lambda l: l.debit > 0).account_id,
             self.engaged)
+
+    # -- who pays out -----------------------------------------------------
+    def test_06b_cash_leaves_by_the_cashier_bank_by_treasury(self):
+        """Money leaves through whoever holds it: the till by the Cashier,
+        the bank by Treasury. A Finance clerk who is neither cannot pay."""
+        bank = self.env['account.journal'].create({
+            'name': "Bank", 'type': 'bank', 'code': 'XBNK3'})
+        cash_exp, bank_exp = self._keyed_by_ops(70000), self._keyed_by_ops(80000)
+        for exp, journal in ((cash_exp, self.journal), (bank_exp, bank)):
+            exp.with_user(self.ops).action_submit()
+            exp.with_user(self.cs_manager).action_approve()
+            exp.with_user(self.finance).write({
+                'payment_mode': 'direct', 'journal_id': journal.id,
+                'vendor_id': self.vendor.id})
+            exp.with_user(self.finance).action_submit_settlement()
+            exp.with_user(self.finance_manager).action_approve_settlement()
+            self.assertEqual(exp.state, 'settlement_approved')
+        # a Finance clerk holds neither the till nor the bank
+        with self.assertRaises(UserError):
+            cash_exp.with_user(self.finance).action_settle()
+        # and neither may reach into the other's money
+        with self.assertRaises(UserError):
+            cash_exp.with_user(self.treasury).action_settle()
+        with self.assertRaises(UserError):
+            bank_exp.with_user(self.cashier).action_settle()
+        # the right hands pass the check; the posting itself runs from the
+        # superuser env, as every other suite does
+        cash_exp.with_user(self.cashier)._check_disburser()
+        bank_exp.with_user(self.treasury)._check_disburser()
+        cash_exp.with_env(self.env).action_settle()
+        bank_exp.with_env(self.env).action_settle()
+        self.assertEqual(cash_exp.state, 'settled')
+        self.assertEqual(bank_exp.state, 'settled')
+
+    def test_06c_an_administrator_may_key_an_expense(self):
+        """Admin sits in every group, Finance included, so the "Finance never
+        keys" gate would lock the person configuring the system out of their
+        own lab. Administrators configure; they do not operate."""
+        admin = self.env.ref('base.user_admin')
+        exp = self.env['logistics.expense'].with_user(admin).create(self._vals())
+        self.assertEqual(exp.state, 'draft')
 
     # -- who closes -------------------------------------------------------
     def test_07_close_needs_the_customs_fee_and_an_operations_manager(self):

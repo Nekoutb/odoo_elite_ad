@@ -823,6 +823,11 @@ class LogisticsFile(models.Model):
 
     def action_cancel(self):
         for file in self:
+            if file.state == 'imported':
+                raise UserError(self.env._(
+                    "%s is an imported record of work done in the legacy "
+                    "system. It is history and cannot be cancelled.",
+                    file.name))
             if file.state == 'draft':
                 # An empty draft is the author's own to throw away.
                 file.state = 'cancel'
