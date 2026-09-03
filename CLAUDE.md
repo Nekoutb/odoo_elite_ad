@@ -12,7 +12,7 @@ working memory that is *not* obvious from the code.
   odoo:19 + postgres:16, port 8069). `addons/elite_clearance` is the ONLY
   deliverable — everything else here is disposable scaffolding.
 - Production target: fresh Odoo.sh project on 19.0 (Enterprise subscription
-  M260529302698425, Custom plan). The old Odoo Online db (elite-advisors,
+  <in the Odoo.sh project settings — never in this repository, it is public>, Custom plan). The old Odoo Online db (elite-advisors,
   saas~19.3) holds no data and will lapse. Never build against 19.3 minor APIs.
 
 ## The module: addons/elite_clearance (v19.0.6.0.0)

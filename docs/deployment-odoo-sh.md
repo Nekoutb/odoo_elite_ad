@@ -8,7 +8,7 @@ logging in: an active push webhook to `https://www.odoo.sh/paas/webhook/github`
 check the webhook first.
 
 Target: that Odoo.sh project on **19.0**, Enterprise subscription
-M260529302698425, Custom plan. The old Odoo Online database (`elite-advisors`,
+<in the Odoo.sh project settings — never in this repository, it is public>, Custom plan. The old Odoo Online database (`elite-advisors`,
 saas~19.3) holds no data and is being allowed to lapse — never build against
 19.3 minor APIs.
 
