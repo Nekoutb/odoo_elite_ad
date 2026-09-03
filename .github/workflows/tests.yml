@@ -85,3 +85,22 @@ jobs:
         with:
           name: odoo-log
           path: odoo.log
+
+  # Odoo.sh deploys a push to prod / staging by itself, through its webhook;
+  # nothing here causes that. This job RECORDS the push against the matching
+  # GitHub Environment, so the repository's Environments view shows what is
+  # on each Odoo.sh stage and links to it. It runs only after the suite is
+  # green, so a red build never appears as a deployment.
+  record-deployment:
+    name: Record deployment on ${{ github.ref_name }}
+    needs: [static, odoo-tests]
+    if: github.event_name == 'push' && (github.ref_name == 'prod' || github.ref_name == 'staging')
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref_name == 'prod' && 'production' || 'staging' }}
+      url: ${{ github.ref_name == 'prod' && 'https://nekoutb-odoo-elite-ad.odoo.com' || 'https://www.odoo.sh/project/nekoutb-odoo-elite-ad' }}
+    steps:
+      - name: Note what Odoo.sh is deploying
+        run: |
+          echo "Odoo.sh builds branch '${{ github.ref_name }}' at ${{ github.sha }} on its own."
+          echo "Recorded here against the '${{ github.ref_name == 'prod' && 'production' || 'staging' }}' environment."
