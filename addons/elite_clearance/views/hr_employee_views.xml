@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="hr_employee_view_form_clearance" model="ir.ui.view">
+        <field name="name">hr.employee.form.inherit.clearance</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_open_clearance_advances" type="object"
+                        class="oe_stat_button" icon="fa-money"
+                        groups="elite_clearance.group_clearance_user"
+                        invisible="not clearance_advance_count">
+                    <field name="clearance_advance_count" widget="statinfo"
+                           string="Unjustified"/>
+                </button>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Clearance Advances" name="clearance_advances"
+                      groups="elite_clearance.group_clearance_user">
+                    <group>
+                        <group>
+                            <field name="clearance_currency_id" invisible="1"/>
+                            <field name="work_contact_id" readonly="1"
+                                   string="Auxiliary on 421101"
+                                   help="Advances are carried on 421101 Personnel débours avancés with this contact as the auxiliary. Their own ledger and balance are the Partner Ledger for this contact on that account."/>
+                            <field name="clearance_advance_balance" readonly="1"/>
+                        </group>
+                    </group>
+                    <field name="clearance_advance_ids" readonly="1">
+                        <list decoration-warning="state == 'settled'"
+                              decoration-muted="state == 'cancel'">
+                            <field name="name"/>
+                            <field name="file_id"/>
+                            <field name="description"/>
+                            <field name="amount" sum="Total"/>
+                            <field name="currency_id" column_invisible="1"/>
+                            <field name="date_settled" optional="show"/>
+                            <field name="state" widget="badge"
+                                   decoration-warning="state == 'settled'"
+                                   decoration-success="state == 'justified'"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

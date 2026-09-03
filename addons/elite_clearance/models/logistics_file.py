@@ -126,6 +126,31 @@ class LogisticsFile(models.Model):
     customs_fee_amount = fields.Monetary(
         string="Customs Service Fee", currency_field='currency_id', tracking=True,
         help="Keyed by the billing agent from the customs declaration.")
+    unjustified_advance_total = fields.Monetary(
+        compute='_compute_unjustified_advance_total', store=True,
+        currency_field='currency_id', string="Unjustified Staff Advances",
+        help="Advanced to staff and settled, but not yet justified with "
+             "supporting documents — still on 421101 against the holder. "
+             "This is NOT billable and blocks the file until justified or "
+             "waived.")
+    advance_waiver_state = fields.Selection(
+        [
+            ('none', "Not requested"),
+            ('requested', "Awaiting approval"),
+            ('approved', "Approved"),
+            ('refused', "Refused"),
+        ],
+        default='none', required=True, tracking=True, copy=False,
+        string="Unjustified Advance Waiver")
+    advance_waiver_reason = fields.Text(
+        string="Advance Waiver Explanation", copy=False,
+        help="Why this file should be billed while a staff advance is still "
+             "unsupported, and how the advance will be recovered.")
+    advance_waiver_requested_by_id = fields.Many2one(
+        'res.users', readonly=True, copy=False)
+    advance_waiver_approved_by_id = fields.Many2one(
+        'res.users', readonly=True, copy=False)
+    advance_waiver_date = fields.Datetime(readonly=True, copy=False)
     invoice_id = fields.Many2one(
         'account.move', string="Client Invoice", readonly=True, copy=False)
     invoice_state = fields.Selection(related='invoice_id.state', string="Invoice Status")
@@ -169,6 +194,14 @@ class LogisticsFile(models.Model):
                 e.amount for e in file.expense_ids
                 if e.state == 'justified'
                 or (e.state == 'settled' and e.payment_mode == 'direct'))
+
+    @api.depends('expense_ids.state', 'expense_ids.amount',
+                 'expense_ids.payment_mode')
+    def _compute_unjustified_advance_total(self):
+        for file in self:
+            file.unjustified_advance_total = sum(
+                e.amount for e in file.expense_ids
+                if e.payment_mode == 'advance' and e.state == 'settled')
 
     @api.depends('oop_total', 'service_type_id.commission_rate')
     def _compute_fee_amounts(self):
@@ -320,6 +353,29 @@ class LogisticsFile(models.Model):
         for file in self:
             file.company_id._clearance_check_approver('waiver')
 
+    def _check_advances_billable(self):
+        """Only engaged disbursements are billable.
+
+        Anything still on 421101 is a staff debt with no supporting document
+        behind it. Billing it would recharge the client for money we cannot
+        evidence, so the file stops here unless an Operations Manager signs
+        for it in writing.
+        """
+        self.ensure_one()
+        if not self.unjustified_advance_total:
+            return
+        if self.advance_waiver_state == 'approved':
+            return
+        holders = self.expense_ids.filtered(
+            lambda e: e.payment_mode == 'advance' and e.state == 'settled'
+        ).mapped('employee_id.name')
+        raise UserError(self.env._(
+            "%(name)s carries %(amount)s advanced to staff (%(who)s) that is "
+            "still unjustified on 421101. Justify it with the supporting "
+            "documents, or obtain an Operations Manager's waiver.",
+            name=self.name, amount=self.unjustified_advance_total,
+            who=", ".join(sorted(set(holders))) or "-"))
+
     # =====================================================================
     # Actions
     # =====================================================================
@@ -378,6 +434,60 @@ class LogisticsFile(models.Model):
             file.message_post(body=self.env._("Documentation waiver refused."))
         return True
 
+    def action_request_advance_waiver(self):
+        for file in self:
+            if not file.unjustified_advance_total:
+                raise UserError(self.env._(
+                    "%s has no unjustified staff advance — nothing to waive.",
+                    file.name))
+            if not file.advance_waiver_reason:
+                raise UserError(self.env._(
+                    "Explain why %s should be billed with an unsupported "
+                    "staff advance, and how the advance will be recovered.",
+                    file.name))
+            file.write({'advance_waiver_state': 'requested',
+                        'advance_waiver_requested_by_id': self.env.user.id})
+            file.message_post(body=self.env._(
+                "Waiver requested for %(amount)s of unjustified staff "
+                "advances: %(reason)s",
+                amount=file.unjustified_advance_total,
+                reason=file.advance_waiver_reason))
+        return True
+
+    def action_approve_advance_waiver(self):
+        for file in self:
+            file.company_id._clearance_check_approver('advance_waiver')
+            if file.advance_waiver_state != 'requested':
+                raise UserError(self.env._(
+                    "No unjustified-advance waiver is awaiting approval on "
+                    "%s.", file.name))
+            file.write({'advance_waiver_state': 'approved',
+                        'advance_waiver_approved_by_id': self.env.user.id,
+                        'advance_waiver_date': fields.Datetime.now()})
+            # Spelled out because it is the point of the whole control: the
+            # waiver releases the FILE, never the money.
+            file.message_post(body=self.env._(
+                "Unjustified-advance waiver approved. %(amount)s stays on "
+                "421101 against the holder and is NOT recharged to the "
+                "client; it remains recoverable from the staff member.",
+                amount=file.unjustified_advance_total))
+        return True
+
+    def action_refuse_advance_waiver(self):
+        for file in self:
+            file.company_id._clearance_check_approver('advance_waiver')
+            if file.advance_waiver_state != 'requested':
+                raise UserError(self.env._(
+                    "No unjustified-advance waiver is awaiting approval on "
+                    "%s.", file.name))
+            file.write({'advance_waiver_state': 'refused',
+                        'advance_waiver_approved_by_id': self.env.user.id,
+                        'advance_waiver_date': fields.Datetime.now()})
+            file.message_post(body=self.env._(
+                "Unjustified-advance waiver refused: the advance must be "
+                "justified with supporting documents before billing."))
+        return True
+
     def action_start_work(self):
         for file in self:
             if file.state != 'draft':
@@ -402,13 +512,18 @@ class LogisticsFile(models.Model):
                 raise UserError(self.env._(
                     "Only a file in progress can be closed for operations "
                     "(%s).", file.name))
-            pending = file.expense_ids.filtered(lambda e: not e.is_final)
+            pending = file.expense_ids.filtered(
+                lambda e: not e.is_final
+                and not (e.payment_mode == 'advance' and e.state == 'settled'))
             if pending:
                 raise UserError(self.env._(
                     "%(name)s still has %(count)s expense(s) not settled or "
                     "justified: %(refs)s.",
                     name=file.name, count=len(pending),
                     refs=", ".join(pending.mapped('name'))))
+            # A settled-but-unjustified advance is handled separately: it is
+            # waivable, where a half-processed expense is simply unfinished.
+            file._check_advances_billable()
             file.state = 'ops_closed'
         return True
 
@@ -426,10 +541,13 @@ class LogisticsFile(models.Model):
                 file=self.name, inv=self.invoice_id.name or "in draft"))
         oop_account = self.company_id.clearance_oop_account_id
         fee_account = self.company_id.clearance_fee_account_id
+        # Re-checked here and not only at ops-close: a file can be reopened,
+        # expenses added, and closed again through the wizard.
+        self._check_advances_billable()
         if not oop_account or not fee_account:
             raise UserError(self.env._(
-                "Configure the Out-of-Pocket and Fee Income accounts under "
-                "Clearance → Configuration → Settings first."))
+                "Configure the Engaged Disbursements (47xx) and Fee Income "
+                "accounts under Clearance → Configuration → Settings first."))
         journal = self.company_id.clearance_sale_journal_id
         if not journal:
             journal = self.env['account.journal'].search(
@@ -498,10 +616,16 @@ class LogisticsFile(models.Model):
         })
         self.invoice_id = invoice
         self.message_post(body=self.env._(
-            "Draft invoice created: out-of-pocket %(oop)s + commission "
-            "%(com)s + customs fee %(fee)s.",
+            "Draft invoice created: engaged disbursements %(oop)s + "
+            "commission %(com)s + customs fee %(fee)s.",
             oop=self.oop_total, com=self.commission_amount,
             fee=self.customs_fee_amount))
+        if self.unjustified_advance_total:
+            self.message_post(body=self.env._(
+                "Billed under an approved waiver: %(amount)s of staff "
+                "advances was NOT invoiced and stays on 421101 against the "
+                "holder, to recover separately.",
+                amount=self.unjustified_advance_total))
         return {
             'type': 'ir.actions.act_window',
             'res_model': 'account.move',

@@ -22,3 +22,5 @@ class ResConfigSettings(models.TransientModel):
         related='company_id.clearance_finance_approver_ids', readonly=False)
     clearance_billing_approver_ids = fields.Many2many(
         related='company_id.clearance_billing_approver_ids', readonly=False)
+    clearance_advance_waiver_approver_ids = fields.Many2many(
+        related='company_id.clearance_advance_waiver_approver_ids', readonly=False)

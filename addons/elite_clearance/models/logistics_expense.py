@@ -27,9 +27,16 @@ class LogisticsExpense(models.Model):
         draft -> submitted -> approved -> settled -> justified  (via advance)
 
     Postings (all carry the file's analytic account):
-        direct settle:   Dr OOP account            / Cr settlement journal
-        advance settle:  Dr Employee advances      / Cr settlement journal
-        justification:   Dr OOP account            / Cr Employee advances
+        direct settle:   Dr 47xx Débours engagés    / Cr settlement journal
+        advance settle:  Dr 421101 Personnel        / Cr settlement journal
+                            débours avancés
+                            (auxiliary = the staff member's work contact)
+        justification:   Dr 47xx Débours engagés    / Cr 421101
+
+    The justification entry is the reclassification that turns a staff debt
+    into an engaged, billable disbursement. Only 47xx is ever recharged to
+    the client; anything still sitting on 421101 is the staff member's own
+    liability and blocks billing until justified or waived.
     """
 
     _name = 'logistics.expense'
@@ -91,12 +98,21 @@ class LogisticsExpense(models.Model):
                 or (exp.state == 'settled' and exp.payment_mode == 'direct')
                 or exp.state == 'cancel')
 
-    @api.constrains('payment_mode', 'employee_id', 'state')
+    @api.constrains('payment_mode', 'employee_id')
     def _check_advance_holder(self):
+        """Money advanced against 421101 has to stand against somebody.
+
+        The holder is required from the moment the expense is keyed, not from
+        the moment it is submitted: an advance with no registered staff
+        member has no auxiliary, so there is no ledger to carry it and no one
+        to chase for the receipts.
+        """
         for exp in self:
-            if exp.payment_mode == 'advance' and exp.state != 'draft' and not exp.employee_id:
+            if exp.payment_mode == 'advance' and not exp.employee_id:
                 raise ValidationError(self.env._(
-                    "A cash advance needs an advance holder (%s).", exp.name))
+                    "An advance must be held by a registered staff member "
+                    "(%s). Create the employee first, then hand over the "
+                    "money.", exp.name))
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -182,12 +198,11 @@ class LogisticsExpense(models.Model):
             else:
                 debit_account = exp._get_company_account(
                     'clearance_advance_account_id', "Employee Advances account")
-                partner = exp.employee_id.work_contact_id
-                if not partner:
-                    raise UserError(self.env._(
-                        "Employee %s has no work contact to post the advance "
-                        "against.", exp.employee_id.name))
-                analytic = False  # OOP analytic lands at justification
+                # The auxiliary on 421101. Created on demand rather than
+                # refused, because hr only makes the work contact as a side
+                # effect of writing a work e-mail or phone.
+                partner = exp.employee_id._clearance_auxiliary_partner()
+                analytic = False  # the analytic tag lands at justification
             credit_account = exp.journal_id.default_account_id
             if not credit_account:
                 raise UserError(self.env._(
@@ -249,7 +264,7 @@ class LogisticsExpense(models.Model):
                 raise UserError(self.env._(
                     "Configure the Clearance Miscellaneous Journal in "
                     "Settings."))
-            partner = exp.employee_id.work_contact_id
+            partner = exp.employee_id._clearance_auxiliary_partner()
             move = self.env['account.move'].create({
                 'move_type': 'entry',
                 'journal_id': journal.id,
@@ -274,6 +289,11 @@ class LogisticsExpense(models.Model):
             })
             move.action_post()
             exp.write({'justification_move_id': move.id, 'state': 'justified'})
+            exp.message_post(body=self.env._(
+                "Advance justified: %(amount)s reclassified from 421101 "
+                "(held by %(who)s) to the engaged disbursements account. "
+                "It is now billable.",
+                amount=exp.amount, who=exp.employee_id.name))
 
     def action_reset_to_draft(self):
         for exp in self:

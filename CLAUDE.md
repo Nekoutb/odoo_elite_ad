@@ -15,7 +15,7 @@ working memory that is *not* obvious from the code.
   M260529302698425, Custom plan). The old Odoo Online db (elite-advisors,
   saas~19.3) holds no data and will lapse. Never build against 19.3 minor APIs.
 
-## The module: addons/elite_clearance (v19.0.4.0.0)
+## The module: addons/elite_clearance (v19.0.5.0.0)
 Customs clearance job files for a logistics/clearance services provider.
 - `logistics.file` — one file = one clearance job. States:
   draft → in_progress → ops_closed → done (+cancel). Gate: cannot start work
@@ -27,12 +27,28 @@ Customs clearance job files for a logistics/clearance services provider.
   lines saved together; bulk override via the Set Received Date/Time wizard.
 - `logistics.expense` — out-of-pocket expenses. draft → submitted →
   approved → settled [→ justified, advances only].
-  Postings: direct settle Dr OOP / Cr journal (cash|bank|Mobile Money|
-  Maviance journals); advance settle Dr Employee Advances / Cr journal
-  (partner = employee.work_contact_id); justify (requires ≥1 attachment)
-  Dr OOP / Cr Advances. Accounts configured per company in Settings →
-  Clearance (res.company fields clearance_*_account_id,
-  clearance_misc_journal_id, clearance_sale_journal_id).
+  Postings: direct settle Dr 47xx Débours engagés / Cr journal (cash|bank|
+  Mobile Money|Maviance); advance settle Dr 421101 Personnel débours avancés
+  / Cr journal; justify (requires ≥1 attachment) Dr 47xx / Cr 421101.
+  Accounts configured per company in Settings → Clearance (res.company
+  fields clearance_*_account_id, clearance_misc_journal_id,
+  clearance_sale_journal_id).
+- **Staff advances (owner spec, 03/09/2026).** An advance MUST name a
+  registered `hr.employee` — enforced from keying, not from submission.
+  421101 is ONE account with the staff member's `work_contact_id` as the
+  auxiliary (partner-as-auxiliary, Odoo's native subsidiary ledger); there
+  are deliberately no per-employee accounts in the chart. Per-staff balances
+  come from the Partner Ledger. `hr.employee.create` is overridden to make
+  that contact, because hr only creates it as a side effect of writing a
+  work e-mail or phone. Justification is the reclassification 421101 → 47xx
+  and is the ONLY thing that makes a disbursement billable.
+- **The unjustified-advance gate.** `unjustified_advance_total` (settled
+  advances not yet justified) blocks ops-close and billing. A new
+  `group_clearance_ops_manager` — deliberately NOT the Manager who approved
+  the expense nor the Finance user who paid it — may waive it with a written
+  explanation (`advance_waiver_*` fields). The waiver releases the FILE, never
+  the money: the unjustified amount is never recharged, stays on 421101
+  against the holder, and remains recoverable from them.
 - Approval checkpoints route through `res.company._clearance_check_approver`
   and the `APPROVAL_KINDS` table in `models/res_company.py`: an explicit
   user list per company wins; empty falls back to the security group.
@@ -91,7 +107,7 @@ Customs clearance job files for a logistics/clearance services provider.
 - Apply code changes: `docker compose restart odoo` then Apps → module → Upgrade
   (XML/schema need the Upgrade; Python needs the restart).
 - Logs: `docker compose logs odoo`
-- Tests (throwaway db, currently 26 tests, must stay green):
+- Tests (throwaway db, currently 34 tests, must stay green):
   `docker compose run --rm odoo odoo -d clr_test -i elite_clearance --with-demo --test-enable --test-tags /elite_clearance --stop-after-init`
 - Static repo checks CI also runs: `python tools/check_manifest.py addons/elite_clearance`
 
@@ -109,6 +125,9 @@ Customs clearance job files for a logistics/clearance services provider.
    Second open question: fee lines keep default taxes while recharge lines do
    not. Believed correct (TVA on services, débours out of scope) — confirm.
 4. Lock received timestamps option — owner undecided.
+4b. Recovering a waived advance from the holder (payroll deduction, or a
+   write-off through the parked `logistics.oop.adjustment`) is NOT built —
+   today the residue simply sits on 421101 for the accountant to clear.
 5. Multi-level disbursement thresholds if needed.
 6. French (`fr_CM`) translation: no `i18n/` yet, module ships English source
    strings with French domain terms in the seeded master data.

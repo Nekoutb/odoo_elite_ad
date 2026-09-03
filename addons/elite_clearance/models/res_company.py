@@ -18,6 +18,10 @@ APPROVAL_KINDS = {
     'billing': ("clearance_billing_approver_ids",
                 'elite_clearance.group_clearance_finance',
                 "approve billing and completion"),
+    'advance_waiver': ("clearance_advance_waiver_approver_ids",
+                       'elite_clearance.group_clearance_ops_manager',
+                       "waive unjustified staff advances so a file can be "
+                       "billed"),
 }
 
 
@@ -25,14 +29,19 @@ class ResCompany(models.Model):
     _inherit = 'res.company'
 
     clearance_oop_account_id = fields.Many2one(
-        'account.account', string="Out-of-Pocket Expenses Account",
-        help="Balance-sheet account where recoverable client disbursements "
-             "accumulate until the client invoice clears them.",
+        'account.account', string="Engaged Disbursements Account (47xx)",
+        help="47xx Débours engagés. A disbursement reaches this account only "
+             "once it is supported: paid direct, or advanced to staff and "
+             "then justified with documents. The client invoice recharges "
+             "this account at cost, which clears it. Nothing outside this "
+             "account is ever billed.",
     )
     clearance_advance_account_id = fields.Many2one(
-        'account.account', string="Employee Advances Account",
-        help="Balance-sheet account carrying cash advances until the "
-             "employee justifies them with supporting documents.",
+        'account.account', string="Staff Advances Account (421101)",
+        help="421101 Personnel débours avancés. Money handed to a staff "
+             "member sits here, against that person as auxiliary, until "
+             "they produce the supporting documents. It is their debt, not "
+             "the client's, and it is never invoiced from here.",
     )
     clearance_fee_account_id = fields.Many2one(
         'account.account', string="Clearance Fee Income Account",
@@ -65,6 +74,11 @@ class ResCompany(models.Model):
         'res.users', 'clearance_billing_approver_rel', string="Billing Approvers",
         help="Who may raise the client invoice and mark files complete. "
              "Empty = any Clearance Finance user.")
+    clearance_advance_waiver_approver_ids = fields.Many2many(
+        'res.users', 'clearance_advance_waiver_approver_rel',
+        string="Unjustified Advance Waiver Approvers",
+        help="Who may allow a file to be billed while a staff advance is "
+             "still unjustified. Empty = any Clearance Operations Manager.")
 
     def _clearance_check_approver(self, kind):
         """Enforce the configured approver list for a checkpoint; fall back

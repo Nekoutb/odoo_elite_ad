@@ -18,9 +18,14 @@ a written waiver, which is posted to the file's audit trail. Reception stamps
 one shared transaction timestamp for everything saved together.
 
 **Out-of-pocket disbursements** (`logistics.expense`) — draft → submitted →
-approved → settled, and for cash advances a further justification step that
-requires supporting documents. Direct settlements debit the out-of-pocket
-account; advances sit on the employee's advance account until justified.
+approved → settled, and for advances a further justification step that
+requires supporting documents. Direct settlements debit 47xx Débours
+engagés. An advance instead debits 421101 Personnel débours avancés against
+the staff member as auxiliary — it is their debt, not the client's — and only
+the justification entry reclassifies it to 47xx, which is what makes it
+billable. A file carrying an unjustified advance cannot be billed unless an
+Operations Manager waives it in writing; the waiver releases the file, never
+the money, which stays on 421101 to recover from the holder.
 
 **Billing** — the client invoice recharges disbursements at cost against the
 out-of-pocket account (clearing it) and adds the fee lines: a commission
@@ -34,7 +39,7 @@ where no explicit approver list is set, the security groups apply.
     'author': "Elite Advisors",
     'website': "https://eliteadvisors.cm-ea.com",
     'category': 'Services/Clearance',
-    'version': '19.0.4.0.0',
+    'version': '19.0.5.0.0',
     'license': 'LGPL-3',
     'depends': ['base', 'mail', 'analytic', 'account', 'hr'],
     'data': [
@@ -55,6 +60,7 @@ where no explicit approver list is set, the security groups apply.
         'views/logistics_service_type_views.xml',
         'views/logistics_expense_views.xml',
         'views/logistics_file_views.xml',
+        'views/hr_employee_views.xml',
         'views/res_config_settings_views.xml',
         'views/clearance_menus.xml',
     ],

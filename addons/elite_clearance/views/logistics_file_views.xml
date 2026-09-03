@@ -52,6 +52,17 @@
                     <div class="alert alert-info" role="alert" invisible="waiver_state != 'approved'">
                         Working under an approved documentation waiver.
                     </div>
+                    <div class="alert alert-danger" role="alert"
+                         invisible="not unjustified_advance_total or advance_waiver_state == 'approved'">
+                        <field name="unjustified_advance_total" class="fw-bold" nolabel="1" readonly="1"/>
+                        advanced to staff is still unjustified on 421101. It cannot be billed.
+                        Justify it with the supporting documents, or ask an Operations Manager to waive it.
+                    </div>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="not unjustified_advance_total or advance_waiver_state != 'approved'">
+                        Billing under a waiver: <field name="unjustified_advance_total" class="fw-bold" nolabel="1" readonly="1"/>
+                        of staff advances stays on 421101 against the holder and is not recharged to the client.
+                    </div>
 
                     <div class="oe_title">
                         <label for="name" string="File"/>
@@ -107,7 +118,9 @@
                         </list>
                     </field>
                     <group class="oe_subtotal_footer">
-                        <field name="oop_total" readonly="1"/>
+                        <field name="oop_total" string="Engaged (billable)" readonly="1"/>
+                        <field name="unjustified_advance_total" readonly="1"
+                               invisible="not unjustified_advance_total"/>
                     </group>
 
                     <separator string="Billing" invisible="state == 'draft'"/>
@@ -137,6 +150,23 @@
                     <field name="waiver_reason" placeholder="Why should work begin before the file is complete? Name the missing documents and when they are expected."
                            invisible="waiver_state == 'none' and documents_complete"/>
 
+                    <separator string="Unjustified Staff Advances"
+                               invisible="advance_waiver_state == 'none' and not unjustified_advance_total"/>
+                    <group invisible="advance_waiver_state == 'none' and not unjustified_advance_total">
+                        <group>
+                            <field name="advance_waiver_state" readonly="1"/>
+                            <field name="advance_waiver_requested_by_id" readonly="1"
+                                   invisible="advance_waiver_state == 'none'"/>
+                            <field name="advance_waiver_approved_by_id" readonly="1"
+                                   invisible="advance_waiver_state not in ('approved', 'refused')"/>
+                            <field name="advance_waiver_date" readonly="1"
+                                   invisible="advance_waiver_state not in ('approved', 'refused')"/>
+                        </group>
+                    </group>
+                    <field name="advance_waiver_reason"
+                           placeholder="Why must this file be billed while a staff advance is still unsupported, and how will the advance be recovered from the holder?"
+                           invisible="advance_waiver_state == 'none' and not unjustified_advance_total"/>
+
                     <separator string="Internal Notes"/>
                     <field name="note"/>
                 </sheet>
@@ -161,6 +191,8 @@
                 <field name="user_id" widget="many2one_avatar_user"/>
                 <field name="missing_mandatory_count" string="Missing docs"/>
                 <field name="waiver_state" optional="hide"/>
+                <field name="unjustified_advance_total" optional="hide" sum="Unjustified"/>
+                <field name="currency_id" column_invisible="1"/>
                 <field name="state" widget="badge"
                        decoration-info="state == 'draft'"
                        decoration-success="state == 'done'"/>

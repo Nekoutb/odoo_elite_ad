@@ -8,7 +8,7 @@ billing that clears the balance sheet.
 | | |
 |---|---|
 | Module | `addons/elite_clearance` |
-| Version | `19.0.4.0.0` |
+| Version | `19.0.5.0.0` |
 | Odoo | 19.0 Community (lab) / 19.0 Enterprise (production, Odoo.sh) |
 | Licence | LGPL-3 |
 | Currency / locale | XAF, Cameroon (SYSCOHADA — `l10n_cm`) |
@@ -36,12 +36,30 @@ saved together; the *Set Received Date/Time* wizard back-dates in bulk.
 
 | Step | Debit | Credit |
 |---|---|---|
-| Settle, paid direct | Out-of-pocket account | Cash / bank / mobile money journal |
-| Settle, via advance | Employee advances | Cash / bank / mobile money journal |
-| Justify an advance | Out-of-pocket account | Employee advances |
+| Settle, paid direct | 47xx Débours engagés | Cash / bank / mobile money journal |
+| Settle, via advance | 421101 Personnel débours avancés | Cash / bank / mobile money journal |
+| Justify an advance | 47xx Débours engagés | 421101 Personnel débours avancés |
 
-An unjustified advance is employee debt, not a client disbursement — it stays
-off the file's out-of-pocket total until the receipts arrive.
+**Staff advances.** An advance must name a registered employee. It is carried
+on a single account — 421101 — with that person's work contact as the
+*auxiliary*, which is Odoo's native subsidiary-ledger mechanism: there is no
+per-employee account in the chart, and each person's ledger and balance come
+from the Partner Ledger on 421101. Because hr only creates that contact as a
+side effect of writing a work e-mail or phone, the module creates it when the
+employee is created.
+
+An unjustified advance is the staff member's debt, not a client disbursement.
+The justification entry is the reclassification from 421101 to 47xx, and it is
+the *only* thing that makes a disbursement billable — nothing outside 47xx is
+ever invoiced.
+
+**The unjustified-advance gate.** A file carrying an unjustified advance
+cannot be closed for operations or billed. An **Operations Manager** — a
+separate group from the Manager who approved the expense and the Finance user
+who paid it — may waive that with a written explanation. The waiver releases
+the file, never the money: the unsupported amount is not recharged to the
+client, stays on 421101 against the holder, and remains recoverable from
+them.
 
 **Billing.** From `ops_closed`, `action_create_invoice` raises a customer
 invoice with two sections: disbursements recharged at cost against the
