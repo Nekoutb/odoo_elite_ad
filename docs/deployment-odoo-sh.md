@@ -1,6 +1,13 @@
 # Deploying to Odoo.sh
 
-Target: a fresh Odoo.sh project on **19.0**, Enterprise subscription
+The Odoo.sh project **already exists**: `nekoutb-odoo-elite-ad`, connected to
+this repository on 02/09/2026 at 20:56 UTC. Evidence, checkable without
+logging in: an active push webhook to `https://www.odoo.sh/paas/webhook/github`
+(`gh api repos/Nekoutb/odoo_elite_ad/hooks`) and a read-only deploy key titled
+"DO NOT REMOVE - REQUIRED FOR ODOO.SH". Do not create a second project —
+check the webhook first.
+
+Target: that Odoo.sh project on **19.0**, Enterprise subscription
 M260529302698425, Custom plan. The old Odoo Online database (`elite-advisors`,
 saas~19.3) holds no data and is being allowed to lapse — never build against
 19.3 minor APIs.
@@ -65,8 +72,15 @@ that new master data reaches existing databases without manual keying.
 ## Still to do before go-live
 
 - [x] Create the `19.0` and `staging` branches; `19.0` is the GitHub default.
-- [ ] Create the Odoo.sh project and point production at `19.0`, staging at
-      `staging`.
+- [x] Odoo.sh project exists and is connected to this repository.
+- [ ] **Check the Production stage is not orphaned.** `main` and `prod` were
+      deleted from this repository on 02/09/2026 and both deletions were
+      delivered to Odoo.sh. If its Production stage pointed at either, it is
+      now pointing at a branch that no longer exists.
+- [ ] Point Production at `19.0` and Staging at `staging` (Odoo.sh →
+      Branches → drag the branch into the stage). Console-only; it cannot be
+      done from Git.
+- [ ] Confirm the branch's Odoo version is set to 19.0 in its settings.
 - [ ] Verify `l10n_cm` on 19.0 and load it before the module.
 - [ ] Import the partner list (CSV) from the old Online database.
 - [ ] Decide on OCA `account_financial_report` if Trial Balance / P&L are
