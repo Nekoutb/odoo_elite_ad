@@ -344,11 +344,19 @@ class LogisticsFile(models.Model):
                 if file.recharge_amount else 0.0)
 
     def write(self, vals):
-        res = super().write(vals)
+        # Only a figure that actually MOVES is a new request. Re-writing the
+        # same number - which the billing screen does every time it saves -
+        # must not tear up an approval that was given for exactly it.
+        resync = self.browse()
         if 'recharge_amount' in vals and not self.env.context.get(
                 'clearance_recharge_sync'):
-            for file in self:
-                file._sync_recharge_state()
+            proposed = vals['recharge_amount'] or 0.0
+            resync = self.filtered(
+                lambda f: f.currency_id.compare_amounts(
+                    f.recharge_amount, proposed))
+        res = super().write(vals)
+        for file in resync:
+            file._sync_recharge_state()
         return res
 
     def _sync_recharge_state(self):
