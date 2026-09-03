@@ -26,5 +26,11 @@ class ResConfigSettings(models.TransientModel):
         related='company_id.clearance_settlement_approver_ids', readonly=False)
     clearance_ops_close_approver_ids = fields.Many2many(
         related='company_id.clearance_ops_close_approver_ids', readonly=False)
+    clearance_cashier_approver_ids = fields.Many2many(
+        related='company_id.clearance_cashier_approver_ids', readonly=False)
+    clearance_treasury_approver_ids = fields.Many2many(
+        related='company_id.clearance_treasury_approver_ids', readonly=False)
+    clearance_reopen_imported_approver_ids = fields.Many2many(
+        related='company_id.clearance_reopen_imported_approver_ids', readonly=False)
     clearance_advance_waiver_approver_ids = fields.Many2many(
         related='company_id.clearance_advance_waiver_approver_ids', readonly=False)

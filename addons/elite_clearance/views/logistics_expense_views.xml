@@ -15,12 +15,18 @@
                     <button name="action_refuse" type="object" string="Refuse"
                             invisible="state != 'submitted'"
                             groups="elite_clearance.group_clearance_ops_manager,elite_clearance.group_clearance_customer_service_manager,elite_clearance.group_clearance_transit_manager"/>
-                    <button name="action_approve_settlement" type="object" string="Approve Settlement"
+                    <button name="action_submit_settlement" type="object" string="Send to Finance Manager"
                             class="oe_highlight" invisible="state != 'approved'"
-                            groups="elite_clearance.group_clearance_finance_manager"/>
-                    <button name="action_settle" type="object" string="Settle (Post Payment)"
-                            class="oe_highlight" invisible="state != 'settlement_approved'"
                             groups="elite_clearance.group_clearance_finance"/>
+                    <button name="action_approve_settlement" type="object" string="Approve Settlement"
+                            class="oe_highlight" invisible="state != 'settlement_submitted'"
+                            groups="elite_clearance.group_clearance_finance_manager"/>
+                    <button name="action_return_settlement" type="object" string="Return to Finance"
+                            invisible="state != 'settlement_submitted'"
+                            groups="elite_clearance.group_clearance_finance_manager"/>
+                    <button name="action_settle" type="object" string="Disburse / Pay"
+                            class="oe_highlight" invisible="state != 'settlement_approved'"
+                            groups="elite_clearance.group_clearance_cashier,elite_clearance.group_clearance_treasury"/>
                     <button name="action_justify" type="object" string="Justify Advance"
                             class="oe_highlight"
                             invisible="state != 'settled' or payment_mode != 'advance'"
@@ -28,7 +34,7 @@
                     <button name="action_reset_to_draft" type="object" string="Reset to Draft"
                             invisible="state not in ('submitted', 'cancel')"/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="draft,submitted,approved,settlement_approved,settled,justified"/>
+                           statusbar_visible="draft,submitted,approved,settlement_submitted,settlement_approved,settled,justified"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
@@ -81,7 +87,7 @@
                 <field name="is_legacy" optional="hide"/>
                 <field name="state" widget="badge"
                        decoration-info="state in ('draft', 'submitted')"
-                       decoration-warning="state in ('approved', 'settlement_approved')"
+                       decoration-warning="state in ('approved', 'settlement_submitted', 'settlement_approved')"
                        decoration-success="state in ('settled', 'justified')"/>
             </list>
         </field>
@@ -100,7 +106,7 @@
                 <filter name="legacy_unjustified" string="Legacy, unjustified" domain="[('is_legacy', '=', True), ('legacy_justified', '=', False), ('legacy_reversal', '=', False)]"/>
                 <separator/>
                 <filter name="to_set_settlement" string="Settlement To Set (Finance)" domain="[('state', '=', 'approved')]"/>
-                <filter name="to_approve_settlement" string="Settlement To Approve" domain="[('state', '=', 'approved'), ('payment_mode', '!=', False)]"/>
+                <filter name="to_approve_settlement" string="Awaiting Finance Manager" domain="[('state', '=', 'settlement_submitted')]"/>
                 <filter name="to_settle" string="To Settle" domain="[('state', '=', 'settlement_approved')]"/>
                 <filter name="to_justify" string="Advances To Justify"
                         domain="[('state', '=', 'settled'), ('payment_mode', '=', 'advance')]"/>

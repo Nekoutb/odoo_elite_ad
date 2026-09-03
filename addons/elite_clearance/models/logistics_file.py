@@ -103,10 +103,32 @@ class LogisticsFile(models.Model):
             ('in_progress', "In Progress"),
             ('ops_closed', "Closed for Operations"),
             ('done', "Complete"),
+            ('imported', "Imported"),
             ('cancel', "Cancelled"),
         ],
         default='draft', required=True, tracking=True, index=True,
+        help="Imported: brought over from the legacy system as a record. "
+             "No work or billing happens on it unless the billing agent "
+             "asks to reopen it and an Operations Manager approves.",
     )
+
+    # --- reopening an imported file -------------------------------------
+    reopen_request_state = fields.Selection(
+        [
+            ('none', "Not requested"),
+            ('requested', "Awaiting Operations Manager"),
+            ('approved', "Approved"),
+            ('refused', "Refused"),
+        ],
+        default='none', required=True, tracking=True, copy=False,
+        string="Reopening Request")
+    reopen_request_reason = fields.Text(
+        string="Why reopen this imported file", copy=False,
+        help="What remains to be done or billed on a file the legacy system "
+             "considered live, and why it should be worked in Odoo.")
+    reopen_requested_by_id = fields.Many2one('res.users', readonly=True, copy=False)
+    reopen_approved_by_id = fields.Many2one('res.users', readonly=True, copy=False)
+    reopen_request_date = fields.Datetime(readonly=True, copy=False)
 
     # --- document checklist ---------------------------------------------
     document_ids = fields.One2many(
@@ -571,6 +593,54 @@ class LogisticsFile(models.Model):
             file.message_post(body=self.env._(
                 "Unjustified-advance waiver refused: the advance must be "
                 "justified with supporting documents before billing."))
+        return True
+
+    # --- reopening an imported file -------------------------------------
+    def action_request_reopen_imported(self):
+        """The billing agent asks for an imported file to be worked again."""
+        for file in self:
+            file.company_id._clearance_check_approver('billing')
+            if file.state != 'imported':
+                raise UserError(self.env._(
+                    "%s is not an imported file.", file.name))
+            if not file.reopen_request_reason:
+                raise UserError(self.env._(
+                    "Say why %s should be reopened before requesting it.",
+                    file.name))
+            file.write({'reopen_request_state': 'requested',
+                        'reopen_requested_by_id': self.env.user.id})
+            file.message_post(body=self.env._(
+                "Reopening requested: %s", file.reopen_request_reason))
+        return True
+
+    def action_approve_reopen_imported(self):
+        """The Operations Manager, after review, releases it into the workflow."""
+        for file in self:
+            file.company_id._clearance_check_approver('reopen_imported')
+            if file.reopen_request_state != 'requested':
+                raise UserError(self.env._(
+                    "No reopening request is awaiting approval on %s.", file.name))
+            file.write({'reopen_request_state': 'approved',
+                        'reopen_approved_by_id': self.env.user.id,
+                        'reopen_request_date': fields.Datetime.now(),
+                        'state': 'in_progress',
+                        'date_closed': False})
+            file.message_post(body=self.env._(
+                "Imported file reopened by %s: it is now in progress and "
+                "follows the normal workflow.", self.env.user.name))
+        return True
+
+    def action_refuse_reopen_imported(self):
+        for file in self:
+            file.company_id._clearance_check_approver('reopen_imported')
+            if file.reopen_request_state != 'requested':
+                raise UserError(self.env._(
+                    "No reopening request is awaiting approval on %s.", file.name))
+            file.write({'reopen_request_state': 'refused',
+                        'reopen_approved_by_id': self.env.user.id,
+                        'reopen_request_date': fields.Datetime.now()})
+            file.message_post(body=self.env._(
+                "Reopening refused: the file stays an imported record."))
         return True
 
     def action_start_work(self):

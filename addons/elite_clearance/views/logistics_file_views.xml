@@ -138,7 +138,7 @@
                             <field name="currency_id" column_invisible="1"/>
                             <field name="state" widget="badge"
                                    decoration-info="state in ('draft', 'submitted')"
-                                   decoration-warning="state in ('approved', 'settlement_approved')"
+                                   decoration-warning="state in ('approved', 'settlement_submitted', 'settlement_approved')"
                                    decoration-success="state in ('settled', 'justified')"/>
                         </list>
                     </field>

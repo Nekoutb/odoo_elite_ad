@@ -37,12 +37,15 @@ class LogisticsExpense(models.Model):
     """One out-of-pocket expense on a clearance file.
 
     Lifecycle:
-        draft -> submitted            an originating team (never Finance)
-              -> approved             a team manager
-              -> settlement_approved  Finance sets how it is paid, the
-                                      Finance Manager signs it
-              -> settled              Finance posts the payment
-              -> justified            advances only, with documents
+        draft -> submitted             an originating team (never Finance)
+              -> approved              a team manager; lands with Finance
+              -> settlement_submitted  Finance keyed mode, vendor/holder and
+                                       journal and sent it to the Finance
+                                       Manager
+              -> settlement_approved   the Finance Manager signed it
+              -> settled               the Cashier (till) or Treasury (bank)
+                                       paid it out
+              -> justified             advances only, with documents
 
     Postings (all carry the file's analytic account):
         direct settle:   Dr 47xx Débours engagés    / Cr settlement journal
@@ -95,6 +98,7 @@ class LogisticsExpense(models.Model):
         [('draft', "Draft"),
          ('submitted', "Submitted"),
          ('approved', "Approved"),
+         ('settlement_submitted', "Awaiting Finance Manager"),
          ('settlement_approved', "Settlement Approved"),
          ('settled', "Settled"),
          ('justified', "Justified"),
@@ -166,6 +170,11 @@ class LogisticsExpense(models.Model):
         if self.env.su:
             return
         user = self.env.user
+        # Administrators configure the system; they are not operatives, and
+        # they are seeded into every group so the rule would always fire on
+        # them. Production staff are never administrators.
+        if user.has_group('base.group_system'):
+            return
         if user.has_group(FINANCE_GROUP):
             raise UserError(self.env._(
                 "Finance does not key expenses. The team that incurred the "
@@ -234,6 +243,12 @@ class LogisticsExpense(models.Model):
         for exp in self:
             exp.company_id._clearance_check_approver('finance')
 
+    def _check_disburser(self):
+        """Cash leaves through the Cashier, bank money through Treasury."""
+        for exp in self:
+            kind = 'cash_disburse' if exp.journal_id.type == 'cash' else 'bank_disburse'
+            exp.company_id._clearance_check_approver(kind)
+
     def _check_manager(self):
         for exp in self:
             exp.company_id._clearance_check_approver('expense')
@@ -259,13 +274,51 @@ class LogisticsExpense(models.Model):
         self._check_manager()
         self.write({'state': 'cancel'})
 
+    def action_submit_settlement(self):
+        """Finance has keyed how it is paid; hand it to the Finance Manager."""
+        for exp in self:
+            if exp.state != 'approved':
+                raise UserError(self.env._(
+                    "%s is not approved by its team manager yet.", exp.name))
+            if not self.env.su and not self.env.user.has_group(FINANCE_GROUP):
+                raise UserError(self.env._(
+                    "Only Finance sets how an expense is paid."))
+            missing = []
+            if not exp.payment_mode:
+                missing.append(exp._fields['payment_mode'].string)
+            if not exp.journal_id:
+                missing.append(exp._fields['journal_id'].string)
+            if exp.payment_mode == 'direct' and not exp.vendor_id:
+                missing.append(exp._fields['vendor_id'].string)
+            if exp.payment_mode == 'advance' and not exp.employee_id:
+                missing.append(exp._fields['employee_id'].string)
+            if missing:
+                raise UserError(self.env._(
+                    "Key %(what)s on %(exp)s before sending it to the "
+                    "Finance Manager.", what=", ".join(missing), exp=exp.name))
+            exp.state = 'settlement_submitted'
+            exp.message_post(body=self.env._(
+                "Settlement sent to the Finance Manager for approval."))
+
+    def action_return_settlement(self):
+        """The Finance Manager sends it back to Finance to correct."""
+        for exp in self:
+            exp.company_id._clearance_check_approver('settlement')
+            if exp.state != 'settlement_submitted':
+                raise UserError(self.env._(
+                    "%s is not awaiting the Finance Manager.", exp.name))
+            exp.state = 'approved'
+            exp.message_post(body=self.env._(
+                "Settlement returned to Finance by the Finance Manager."))
+
     def action_approve_settlement(self):
         """The Finance Manager signs how Finance proposes to pay."""
         for exp in self:
             exp.company_id._clearance_check_approver('settlement')
-            if exp.state != 'approved':
+            if exp.state != 'settlement_submitted':
                 raise UserError(self.env._(
-                    "%s is not approved by its team manager yet.", exp.name))
+                    "%s has not been sent to the Finance Manager by "
+                    "Finance yet.", exp.name))
             if not exp.payment_mode or not exp.journal_id:
                 raise UserError(self.env._(
                     "Finance must set the payment mode and the settlement "
@@ -281,9 +334,10 @@ class LogisticsExpense(models.Model):
                 journal=exp.journal_id.name, holder=holder))
 
     def action_settle(self):
-        """Money leaves the company. Direct: hits 47xx. Advance: hits 421101
-        against the holder until justified."""
-        self._check_finance()
+        """Money leaves the company - through the Cashier for a till, through
+        Treasury for a bank or mobile-money journal. Direct: hits 47xx.
+        Advance: hits 421101 against the holder until justified."""
+        self._check_disburser()
         for exp in self:
             if exp.state != 'settlement_approved':
                 raise UserError(self.env._(
@@ -400,10 +454,10 @@ class LogisticsExpense(models.Model):
 
     def action_reset_to_draft(self):
         for exp in self:
-            if exp.state == 'settlement_approved':
+            if exp.state in ('settlement_submitted', 'settlement_approved'):
                 raise UserError(self.env._(
-                    "%s has an approved settlement. Ask Finance to refuse "
-                    "it first.", exp.name))
+                    "%s is with the Finance Manager or already approved for "
+                    "settlement. Have it returned first.", exp.name))
             if exp.settlement_move_id:
                 raise UserError(self.env._(
                     "%s has been settled — the journal entry exists. "

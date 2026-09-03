@@ -26,6 +26,19 @@ APPROVAL_KINDS = {
     'billing': ("clearance_billing_approver_ids",
                 ('elite_clearance.group_clearance_finance',),
                 "approve billing and completion"),
+    # Finance keys the settlement, the Finance Manager signs it, then the
+    # money leaves through whoever holds the till or the bank.
+    'cash_disburse': ("clearance_cashier_approver_ids",
+                      ('elite_clearance.group_clearance_cashier',),
+                      "disburse cash from a till"),
+    'bank_disburse': ("clearance_treasury_approver_ids",
+                      ('elite_clearance.group_clearance_treasury',),
+                      "pay from a bank or mobile-money account"),
+    # An imported file is history; billing it again is an exception the
+    # Operations Manager signs after review.
+    'reopen_imported': ("clearance_reopen_imported_approver_ids",
+                        ('elite_clearance.group_clearance_ops_manager',),
+                        "approve reopening an imported file"),
     'ops_close': ("clearance_ops_close_approver_ids",
                   ('elite_clearance.group_clearance_ops_manager',),
                   "close a file for operations"),
@@ -96,6 +109,23 @@ class ResCompany(models.Model):
         string="Operations Close Approvers",
         help="Who may close a file for operations. Empty = any Clearance "
              "Operations Manager.")
+    clearance_cashier_approver_ids = fields.Many2many(
+        'res.users', 'clearance_cashier_approver_rel',
+        string="Cashiers",
+        help="Who may disburse from a cash till once the Finance Manager "
+             "has approved the settlement. Empty = any Clearance Cashier.")
+    clearance_treasury_approver_ids = fields.Many2many(
+        'res.users', 'clearance_treasury_approver_rel',
+        string="Treasury",
+        help="Who may pay from a bank or mobile-money journal once the "
+             "Finance Manager has approved the settlement. Empty = any "
+             "Clearance Treasury user.")
+    clearance_reopen_imported_approver_ids = fields.Many2many(
+        'res.users', 'clearance_reopen_imported_approver_rel',
+        string="Imported-File Reopening Approvers",
+        help="Who may approve reopening a file imported from the legacy "
+             "system so it can be worked and billed again. Empty = any "
+             "Clearance Operations Manager.")
     clearance_advance_waiver_approver_ids = fields.Many2many(
         'res.users', 'clearance_advance_waiver_approver_rel',
         string="Unjustified Advance Waiver Approvers",

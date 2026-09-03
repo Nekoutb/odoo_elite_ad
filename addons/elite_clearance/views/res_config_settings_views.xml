@@ -55,6 +55,18 @@
                                  help="Who may close a file for operations. Empty = any Clearance Operations Manager.">
                             <field name="clearance_ops_close_approver_ids" widget="many2many_tags"/>
                         </setting>
+                        <setting string="Cashiers"
+                                 help="Who may disburse from a cash till once the Finance Manager has approved the settlement. Empty = any Clearance Cashier.">
+                            <field name="clearance_cashier_approver_ids" widget="many2many_tags"/>
+                        </setting>
+                        <setting string="Treasury"
+                                 help="Who may pay from a bank or mobile-money journal once the Finance Manager has approved the settlement. Empty = any Clearance Treasury user.">
+                            <field name="clearance_treasury_approver_ids" widget="many2many_tags"/>
+                        </setting>
+                        <setting string="Imported-File Reopening Approvers"
+                                 help="Who may approve reopening a file imported from the legacy system so it can be worked and billed again. Empty = any Clearance Operations Manager.">
+                            <field name="clearance_reopen_imported_approver_ids" widget="many2many_tags"/>
+                        </setting>
                         <setting string="Unjustified Advance Waiver Approvers"
                                  help="Who may allow a file to be billed while a staff advance is still unsupported on 421101. Empty = any Clearance Operations Manager.">
                             <field name="clearance_advance_waiver_approver_ids" widget="many2many_tags"/>
