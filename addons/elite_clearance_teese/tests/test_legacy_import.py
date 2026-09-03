@@ -24,6 +24,7 @@ HEADERS = {
     'wh_fact_validation.csv': ("id,tenant_id,odoo_id,doc_key,doc_type,circuit,rang,doc_date,"
                                "step_date,step_lag_days,total_days,is_passed,write_date"),
 }
+SYNC_HEADER = "id,tenant_id,model,last_write_date,last_id,last_run_at,rows_synced,last_error,created_at,updated_at"
 W = "2026-08-26 21:24:07"
 
 
@@ -36,7 +37,7 @@ def _csv(name, rows):
     return out.getvalue()
 
 
-def build_zip():
+def build_zip(after_cutoff=False):
     """A miniature of the real export exercising every judgement call."""
     partners = [
         {'id': 1, 'tenant_id': 23, 'odoo_id': 1, 'name': "ELIMELEC SARL", 'ref': "CLT26001", 'is_company': 1, 'write_date': W},
@@ -78,7 +79,16 @@ def build_zip():
         {'id': 2, 'tenant_id': 23, 'odoo_id': 202, 'name': "AV26IM001", 'move_type': "out_invoice", 'state': "posted",
          'payment_state': "paid", 'invoice_date': "2026-04-10", 'invoice_date_due': "2026-04-10", 'partner_odoo_id': 2,
          'dossier_odoo_id': 8001, 'amount_untaxed': "-10000.00", 'amount_total': "-10000.00", 'amount_residual': "0.00", 'write_date': W},
+        # not tied to any dossier
+        {'id': 3, 'tenant_id': 23, 'odoo_id': 203, 'name': "EL26ND045", 'move_type': "out_invoice", 'state': "posted",
+         'payment_state': "partial", 'invoice_date': "2026-05-05", 'invoice_date_due': "2026-05-12", 'partner_odoo_id': 1,
+         'dossier_odoo_id': "", 'amount_untaxed': "20000.00", 'amount_total': "23850.00", 'amount_residual': "3850.00", 'write_date': W},
     ]
+    if after_cutoff:
+        invoices.append(
+            {'id': 4, 'tenant_id': 23, 'odoo_id': 204, 'name': "EL26IM900", 'move_type': "out_invoice", 'state': "posted",
+             'payment_state': "not_paid", 'invoice_date': "2026-09-02", 'invoice_date_due': "2026-09-09", 'partner_odoo_id': 2,
+             'dossier_odoo_id': 8001, 'amount_untaxed': "1000.00", 'amount_total': "1000.00", 'amount_residual': "1000.00", 'write_date': W})
     lines = [
         {'id': 1, 'tenant_id': 23, 'odoo_id': 1446, 'move_odoo_id': 201, 'product_odoo_id': 1449, 'invoice_date': "2026-03-26",
          'move_type': "out_invoice", 'quantity': "1.0000", 'price_unit': "52000.0000", 'discount': "0.0000",
@@ -89,14 +99,19 @@ def build_zip():
         {'id': 3, 'tenant_id': 23, 'odoo_id': 1448, 'move_odoo_id': 202, 'product_odoo_id': 1449, 'invoice_date': "2026-04-10",
          'move_type': "out_invoice", 'quantity': "1.0000", 'price_unit': "-10000.0000", 'discount': "0.0000",
          'price_subtotal': "-10000.00", 'is_debours': 0, 'label': "Remise commerciale", 'write_date': W},
+        {'id': 4, 'tenant_id': 23, 'odoo_id': 1449, 'move_odoo_id': 203, 'product_odoo_id': 5541, 'invoice_date': "2026-05-05",
+         'move_type': "out_invoice", 'quantity': "1.0000", 'price_unit': "20000.0000", 'discount': "0.0000",
+         'price_subtotal': "20000.00", 'is_debours': 1, 'label': "Droits de Douane", 'write_date': W},
     ]
     validations = [
         {'id': 1, 'tenant_id': 23, 'odoo_id': 18636, 'doc_key': 11001, 'doc_type': "Avance de frais", 'circuit': "Avance frais standard",
          'rang': 1, 'doc_date': "2026-03-30", 'step_date': "2026-03-30", 'step_lag_days': "0.007", 'total_days': "0.001", 'is_passed': 1, 'write_date': W},
     ]
+    sync = SYNC_HEADER + "\n" + "9,23,erp:clients,,,2026-08-26 21:24:08,190,,2026-08-26 21:24:08,2026-08-26 21:24:08\n"
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("_manifest.txt", "Teese export - test fixture")
+        z.writestr("_sync_state.csv", sync)
         z.writestr("wh_dim_partner.csv", _csv("wh_dim_partner.csv", partners))
         z.writestr("wh_fact_dossier.csv", _csv("wh_fact_dossier.csv", dossiers))
         z.writestr("wh_fact_advance.csv", _csv("wh_fact_advance.csv", advances))
@@ -112,17 +127,9 @@ class TestLegacyImport(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        env = cls.env
-        company = env.company
-        if not company.chart_template:
-            env['account.chart.template'].try_loading('generic_coa', company)
-        Account = env['account.account']
-        cls.oop = Account.create({'code': 'X4719', 'name': "Debours engages",
-                                  'account_type': 'asset_current', 'reconcile': True})
-        cls.fee = Account.create({'code': 'X7069', 'name': "Fee income", 'account_type': 'income'})
-        company.write({'clearance_oop_account_id': cls.oop.id, 'clearance_fee_account_id': cls.fee.id})
-        cls.batch = env['logistics.legacy.import'].create({
-            'name': "fixture", 'zip_file': base64.b64encode(build_zip()), 'zip_filename': "fixture.zip"})
+        cls.batch = cls.env['logistics.legacy.import'].create({
+            'name': "fixture", 'zip_file': base64.b64encode(build_zip()),
+            'zip_filename': "fixture.zip", 'cutoff_date': "2026-08-31"})
 
     def _file(self, legacy_id):
         return self.env['logistics.file'].search([('legacy_id', '=', legacy_id)])
@@ -133,10 +140,13 @@ class TestLegacyImport(TransactionCase):
         self.assertEqual(self.batch.count_partners, 2)
         self.assertEqual(self.batch.count_files, 3)
         self.assertEqual(self.batch.count_expenses, 4)
-        self.assertEqual(self.batch.count_invoices, 2)
-        self.assertEqual(self.batch.count_lines, 3)
+        self.assertEqual(self.batch.count_invoices, 3)
+        self.assertEqual(self.batch.count_lines, 4)
         self.assertEqual(self.batch.count_ports, 2)
         self.assertEqual(self.batch.count_employees, 2)
+        self.assertEqual(self.batch.count_after_cutoff, 0)
+        self.assertEqual(str(self.batch.export_synced_at)[:10], "2026-08-26")
+        self.assertIn("predates the cutoff by 5 day(s)", self.batch.log)
 
         f = self._file(8001)
         self.assertEqual(f.name, "2026IM0007")
@@ -192,24 +202,39 @@ class TestLegacyImport(TransactionCase):
         self.assertEqual(len(park.expense_ids), 1)
         self.assertEqual(park.expense_ids.description, "Timbre")
 
-    def test_05_invoices_link_to_their_file_as_drafts(self):
+    def test_05_invoices_are_records_not_accounting(self):
+        """Billing done in Teese is disclosed on the file, greyed out as
+        Imported, and never becomes an account.move."""
+        moves_before = self.env['account.move'].search_count([])
         self.batch.action_import()
+        self.assertEqual(self.env['account.move'].search_count([]), moves_before,
+                         "No accounting document may be created by the import.")
         f = self._file(8001)
-        self.assertEqual(len(f.invoice_ids), 2)
-        inv = f.invoice_ids.filtered(lambda m: m.name == "EL26IM228")
-        self.assertEqual(inv.move_type, 'out_invoice')
-        self.assertEqual(inv.state, 'draft')
+        self.assertEqual(f.legacy_invoice_count, 2)
+        self.assertFalse(f.invoice_ids, "Real invoices stay empty.")
+        inv = f.legacy_invoice_ids.filtered(lambda i: i.name == "EL26IM228")
+        self.assertEqual(inv.state, 'imported')
+        self.assertEqual(inv.move_type, 'invoice')
         self.assertEqual(inv.partner_id.legacy_id, 2)
-        self.assertEqual(inv.legacy_amount_residual, 312010)
-        deb = inv.invoice_line_ids.filtered(lambda l: l.product_id.default_code == "LEG-1447")
-        self.assertEqual(deb.account_id, self.oop)
-        self.assertFalse(deb.tax_ids, "Débours carry no tax.")
-        fee = inv.invoice_line_ids.filtered(lambda l: l.product_id.default_code == "LEG-1449")
-        self.assertEqual(fee.account_id, self.fee)
-        credit = f.invoice_ids.filtered(lambda m: m.name == "AV26IM001")
-        self.assertEqual(credit.move_type, 'out_refund')
-        self.assertEqual(credit.invoice_line_ids.price_unit, 10000, "Refund lines are positive.")
-        self.assertEqual(f.invoice_id, credit, "The latest invoice is the file's current one.")
+        self.assertEqual(str(inv.date_invoice), "2026-03-26")
+        self.assertEqual(inv.amount_untaxed, 52000)
+        self.assertEqual(inv.amount_total, 312010)
+        self.assertEqual(inv.amount_residual, 312010)
+        self.assertEqual(inv.payment_state, 'not_paid')
+        self.assertEqual(len(inv.line_ids), 2)
+        deb = inv.line_ids.filtered(lambda l: l.product_code == "LEG-1447")
+        self.assertTrue(deb.is_debours)
+        self.assertEqual(deb.product_label, "Débours")
+        self.assertEqual(deb.price_subtotal, 250000)
+        credit = f.legacy_invoice_ids.filtered(lambda i: i.name == "AV26IM001")
+        self.assertEqual(credit.move_type, 'refund')
+        self.assertEqual(credit.amount_total, -10000, "Kept as exported.")
+        self.assertEqual(f.legacy_billed_total, 302010)
+        self.assertEqual(f.legacy_outstanding_total, 312010)
+        orphan = self.env['logistics.legacy.invoice'].search([('name', '=', "EL26ND045")])
+        self.assertTrue(orphan, "An invoice with no dossier is still kept.")
+        self.assertFalse(orphan.file_id)
+        self.assertEqual(orphan.payment_state, 'partial')
 
     def test_06_sequence_jumps_past_the_imported_numbers(self):
         self.batch.action_import()
@@ -230,9 +255,21 @@ class TestLegacyImport(TransactionCase):
         self.assertEqual(again.count_invoices, 0)
         self.assertEqual(again.count_partners, 0)
         self.assertEqual(self.env['logistics.file'].search_count([('legacy_id', '!=', 0)]), 4)
+        self.assertEqual(self.env['logistics.legacy.invoice'].search_count([]), 3)
 
     def test_08_validations_are_archived_not_imported(self):
         self.batch.action_import()
         att = self.env['ir.attachment'].search([
             ('res_model', '=', 'logistics.legacy.import'), ('res_id', '=', self.batch.id)])
         self.assertIn("wh_fact_validation.csv", att.mapped('name'))
+
+    def test_09_rows_after_the_cutoff_are_counted_and_flagged(self):
+        batch = self.env['logistics.legacy.import'].create({
+            'name': "late", 'zip_file': base64.b64encode(build_zip(after_cutoff=True)),
+            'zip_filename': "late.zip", 'cutoff_date': "2026-08-31"})
+        batch.action_import()
+        self.assertEqual(batch.state, 'done', batch.log)
+        self.assertEqual(batch.count_after_cutoff, 1)
+        self.assertIn("dated after the cutoff", batch.log)
+        late = self.env['logistics.legacy.invoice'].search([('name', '=', "EL26IM900")])
+        self.assertTrue(late, "Still imported for the record.")

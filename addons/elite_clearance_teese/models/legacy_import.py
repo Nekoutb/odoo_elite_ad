@@ -8,7 +8,7 @@ import zipfile
 from collections import defaultdict
 from datetime import datetime
 
-from odoo import api, fields, models
+from odoo import fields, models
 from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
@@ -21,6 +21,7 @@ TABLES = {
     'advance': 'wh_fact_advance.csv',
     'validation': 'wh_fact_validation.csv',
 }
+SYNC_STATE = '_sync_state.csv'
 
 # Teese dossier type -> Clearance service type. The legacy code prefix (IM,
 # AI, EX, ET, TP...) is NOT used for this: the export shows the same prefix
@@ -40,13 +41,14 @@ SHIPMENT_MAP = {
     'CAMION PLATEAU': 'flatbed',
 }
 
-# The four products the legacy invoices use, named from their line labels.
-# product_odoo_id -> (default_code, name, is_debours)
+# The four products the legacy invoices were billed under, named from their
+# line labels. Kept as labels on the imported lines; no product is created.
+# product_odoo_id -> (code, name, is_debours)
 PRODUCTS = {
-    '1447': ('LEG-1447', "Débours (legacy)", True),
-    '1449': ('LEG-1449', "Honoraires (legacy)", False),
-    '5538': ('LEG-5538', "Débours douane — vacation / liquidation (legacy)", True),
-    '5541': ('LEG-5541', "Droits de douane (legacy)", True),
+    '1447': ('LEG-1447', "Débours", True),
+    '1449': ('LEG-1449', "Honoraires", False),
+    '5538': ('LEG-5538', "Débours douane — vacation / liquidation", True),
+    '5541': ('LEG-5541', "Droits de douane", True),
 }
 
 LEGACY_CATEGORY = ('LEG', "Legacy — non catégorisé")
@@ -54,6 +56,7 @@ UNALLOCATED_FILE = "LEGACY-UNALLOCATED"
 UNALLOCATED_LEGACY_ID = -1
 REF_RE = re.compile(r'^(\d{4})([A-Z]{2})(\d{4})$')
 CHUNK = 500
+PAYMENT_STATES = {'not_paid', 'partial', 'paid'}
 
 
 def _f(value):
@@ -73,8 +76,24 @@ def _d(value):
         return None
 
 
+def _dt(value):
+    if not value:
+        return None
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(value[:19], fmt)
+        except ValueError:
+            continue
+    return None
+
+
 class LogisticsLegacyImport(models.Model):
     """One run of the Teese warehouse import.
+
+    Record-keeping only. Nothing this import creates touches the ledger:
+    legacy expenses carry no journal entry and legacy invoices are not
+    account.move records. The books close at the cutoff date and their
+    balances arrive as an uploaded trial balance.
 
     Persistent, not a wizard, so every run keeps its zip, its counts and its
     log, and the validation history it archives has somewhere to live.
@@ -90,12 +109,17 @@ class LogisticsLegacyImport(models.Model):
         'res.company', required=True, default=lambda self: self.env.company)
     zip_file = fields.Binary(string="Export (zip)", attachment=True, required=True)
     zip_filename = fields.Char()
-    post_invoices = fields.Boolean(
-        string="Post the invoices",
-        help="Off: invoices are imported as drafts for the accountant to "
-             "review. On: they are posted as they were in the legacy "
-             "system. Either way the amounts still due are NOT posted - "
-             "opening balances come from the accountant's trial balance.")
+    cutoff_date = fields.Date(
+        string="Cutoff Date", required=True, default="2026-08-31",
+        help="The legacy books close on this date and their balances are "
+             "uploaded as a trial balance. Rows dated after it are still "
+             "imported for the record, but counted and logged: they are "
+             "not in that trial balance.")
+    export_synced_at = fields.Datetime(
+        string="Export Synced At", readonly=True,
+        help="When the warehouse last synchronised from Teese, read from "
+             "_sync_state.csv. If earlier than the cutoff, the export does "
+             "not cover the whole period.")
     state = fields.Selection(
         [('draft', "Draft"), ('done', "Done"), ('error', "Error")],
         default='draft', required=True)
@@ -108,9 +132,10 @@ class LogisticsLegacyImport(models.Model):
     count_ports = fields.Integer(readonly=True)
     count_files = fields.Integer(readonly=True)
     count_expenses = fields.Integer(readonly=True)
-    count_products = fields.Integer(readonly=True)
     count_invoices = fields.Integer(readonly=True)
     count_lines = fields.Integer(readonly=True)
+    count_after_cutoff = fields.Integer(
+        string="Rows dated after cutoff", readonly=True)
 
     # ------------------------------------------------------------------
     # entry point
@@ -139,6 +164,12 @@ class LogisticsLegacyImport(models.Model):
             text = archive.read(filename).decode('utf-8-sig')
             tables[key] = list(csv.DictReader(io.StringIO(text)))
         tables['validation_raw'] = archive.read(TABLES['validation'])
+        tables['synced_at'] = None
+        if SYNC_STATE in names:
+            rows = list(csv.DictReader(io.StringIO(archive.read(SYNC_STATE).decode('utf-8-sig'))))
+            stamps = [_dt(r.get('last_run_at', '')) for r in rows]
+            stamps = [s for s in stamps if s]
+            tables['synced_at'] = max(stamps) if stamps else None
         return tables
 
     # ------------------------------------------------------------------
@@ -154,11 +185,23 @@ class LogisticsLegacyImport(models.Model):
             mail_create_nosubscribe=True, mail_notrack=True,
         ).env
         lines = []
-        counts = {}
+        counts = {'after_cutoff': 0}
 
         def log(msg):
             lines.append(msg)
             _logger.info("legacy import %s: %s", self.id, msg)
+
+        synced = tables.get('synced_at')
+        if synced:
+            self.export_synced_at = synced
+            log("export synchronised from Teese at %s; cutoff %s" % (synced, self.cutoff_date))
+            if synced.date() < self.cutoff_date:
+                log("WARNING: the export predates the cutoff by %d day(s). "
+                    "Anything Teese recorded between %s and %s is NOT in this "
+                    "import." % ((self.cutoff_date - synced.date()).days,
+                                 synced.date(), self.cutoff_date))
+        else:
+            log("no _sync_state.csv in the archive: export date unknown")
 
         phases = [
             ("ports", self._import_ports),
@@ -167,12 +210,12 @@ class LogisticsLegacyImport(models.Model):
             ("partners", self._import_partners),
             ("files", self._import_files),
             ("expenses", self._import_expenses),
-            ("products", self._import_products),
             ("invoices", self._import_invoices),
             ("validations archive", self._archive_validations),
         ]
         ctx = {'log': log, 'counts': counts, 'company': self.company_id,
-               'maps': {}}
+               'maps': {}, 'cutoff': self.cutoff_date}
+        label = None
         try:
             for label, phase in phases:
                 with self.env.cr.savepoint():
@@ -183,12 +226,19 @@ class LogisticsLegacyImport(models.Model):
             self.write({'state': 'error', 'log': "\n".join(lines),
                         **{'count_%s' % k: v for k, v in counts.items()}})
             return
+        if counts['after_cutoff']:
+            log("WARNING: %d row(s) dated after the cutoff were imported for the "
+                "record; they are not in the trial balance." % counts['after_cutoff'])
         self.write({
             'state': 'done',
             'date_done': fields.Datetime.now(),
             'log': "\n".join(lines),
             **{'count_%s' % k: v for k, v in counts.items()},
         })
+
+    def _after_cutoff(self, ctx, day):
+        if day and ctx['cutoff'] and day > ctx['cutoff']:
+            ctx['counts']['after_cutoff'] += 1
 
     # ------------------------------------------------------------------
     # dimensions
@@ -318,6 +368,7 @@ class LogisticsLegacyImport(models.Model):
                 undated += 1
                 opened = _d("%s-01-01" % code[:4]) if code[:4].isdigit() else _d(r['write_date'])
                 log("legacy %s (%s) has no opening date - using %s" % (lid, code, opened))
+            self._after_cutoff(ctx, opened)
             partner = maps['partner'].get(int(r['partner_odoo_id']) if r['partner_odoo_id'] else 0)
             if not partner:
                 partner = company.partner_id
@@ -438,6 +489,7 @@ class LogisticsLegacyImport(models.Model):
             is_just = r['is_justified'] == '1'
             justified += is_just
             disbursed = _d(r['disbursed_date'])
+            self._after_cutoff(ctx, disbursed)
             vals_list.append({
                 'name': "LEG/%d" % lid,
                 'file_id': file.id,
@@ -447,7 +499,7 @@ class LogisticsLegacyImport(models.Model):
                 # Payment mode and holder were not exported; the money left
                 # in the legacy system and was billed there. Settled-direct
                 # is the neutral reading, and is_legacy keeps it out of every
-                # total that matters.
+                # total that matters. No journal entry is ever created.
                 'payment_mode': 'direct',
                 'state': 'cancel' if reversal else 'settled',
                 'vendor_id': self._supplier(E, ctx, r['supplier_name']).id if r['supplier_name'].strip() else False,
@@ -467,46 +519,17 @@ class LogisticsLegacyImport(models.Model):
             % (len(tables['advance']), created_total, skipped, parked, UNALLOCATED_FILE, reversals, justified))
 
     # ------------------------------------------------------------------
-    # invoices
+    # invoices: for the record, never posted
     # ------------------------------------------------------------------
-    def _import_products(self, E, tables, ctx):
-        Product = E['product.product']
-        by_legacy = {}
-        created = 0
-        ids_seen = {r['product_odoo_id'] for r in tables['line']}
-        debours_seen = {}
-        for r in tables['line']:
-            debours_seen.setdefault(r['product_odoo_id'], r['is_debours'] == '1')
-        for pid in sorted(ids_seen):
-            code, name, is_debours = PRODUCTS.get(
-                pid, ("LEG-%s" % pid, "Legacy product %s" % pid, debours_seen.get(pid, False)))
-            product = Product.with_context(active_test=False).search([('default_code', '=', code)], limit=1)
-            if not product:
-                product = Product.create({
-                    'name': name, 'default_code': code, 'type': 'service',
-                    'sale_ok': True, 'purchase_ok': False, 'list_price': 0.0,
-                })
-                created += 1
-            by_legacy[pid] = (product, is_debours)
-        ctx['maps']['product'] = by_legacy
-        ctx['counts']['products'] = created
-        ctx['log']("%d products, %d created" % (len(by_legacy), created))
-
     def _import_invoices(self, E, tables, ctx):
-        Move = E['account.move']
+        Inv = E['logistics.legacy.invoice']
         company = ctx['company']
         maps = ctx['maps']
         log = ctx['log']
-        journal = company.clearance_sale_journal_id or E['account.journal'].search(
-            [('type', '=', 'sale'), ('company_id', '=', company.id)], limit=1)
-        if not journal:
-            raise UserError(self.env._("Company %s has no sales journal.", company.name))
-        oop_account = company.clearance_oop_account_id
-        fee_account = company.clearance_fee_account_id
         lines_by_move = defaultdict(list)
         for r in tables['line']:
             lines_by_move[r['move_odoo_id']].append(r)
-        existing = set(Move.search([('legacy_id', '!=', 0), ('company_id', '=', company.id)]).mapped('legacy_id'))
+        existing = set(Inv.search([('company_id', '=', company.id)]).mapped('legacy_id'))
         vals_list, skipped, refunds, unlinked, nlines = [], 0, 0, 0, 0
         for r in tables['invoice']:
             lid = int(r['odoo_id'])
@@ -516,68 +539,54 @@ class LogisticsLegacyImport(models.Model):
             total = _f(r['amount_total'])
             is_refund = total < 0
             refunds += is_refund
-            sign = -1.0 if is_refund else 1.0
             file = maps['file'].get(int(r['dossier_odoo_id'])) if r['dossier_odoo_id'] else None
             if not file:
                 unlinked += 1
-            partner = maps['partner'].get(int(r['partner_odoo_id']))
+            partner = maps['partner'].get(int(r['partner_odoo_id']) if r['partner_odoo_id'] else 0)
             if not partner:
                 log("invoice %s: partner %s not in export - attached to the company" % (r['name'], r['partner_odoo_id']))
                 partner = company.partner_id
-            analytic = {str(file.analytic_account_id.id): 100} if file and file.analytic_account_id else False
+            inv_date = _d(r['invoice_date'])
+            self._after_cutoff(ctx, inv_date)
             line_cmds = []
             for lr in lines_by_move.get(r['odoo_id'], []):
-                product, is_debours = maps['product'][lr['product_odoo_id']]
-                is_debours = is_debours or lr['is_debours'] == '1'
-                lv = {
-                    'product_id': product.id,
-                    'name': (lr['label'].strip() or product.name)[:500],
+                code, label, is_debours = PRODUCTS.get(
+                    lr['product_odoo_id'],
+                    ("LEG-%s" % lr['product_odoo_id'], "Legacy product %s" % lr['product_odoo_id'], lr['is_debours'] == '1'))
+                line_cmds.append(fields.Command.create({
+                    'name': (lr['label'].strip() or label)[:500],
+                    'product_code': code,
+                    'product_label': label,
+                    'is_debours': is_debours or lr['is_debours'] == '1',
                     'quantity': _f(lr['quantity']) or 1.0,
-                    'price_unit': sign * _f(lr['price_unit']),
-                    'analytic_distribution': analytic,
-                }
-                if is_debours:
-                    # pass-through: no tax, and the out-of-pocket account
-                    # when the company has named it
-                    lv['tax_ids'] = [fields.Command.clear()]
-                    if oop_account:
-                        lv['account_id'] = oop_account.id
-                elif fee_account:
-                    lv['account_id'] = fee_account.id
-                line_cmds.append(fields.Command.create(lv))
+                    'price_unit': _f(lr['price_unit']),
+                    'price_subtotal': _f(lr['price_subtotal']),
+                    'legacy_id': int(lr['odoo_id']),
+                }))
                 nlines += 1
+            payment_state = r['payment_state'].strip()
             vals_list.append({
-                'move_type': 'out_refund' if is_refund else 'out_invoice',
-                'journal_id': journal.id,
-                'company_id': company.id,
                 'name': r['name'].strip(),
+                'company_id': company.id,
+                'file_id': file.id if file else False,
                 'partner_id': partner.id,
-                'invoice_date': _d(r['invoice_date']),
-                'invoice_date_due': _d(r['invoice_date_due']) or _d(r['invoice_date']),
-                'invoice_origin': file.name if file else False,
-                'ref': file.name if file else False,
-                'logistics_file_id': file.id if file else False,
+                'move_type': 'refund' if is_refund else 'invoice',
+                'date_invoice': inv_date,
+                'date_due': _d(r['invoice_date_due']),
+                'amount_untaxed': _f(r['amount_untaxed']),
+                'amount_total': total,
+                'amount_residual': _f(r['amount_residual']),
+                'payment_state': payment_state if payment_state in PAYMENT_STATES else 'not_paid',
                 'legacy_id': lid,
-                'legacy_amount_total': total,
-                'legacy_amount_residual': _f(r['amount_residual']),
-                'invoice_line_ids': line_cmds,
+                'line_ids': line_cmds,
             })
         created_total = 0
         for i in range(0, len(vals_list), CHUNK):
-            moves = Move.create(vals_list[i:i + CHUNK])
-            created_total += len(moves)
-            if self.post_invoices:
-                moves.action_post()
-        # the file's "current" invoice is the latest one it carries
-        for file in maps['file'].values():
-            invoices = file.invoice_ids.sorted(lambda m: (m.invoice_date or fields.Date.today(), m.id))
-            if invoices and file.invoice_id != invoices[-1]:
-                file.invoice_id = invoices[-1]
+            created_total += len(Inv.create(vals_list[i:i + CHUNK]))
         ctx['counts']['invoices'] = created_total
         ctx['counts']['lines'] = nlines
-        log("%d invoices in export, %d created (%d as refunds, %d posted), %d already present, %d with no file, %d lines"
-            % (len(tables['invoice']), created_total, refunds,
-               created_total if self.post_invoices else 0, skipped, unlinked, nlines))
+        log("%d invoices in export, %d created for the record (%d credit notes), %d already present, %d not tied to a file, %d lines - nothing posted"
+            % (len(tables['invoice']), created_total, refunds, skipped, unlinked, nlines))
 
     # ------------------------------------------------------------------
     # validations: history, not data

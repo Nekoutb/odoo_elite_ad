@@ -192,6 +192,16 @@ class LogisticsFile(models.Model):
         'account.move', 'logistics_file_id', string="Client Invoices",
         domain=[('move_type', 'in', ('out_invoice', 'out_refund'))])
     invoice_count = fields.Integer(compute='_compute_invoice_count')
+    # Billing done in the legacy system, for the record. Never posted.
+    legacy_invoice_ids = fields.One2many(
+        'logistics.legacy.invoice', 'file_id', string="Imported Invoices (Teese)")
+    legacy_invoice_count = fields.Integer(compute='_compute_legacy_billing')
+    legacy_billed_total = fields.Monetary(
+        compute='_compute_legacy_billing', currency_field='currency_id',
+        string="Imported Billing (TTC)")
+    legacy_outstanding_total = fields.Monetary(
+        compute='_compute_legacy_billing', currency_field='currency_id',
+        string="Imported Outstanding at Export")
     reopen_count = fields.Integer(readonly=True, copy=False)
 
     _name_company_uniq = models.Constraint(
@@ -241,6 +251,15 @@ class LogisticsFile(models.Model):
     def _compute_invoice_count(self):
         for file in self:
             file.invoice_count = len(file.invoice_ids)
+
+    @api.depends('legacy_invoice_ids.amount_total',
+                 'legacy_invoice_ids.amount_residual')
+    def _compute_legacy_billing(self):
+        for file in self:
+            invs = file.legacy_invoice_ids
+            file.legacy_invoice_count = len(invs)
+            file.legacy_billed_total = sum(invs.mapped('amount_total'))
+            file.legacy_outstanding_total = sum(invs.mapped('amount_residual'))
 
     @api.depends('expense_ids.state', 'expense_ids.amount',
                  'expense_ids.payment_mode')

@@ -4,6 +4,7 @@ from . import hr_employee
 from . import res_partner
 from . import account_move
 from . import logistics_port
+from . import logistics_legacy_invoice
 from . import logistics_document_type
 from . import logistics_service_type
 from . import logistics_file

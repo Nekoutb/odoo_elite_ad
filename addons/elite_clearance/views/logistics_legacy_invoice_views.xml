@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="logistics_legacy_invoice_view_form" model="ir.ui.view">
+        <field name="name">logistics.legacy.invoice.form</field>
+        <field name="model">logistics.legacy.invoice</field>
+        <field name="arch" type="xml">
+            <form string="Imported Invoice" create="0" edit="0" delete="0">
+                <header>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="Imported" bg_color="text-bg-secondary"/>
+                    <div class="alert alert-secondary" role="alert">
+                        Issued by the legacy system and kept for the record. It is not posted in Odoo:
+                        the balances it contributed to are in the trial balance uploaded at the cutoff date.
+                    </div>
+                    <div class="oe_title">
+                        <label for="name" string="Billing Reference"/>
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="partner_id"/>
+                            <field name="file_id"/>
+                            <field name="move_type"/>
+                            <field name="payment_state" widget="badge"/>
+                        </group>
+                        <group>
+                            <field name="date_invoice"/>
+                            <field name="date_due"/>
+                            <field name="legacy_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <field name="line_ids">
+                        <list create="0" edit="0" delete="0" decoration-muted="is_debours">
+                            <field name="name"/>
+                            <field name="product_label" optional="show"/>
+                            <field name="is_debours"/>
+                            <field name="quantity"/>
+                            <field name="price_unit"/>
+                            <field name="price_subtotal" sum="Total"/>
+                            <field name="currency_id" column_invisible="1"/>
+                        </list>
+                    </field>
+                    <group class="oe_subtotal_footer">
+                        <field name="amount_untaxed"/>
+                        <field name="amount_total" class="oe_subtotal_footer_separator"/>
+                        <field name="amount_residual"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="logistics_legacy_invoice_view_list" model="ir.ui.view">
+        <field name="name">logistics.legacy.invoice.list</field>
+        <field name="model">logistics.legacy.invoice</field>
+        <field name="arch" type="xml">
+            <list string="Imported Invoices" create="0" edit="0" decoration-muted="1">
+                <field name="name"/>
+                <field name="date_invoice"/>
+                <field name="partner_id"/>
+                <field name="file_id"/>
+                <field name="move_type" optional="show"/>
+                <field name="amount_untaxed" optional="hide" sum="Fee base"/>
+                <field name="amount_total" sum="Total"/>
+                <field name="amount_residual" sum="Outstanding"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="payment_state" widget="badge" optional="show"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="logistics_legacy_invoice_view_search" model="ir.ui.view">
+        <field name="name">logistics.legacy.invoice.search</field>
+        <field name="model">logistics.legacy.invoice</field>
+        <field name="arch" type="xml">
+            <search string="Imported Invoices">
+                <field name="name" string="Billing Reference"/>
+                <field name="partner_id"/>
+                <field name="file_id"/>
+                <filter name="outstanding" string="Outstanding at export" domain="[('amount_residual', '!=', 0)]"/>
+                <filter name="refunds" string="Credit notes" domain="[('move_type', '=', 'refund')]"/>
+                <filter name="no_file" string="Not tied to a file" domain="[('file_id', '=', False)]"/>
+                <group>
+                    <filter name="group_partner" string="Client" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_file" string="File" context="{'group_by': 'file_id'}"/>
+                    <filter name="group_month" string="Month" context="{'group_by': 'date_invoice:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_logistics_legacy_invoice" model="ir.actions.act_window">
+        <field name="name">Imported Invoices (Teese)</field>
+        <field name="res_model">logistics.legacy.invoice</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="logistics_legacy_invoice_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No imported invoices</p>
+            <p>Invoices issued by the legacy system arrive here through the Teese import, for the record only. They are never posted.</p>
+        </field>
+    </record>
+
+</odoo>

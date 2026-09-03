@@ -40,6 +40,8 @@
                     <field name="state" widget="statusbar" statusbar_visible="draft,in_progress,ops_closed,done"/>
                 </header>
                 <sheet>
+                    <widget name="web_ribbon" title="Imported" bg_color="text-bg-secondary"
+                            invisible="not legacy_id"/>
                     <field name="can_start" invisible="1"/>
                     <field name="invoice_id" invisible="1"/>
                     <field name="invoice_state" invisible="1"/>
@@ -171,6 +173,28 @@
                         </list>
                     </field>
                     <field name="invoice_count" invisible="1"/>
+
+                    <!-- Billing done in the legacy system: disclosed on the
+                         file, greyed out, Imported. Not posted, not editable. -->
+                    <separator string="Imported Billing (Teese)" invisible="not legacy_invoice_count"/>
+                    <field name="legacy_invoice_ids" readonly="1" invisible="not legacy_invoice_count">
+                        <list create="0" edit="0" delete="0" decoration-muted="1">
+                            <field name="name" string="Billing Ref."/>
+                            <field name="date_invoice"/>
+                            <field name="move_type"/>
+                            <field name="amount_untaxed" optional="hide"/>
+                            <field name="amount_total" sum="Total"/>
+                            <field name="amount_residual" sum="Outstanding"/>
+                            <field name="currency_id" column_invisible="1"/>
+                            <field name="payment_state" widget="badge"/>
+                            <field name="state" widget="badge"/>
+                        </list>
+                    </field>
+                    <group class="oe_subtotal_footer" invisible="not legacy_invoice_count">
+                        <field name="legacy_billed_total" readonly="1"/>
+                        <field name="legacy_outstanding_total" readonly="1"/>
+                    </group>
+                    <field name="legacy_invoice_count" invisible="1"/>
 
                     <separator string="Documentation Waiver"
                                invisible="waiver_state == 'none' and documents_complete"/>

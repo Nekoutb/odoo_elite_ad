@@ -15,6 +15,27 @@ Uninstall it after go-live; the fields it relies on live in
 **The data never enters this repository** — it is public. The zip is uploaded
 on the import record and stored as an attachment in the database only.
 
+## The principle: record-keeping only, no trial-balance impact
+
+The legacy books close on the **cutoff date, 31/08/2026**, and their account
+balances are uploaded to Odoo as a trial balance as of that date. Nothing
+the import creates may therefore touch the ledger:
+
+- legacy expenses carry no journal entry (`is_legacy`, excluded from every
+  billing total);
+- legacy invoices are **not** `account.move` records at all. They are
+  `logistics.legacy.invoice`, a read-only model with one state — *Imported* —
+  that cannot be posted by anyone. A draft `account.move` could have been
+  posted by mistake and counted revenue and a receivable twice against the
+  uploaded balances; a model that cannot post removes the possibility.
+
+The import records when the export was synchronised from Teese and warns
+if that predates the cutoff. **This export was synced on 26/08/2026 — five
+days short.** Anything Teese recorded from 27/08 to 31/08 is not in it, and
+with the Teese server down since ~29/08 it may not be recoverable. The
+trial balance covers the money; the missing days would only be missing
+*records* (dossiers, advances, invoices dated in that window).
+
 ## What is in the export
 
 | Table | Rows | Becomes |
@@ -22,8 +43,8 @@ on the import record and stored as an attachment in the database only.
 | `wh_dim_partner` | 190 | `res.partner` (customers) |
 | `wh_fact_dossier` | 3,644 | `logistics.file` |
 | `wh_fact_advance` | 7,272 | `logistics.expense`, flagged legacy |
-| `wh_fact_invoice` | 1,258 | `account.move`, draft (or posted on request) |
-| `wh_fact_invoice_line` | 6,308 | `account.move.line` |
+| `wh_fact_invoice` | 1,258 | `logistics.legacy.invoice` — for the record, never posted |
+| `wh_fact_invoice_line` | 6,308 | `logistics.legacy.invoice.line` |
 | `wh_fact_validation` | 10,713 | archived as an attachment; not data |
 
 Not in the export, so not migrated: employees and departments as masters
@@ -106,25 +127,27 @@ partner name, created as suppliers otherwise. *RANDY* (129 lines) looks like
 a staff member, not a supplier — a business question, not one the import
 can answer.
 
-**Invoices as drafts.** Posting 1,258 historical invoices into a fresh
-SYSCOHADA ledger creates receivables the accountant has to agree with. The
-default is draft; *Post the invoices* on the import record posts them.
-Either way `amount_residual` from Teese is recorded on the move as
-`legacy_amount_residual` and **not** reproduced as a posting — opening
-balances are the accountant's.
+**Invoices for the record.** Each of the 1,258 legacy invoices becomes a
+`logistics.legacy.invoice` carrying its Teese **billing reference**
+(`EL26IM228`), dates, client, fee base (HT), total (TTC), outstanding at
+export, payment state and every line — with the four legacy products kept
+as labels, no product created:
 
-Three invoices with negative totals become credit notes (`out_refund`) with
-positive lines. Line labels name the four legacy products:
-
-| Legacy product | Becomes | Pass-through |
+| Legacy product | Label on the line | Pass-through |
 |---|---|---|
-| 1447 | Débours (legacy) | yes — no tax, out-of-pocket account |
-| 1449 | Honoraires (legacy) | no — fee income, default taxes |
-| 5538 | Débours douane — vacation / liquidation (legacy) | yes |
-| 5541 | Droits de douane (legacy) | yes |
+| 1447 | Débours | yes |
+| 1449 | Honoraires | no |
+| 5538 | Débours douane — vacation / liquidation | yes |
+| 5541 | Droits de douane | yes |
 
-The Teese header `amount_untaxed` (1.14 Md) is the *fee* base; line totals
-(3.37 Md) include débours. Odoo recomputes its own totals from the lines.
+Opening a legacy file shows them in an **Imported Billing (Teese)** block,
+greyed out, state *Imported*, with the billed and outstanding totals. They
+are also listed under *Clearance → Files → Imported Invoices (Teese)*; the
+44 that Teese never tied to a dossier are there with no file.
+
+Amounts are kept exactly as exported, including the three credit notes with
+negative totals. `amount_untaxed` (1.14 Md) is Teese's fee base; the line
+subtotals (3.37 Md) include débours.
 
 **Validations** (approval circuits, 10,713 steps) are history about a
 workflow that is being rebuilt as Odoo approvals. Archived as a CSV
@@ -141,15 +164,16 @@ attachment on the import record.
 | of which cancelled reversals | 299 | `legacy_reversal` |
 | of which parked | 554 | on `LEGACY-UNALLOCATED` |
 | Advances total, positive rows | 2,652,615,630 XAF | sum of legacy expenses not cancelled |
-| Invoices | 1,258 (3 credit notes) | Invoicing, filter *Legacy ID set* |
-| Invoice lines | 6,308 | |
-| Legacy invoice total | 3,426,779,457 XAF | sum of `legacy_amount_total` |
-| Legacy outstanding | 2,975,319,557 XAF | sum of `legacy_amount_residual` — informational |
+| Imported invoices | 1,258 (3 credit notes, 44 without a file) | Clearance → Files → Imported Invoices (Teese) |
+| Imported invoice lines | 6,308 | |
+| Imported billing total (TTC) | 3,426,779,457 XAF | list footer, *Total* |
+| Outstanding at export | 2,975,319,557 XAF | list footer, *Outstanding* — informational; the receivable is in the trial balance |
+| Rows dated after 31/08/2026 | 0 expected | `count_after_cutoff` on the import record |
+| `account.move` created by the import | **0** | Invoicing — nothing new |
 
 ## Runbook (staging first)
 
-1. Settings → Clearance: set the out-of-pocket and fee income accounts and
-   the sales journal, or invoice lines fall back to product defaults.
+1. Nothing to configure in accounting first: the import posts nothing.
 2. Apps → install *Clearance Files — Teese Legacy Import*.
 3. Clearance → Configuration → Teese Legacy Import → New → upload the zip →
    Import. Expect a few minutes. If the request times out, open the record
@@ -157,8 +181,8 @@ attachment on the import record.
 4. Read the log on the record. Every renamed duplicate, undated dossier and
    unmatched partner is a line.
 5. Compare the counts above.
-6. Only then on production, with the accountant present for the invoice
-   posting decision.
+6. Only then on production. The accountant's task is separate and comes
+   after: upload the trial balance as of 31/08/2026.
 
 ## Open with Elimelec
 

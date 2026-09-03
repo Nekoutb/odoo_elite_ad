@@ -11,9 +11,14 @@ tables in one zip — into Clearance Files:
 * partners (clients), suppliers, employees, ports, service types;
 * dossiers → clearance files, with cargo, routing and provenance;
 * avances de frais → legacy expenses (historical, never posted, never billed);
-* invoices and their lines → draft customer invoices linked to their file,
-  or posted on request;
+* invoices and their lines → imported invoices on their file, for the
+  record only: never account.move, never posted;
 * validation history → archived as an attachment on the import record.
+
+Nothing this import creates touches the ledger. The legacy books close on
+the cutoff date (31/08/2026) and their balances arrive as an uploaded trial
+balance; the import records the export's sync date and warns when it falls
+short of the cutoff.
 
 Every row keeps its legacy identifier, so the import is idempotent: run it
 again and it skips what is already there. The data never enters the code
@@ -25,7 +30,7 @@ makes them, and in docs/legacy-migration-teese.md.
     'author': "Elite Advisors",
     'website': "https://eliteadvisors.cm-ea.com",
     'category': 'Services/Clearance',
-    'version': '19.0.1.0.0',
+    'version': '19.0.2.0.0',
     'license': 'LGPL-3',
     'depends': ['elite_clearance'],
     'data': [

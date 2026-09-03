@@ -15,3 +15,7 @@ access_logistics_expense_category_manager,logistics.expense.category.manager,mod
 access_logistics_reopen_wizard_user,logistics.file.reopen.wizard.user,model_logistics_file_reopen_wizard,group_clearance_user,1,1,1,1
 access_logistics_port_user,logistics.port.user,model_logistics_port,group_clearance_user,1,0,0,0
 access_logistics_port_manager,logistics.port.manager,model_logistics_port,group_clearance_manager,1,1,1,1
+access_logistics_legacy_invoice_user,logistics.legacy.invoice.user,model_logistics_legacy_invoice,group_clearance_user,1,0,0,0
+access_logistics_legacy_invoice_system,logistics.legacy.invoice.system,model_logistics_legacy_invoice,base.group_system,1,1,1,1
+access_logistics_legacy_invoice_line_user,logistics.legacy.invoice.line.user,model_logistics_legacy_invoice_line,group_clearance_user,1,0,0,0
+access_logistics_legacy_invoice_line_system,logistics.legacy.invoice.line.system,model_logistics_legacy_invoice_line,base.group_system,1,1,1,1
