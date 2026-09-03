@@ -39,6 +39,10 @@
                                  help="Who may approve expenses before disbursement. Empty = any Clearance Manager.">
                             <field name="clearance_expense_approver_ids" widget="many2many_tags"/>
                         </setting>
+                        <setting string="Settlement Approvers"
+                                 help="Who may approve the payment mode, vendor, holder and journal Finance has set on an expense. Empty = any Clearance Finance Manager.">
+                            <field name="clearance_settlement_approver_ids" widget="many2many_tags"/>
+                        </setting>
                         <setting string="Disbursement (Finance) Approvers"
                                  help="Who may settle disbursements and justify advances. Empty = any Clearance Finance user.">
                             <field name="clearance_finance_approver_ids" widget="many2many_tags"/>
@@ -46,6 +50,10 @@
                         <setting string="Billing Approvers"
                                  help="Who may raise client invoices and mark files complete. Empty = any Clearance Finance user.">
                             <field name="clearance_billing_approver_ids" widget="many2many_tags"/>
+                        </setting>
+                        <setting string="Operations Close Approvers"
+                                 help="Who may close a file for operations. Empty = any Clearance Operations Manager.">
+                            <field name="clearance_ops_close_approver_ids" widget="many2many_tags"/>
                         </setting>
                         <setting string="Unjustified Advance Waiver Approvers"
                                  help="Who may allow a file to be billed while a staff advance is still unsupported on 421101. Empty = any Clearance Operations Manager.">

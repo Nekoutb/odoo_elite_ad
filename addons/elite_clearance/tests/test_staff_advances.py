@@ -46,6 +46,7 @@ class TestStaffAdvances(TransactionCase):
         cls.file = env['logistics.file'].create({
             'partner_id': cls.client.id, 'service_type_id': cls.service.id})
         cls.file.state = 'in_progress'
+        cls.file.customs_fee_amount = 50000   # closing requires it keyed
 
     def _advance(self, amount, employee=None):
         return self.env['logistics.expense'].create({
@@ -99,7 +100,7 @@ class TestStaffAdvances(TransactionCase):
     def test_03_advance_sits_on_421101_against_the_holder(self):
         exp = self._advance(300000)
         exp.action_submit()
-        exp.action_approve()
+        exp.action_approve(); exp.action_approve_settlement()
         exp.action_settle()
         debit = exp.settlement_move_id.line_ids.filtered(lambda l: l.debit > 0)
         self.assertEqual(debit.account_id, self.advances)
@@ -113,7 +114,7 @@ class TestStaffAdvances(TransactionCase):
     def test_04_justification_reclassifies_421101_to_47xx(self):
         exp = self._advance(250000)
         exp.action_submit()
-        exp.action_approve()
+        exp.action_approve(); exp.action_approve_settlement()
         exp.action_settle()
         self._receipt(exp)
         exp.action_justify()
@@ -132,7 +133,7 @@ class TestStaffAdvances(TransactionCase):
     def test_05_unjustified_advance_blocks_closing_and_billing(self):
         exp = self._advance(400000)
         exp.action_submit()
-        exp.action_approve()
+        exp.action_approve(); exp.action_approve_settlement()
         exp.action_settle()
         with self.assertRaises(UserError):
             self.file.action_close_operations()
@@ -141,7 +142,7 @@ class TestStaffAdvances(TransactionCase):
     def test_06_waiver_needs_an_explanation_and_an_ops_manager(self):
         exp = self._advance(400000)
         exp.action_submit()
-        exp.action_approve()
+        exp.action_approve(); exp.action_approve_settlement()
         exp.action_settle()
         with self.assertRaises(UserError):
             self.file.action_request_advance_waiver()   # no explanation
@@ -163,14 +164,14 @@ class TestStaffAdvances(TransactionCase):
         unsupported advance is not recharged to the client."""
         justified = self._advance(600000)
         justified.action_submit()
-        justified.action_approve()
+        justified.action_approve(); justified.action_approve_settlement()
         justified.action_settle()
         self._receipt(justified)
         justified.action_justify()
 
         stranded = self._advance(150000)
         stranded.action_submit()
-        stranded.action_approve()
+        stranded.action_approve(); stranded.action_approve_settlement()
         stranded.action_settle()
 
         self.file.advance_waiver_reason = "Receipts lost; recovering by payroll."
@@ -194,7 +195,7 @@ class TestStaffAdvances(TransactionCase):
     def test_08_refused_waiver_keeps_the_file_shut(self):
         exp = self._advance(90000)
         exp.action_submit()
-        exp.action_approve()
+        exp.action_approve(); exp.action_approve_settlement()
         exp.action_settle()
         self.file.advance_waiver_reason = "Asking for an exception."
         self.file.action_request_advance_waiver()

@@ -11,12 +11,15 @@
                             class="oe_highlight" invisible="state != 'draft'"/>
                     <button name="action_approve" type="object" string="Approve"
                             class="oe_highlight" invisible="state != 'submitted'"
-                            groups="elite_clearance.group_clearance_manager"/>
+                            groups="elite_clearance.group_clearance_ops_manager,elite_clearance.group_clearance_customer_service_manager,elite_clearance.group_clearance_transit_manager"/>
                     <button name="action_refuse" type="object" string="Refuse"
                             invisible="state != 'submitted'"
-                            groups="elite_clearance.group_clearance_manager"/>
-                    <button name="action_settle" type="object" string="Settle (Post Payment)"
+                            groups="elite_clearance.group_clearance_ops_manager,elite_clearance.group_clearance_customer_service_manager,elite_clearance.group_clearance_transit_manager"/>
+                    <button name="action_approve_settlement" type="object" string="Approve Settlement"
                             class="oe_highlight" invisible="state != 'approved'"
+                            groups="elite_clearance.group_clearance_finance_manager"/>
+                    <button name="action_settle" type="object" string="Settle (Post Payment)"
+                            class="oe_highlight" invisible="state != 'settlement_approved'"
                             groups="elite_clearance.group_clearance_finance"/>
                     <button name="action_justify" type="object" string="Justify Advance"
                             class="oe_highlight"
@@ -25,7 +28,7 @@
                     <button name="action_reset_to_draft" type="object" string="Reset to Draft"
                             invisible="state not in ('submitted', 'cancel')"/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="draft,submitted,approved,settled,justified"/>
+                           statusbar_visible="draft,submitted,approved,settlement_approved,settled,justified"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
@@ -40,13 +43,13 @@
                             <field name="currency_id" invisible="1"/>
                             <field name="company_id" invisible="1"/>
                         </group>
-                        <group>
-                            <field name="payment_mode" widget="radio" readonly="state not in ('draft', 'submitted')"/>
-                            <field name="vendor_id" readonly="state == 'settled' or state == 'justified'"/>
+                        <group string="Settlement (Finance)" groups="elite_clearance.group_clearance_finance">
+                            <field name="payment_mode" widget="radio" readonly="state != 'approved'"/>
+                            <field name="vendor_id" readonly="state != 'approved'"/>
                             <field name="employee_id" invisible="payment_mode != 'advance'"
                                    required="payment_mode == 'advance'"
-                                   readonly="state in ('settled', 'justified')"/>
-                            <field name="journal_id" readonly="state in ('settled', 'justified')"/>
+                                   readonly="state != 'approved'"/>
+                            <field name="journal_id" readonly="state != 'approved'"/>
                             <field name="settlement_move_id" invisible="not settlement_move_id"/>
                             <field name="justification_move_id" invisible="not justification_move_id"/>
                             <field name="date_settled" invisible="not date_settled"/>
@@ -76,7 +79,7 @@
                 <field name="currency_id" column_invisible="1"/>
                 <field name="state" widget="badge"
                        decoration-info="state in ('draft', 'submitted')"
-                       decoration-warning="state == 'approved'"
+                       decoration-warning="state in ('approved', 'settlement_approved')"
                        decoration-success="state in ('settled', 'justified')"/>
             </list>
         </field>
@@ -91,7 +94,9 @@
                 <field name="file_id"/>
                 <field name="vendor_id"/>
                 <filter name="to_approve" string="To Approve" domain="[('state', '=', 'submitted')]"/>
-                <filter name="to_settle" string="To Settle" domain="[('state', '=', 'approved')]"/>
+                <filter name="to_set_settlement" string="Settlement To Set (Finance)" domain="[('state', '=', 'approved')]"/>
+                <filter name="to_approve_settlement" string="Settlement To Approve" domain="[('state', '=', 'approved'), ('payment_mode', '!=', False)]"/>
+                <filter name="to_settle" string="To Settle" domain="[('state', '=', 'settlement_approved')]"/>
                 <filter name="to_justify" string="Advances To Justify"
                         domain="[('state', '=', 'settled'), ('payment_mode', '=', 'advance')]"/>
                 <group>

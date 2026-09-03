@@ -1,0 +1,155 @@
+from odoo.exceptions import UserError
+from odoo.tests import TransactionCase, tagged
+
+
+@tagged('post_install', '-at_install')
+class TestSegregationOfDuties(TransactionCase):
+    """Who may do what to an expense, and who may close a file.
+
+    The spending team keys; a team manager approves; Finance decides how
+    it is paid; the Finance Manager signs that; the Operations Manager
+    closes the file. Every step is a different pair of hands.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        env = cls.env
+        company = env.company
+        if not company.chart_template:
+            env['account.chart.template'].try_loading('generic_coa', company)
+        Account = env['account.account']
+        cls.engaged = Account.create({
+            'code': 'X4713', 'name': "Debours engages",
+            'account_type': 'asset_current', 'reconcile': True})
+        cls.advances = Account.create({
+            'code': 'X421103', 'name': "Personnel debours avances",
+            'account_type': 'asset_current', 'reconcile': True})
+        cls.fee = Account.create({
+            'code': 'X7063', 'name': "Fee income", 'account_type': 'income'})
+        company.write({
+            'clearance_oop_account_id': cls.engaged.id,
+            'clearance_advance_account_id': cls.advances.id,
+            'clearance_fee_account_id': cls.fee.id,
+        })
+        cls.journal = env['account.journal'].create({
+            'name': "Cash desk", 'type': 'cash', 'code': 'XCSH3'})
+        cls.client = env['res.partner'].create({
+            'name': "Segregation Client", 'is_company': True})
+        cls.vendor = env['res.partner'].create({
+            'name': "Port authority", 'is_company': True})
+        cls.category = env['logistics.expense.category'].create({
+            'name': "Handling", 'code': "T-HDL3"})
+        cls.service = env['logistics.service.type'].create({
+            'name': "Segregation test", 'code': "T-SEG"})
+        cls.file = env['logistics.file'].create({
+            'partner_id': cls.client.id, 'service_type_id': cls.service.id})
+        cls.file.state = 'in_progress'
+
+        def user(name, *groups):
+            return env['res.users'].create({
+                'name': name, 'login': name.lower().replace(' ', '.') + "@seg.test",
+                'group_ids': [(6, 0, [env.ref(g).id for g in groups])]})
+        G = 'elite_clearance.group_clearance_'
+        cls.plain = user("Plain Clearance", G + 'user')
+        cls.ops = user("Ops Agent", G + 'operations')
+        cls.cs_manager = user("CS Manager", G + 'customer_service_manager')
+        cls.general_manager = user("General Manager", G + 'manager')
+        cls.finance = user("Finance Clerk", G + 'finance')
+        cls.finance_manager = user("Finance Manager", G + 'finance_manager')
+        cls.ops_manager = user("Ops Manager", G + 'ops_manager')
+
+    def _vals(self, amount=100000):
+        # What an originating team keys: the cost, and nothing about how it
+        # will be paid.
+        return {
+            'file_id': self.file.id,
+            'category_id': self.category.id,
+            'description': "Handling at terminal",
+            'amount': amount,
+        }
+
+    def _keyed_by_ops(self, amount=100000):
+        return self.env['logistics.expense'].with_user(self.ops).create(
+            self._vals(amount))
+
+    # -- who keys ---------------------------------------------------------
+    def test_01_finance_cannot_key_an_expense(self):
+        with self.assertRaises(UserError):
+            self.env['logistics.expense'].with_user(self.finance).create(
+                self._vals())
+
+    def test_02_plain_clearance_user_cannot_key_an_expense(self):
+        """Being a clearance user is not being on a spending team."""
+        with self.assertRaises(UserError):
+            self.env['logistics.expense'].with_user(self.plain).create(
+                self._vals())
+
+    def test_03_operations_keys_and_submits_without_settlement_details(self):
+        exp = self._keyed_by_ops()
+        self.assertFalse(exp.payment_mode, "No mode until Finance sets it.")
+        self.assertFalse(exp.journal_id)
+        exp.with_user(self.ops).action_submit()
+        self.assertEqual(exp.state, 'submitted')
+
+    def test_04_originator_cannot_touch_the_settlement_fields(self):
+        vals = self._vals()
+        vals['payment_mode'] = 'direct'
+        with self.assertRaises(UserError):
+            self.env['logistics.expense'].with_user(self.ops).create(vals)
+        exp = self._keyed_by_ops()
+        with self.assertRaises(UserError):
+            exp.with_user(self.ops).write({'journal_id': self.journal.id})
+        with self.assertRaises(UserError):
+            exp.with_user(self.ops).write({'vendor_id': self.vendor.id})
+
+    # -- who approves -----------------------------------------------------
+    def test_05_a_team_manager_approves_not_the_general_manager(self):
+        exp = self._keyed_by_ops()
+        exp.with_user(self.ops).action_submit()
+        with self.assertRaises(UserError):
+            exp.with_user(self.general_manager).action_approve()
+        with self.assertRaises(UserError):
+            exp.with_user(self.finance_manager).action_approve()
+        exp.with_user(self.cs_manager).action_approve()
+        self.assertEqual(exp.state, 'approved')
+
+    # -- who pays ---------------------------------------------------------
+    def test_06_finance_sets_the_settlement_and_the_finance_manager_signs(self):
+        exp = self._keyed_by_ops()
+        exp.with_user(self.ops).action_submit()
+        exp.with_user(self.cs_manager).action_approve()
+        # nothing can be settled on an unsigned settlement
+        with self.assertRaises(UserError):
+            exp.action_settle()
+        # the Finance Manager cannot sign a blank settlement
+        with self.assertRaises(UserError):
+            exp.with_user(self.finance_manager).action_approve_settlement()
+        exp.with_user(self.finance).write({
+            'payment_mode': 'direct',
+            'journal_id': self.journal.id,
+            'vendor_id': self.vendor.id,
+        })
+        # a Finance clerk proposes; only the Finance Manager signs
+        with self.assertRaises(UserError):
+            exp.with_user(self.finance).action_approve_settlement()
+        exp.with_user(self.finance_manager).action_approve_settlement()
+        self.assertEqual(exp.state, 'settlement_approved')
+        exp.action_settle()
+        self.assertEqual(exp.state, 'settled')
+        self.assertEqual(
+            exp.settlement_move_id.line_ids.filtered(lambda l: l.debit > 0).account_id,
+            self.engaged)
+
+    # -- who closes -------------------------------------------------------
+    def test_07_close_needs_the_customs_fee_and_an_operations_manager(self):
+        self.assertFalse(self.file.customs_fee_amount)
+        with self.assertRaises(UserError):
+            self.file.action_close_operations()          # fee not keyed
+        self.file.customs_fee_amount = 45000
+        with self.assertRaises(UserError):
+            self.file.with_user(self.plain).action_close_operations()
+        with self.assertRaises(UserError):
+            self.file.with_user(self.general_manager).action_close_operations()
+        self.file.with_user(self.ops_manager).action_close_operations()
+        self.assertEqual(self.file.state, 'ops_closed')

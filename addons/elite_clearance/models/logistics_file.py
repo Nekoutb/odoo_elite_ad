@@ -506,12 +506,24 @@ class LogisticsFile(models.Model):
 
     def action_close_operations(self):
         """Operations are finished: no further expenses can be captured.
-        Every expense must have reached its final state first."""
+
+        Three gates, in order: an Operations Manager is closing it; the
+        customs fee has been keyed; every expense is final (an unjustified
+        staff advance being the one waivable exception)."""
         for file in self:
+            # Closing is the Operations Manager's decision, not the agent's.
+            file.company_id._clearance_check_approver('ops_close')
             if file.state != 'in_progress':
                 raise UserError(self.env._(
                     "Only a file in progress can be closed for operations "
                     "(%s).", file.name))
+            # The customs service fee is keyed by hand from the declaration.
+            # A file closed with it blank would bill without it, silently.
+            if file.currency_id.is_zero(file.customs_fee_amount):
+                raise UserError(self.env._(
+                    "Key the customs service fee on %s before closing it for "
+                    "operations — it is read from the declaration, not "
+                    "computed.", file.name))
             pending = file.expense_ids.filtered(
                 lambda e: not e.is_final
                 and not (e.payment_mode == 'advance' and e.state == 'settled'))

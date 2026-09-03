@@ -8,7 +8,7 @@ billing that clears the balance sheet.
 | | |
 |---|---|
 | Module | `addons/elite_clearance` |
-| Version | `19.0.5.0.0` |
+| Version | `19.0.6.0.0` |
 | Odoo | 19.0 Community (lab) / 19.0 Enterprise (production, Odoo.sh) |
 | Licence | LGPL-3 |
 | Currency / locale | XAF, Cameroon (SYSCOHADA — `l10n_cm`) |
@@ -31,8 +31,18 @@ stamps one shared transaction timestamp (`env.cr.now()`) across everything
 saved together; the *Set Received Date/Time* wizard back-dates in bulk.
 
 **`logistics.expense` — out-of-pocket disbursements.**
-`draft → submitted → approved → settled`, and for advances a further
-`justified` step that requires at least one attachment.
+`draft → submitted → approved → settlement_approved → settled`, and for
+advances a further `justified` step that requires at least one attachment.
+Each step is a different pair of hands:
+
+| Step | Who |
+|---|---|
+| Key and submit | Operations, Customer Service or Transit team — **never Finance** |
+| Approve | Operations, Customer Service or Transit **Manager** |
+| Set how it is paid (mode, vendor, holder, journal) | Finance — the originator cannot even see these fields |
+| Sign the settlement | Finance **Manager** |
+| Settle, justify, bill | Finance |
+| Close the file for operations | Operations **Manager**, and only once the customs fee is keyed |
 
 | Step | Debit | Credit |
 |---|---|---|
@@ -73,10 +83,10 @@ separate lines. Invoice references are structured per service type
 A file cannot be marked complete until that invoice is posted. Reopening a
 closed file goes through a wizard that demands a manager and a written reason.
 
-**Approvals.** Waiver, expense, disbursement and billing checkpoints each
-take an explicit list of users under *Settings → Clearance*. Where no list is
-configured the security groups apply: *Clearance / Manager* for waivers and
-expense approval, *Clearance / Finance* for settlement and billing.
+**Approvals.** Every checkpoint — documentation waiver, expense approval,
+settlement approval, disbursement, billing, operations close, unjustified-
+advance waiver — takes an explicit list of users under *Settings → Clearance*.
+Where no list is configured the security groups above apply.
 
 ## Repository layout
 

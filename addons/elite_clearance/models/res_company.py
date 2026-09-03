@@ -7,19 +7,30 @@ from odoo.exceptions import UserError
 #            wording used in the refusal message)
 APPROVAL_KINDS = {
     'waiver': ("clearance_waiver_approver_ids",
-               'elite_clearance.group_clearance_manager',
+               ('elite_clearance.group_clearance_manager',),
                "approve documentation waivers"),
+    # An expense is approved by the manager of ANY originating team, not by
+    # the general manager and never by Finance.
     'expense': ("clearance_expense_approver_ids",
-                'elite_clearance.group_clearance_manager',
+                ('elite_clearance.group_clearance_ops_manager',
+                 'elite_clearance.group_clearance_customer_service_manager',
+                 'elite_clearance.group_clearance_transit_manager'),
                 "approve expenses before disbursement"),
+    # Finance proposes how an expense is paid; the Finance Manager signs it.
+    'settlement': ("clearance_settlement_approver_ids",
+                   ('elite_clearance.group_clearance_finance_manager',),
+                   "approve the settlement method of an expense"),
     'finance': ("clearance_finance_approver_ids",
-                'elite_clearance.group_clearance_finance',
+                ('elite_clearance.group_clearance_finance',),
                 "settle and justify disbursements"),
     'billing': ("clearance_billing_approver_ids",
-                'elite_clearance.group_clearance_finance',
+                ('elite_clearance.group_clearance_finance',),
                 "approve billing and completion"),
+    'ops_close': ("clearance_ops_close_approver_ids",
+                  ('elite_clearance.group_clearance_ops_manager',),
+                  "close a file for operations"),
     'advance_waiver': ("clearance_advance_waiver_approver_ids",
-                       'elite_clearance.group_clearance_ops_manager',
+                       ('elite_clearance.group_clearance_ops_manager',),
                        "waive unjustified staff advances so a file can be "
                        "billed"),
 }
@@ -74,6 +85,17 @@ class ResCompany(models.Model):
         'res.users', 'clearance_billing_approver_rel', string="Billing Approvers",
         help="Who may raise the client invoice and mark files complete. "
              "Empty = any Clearance Finance user.")
+    clearance_settlement_approver_ids = fields.Many2many(
+        'res.users', 'clearance_settlement_approver_rel',
+        string="Settlement Approvers",
+        help="Who may approve how an expense is paid once Finance has set "
+             "the payment mode, vendor, holder and journal. Empty = any "
+             "Clearance Finance Manager.")
+    clearance_ops_close_approver_ids = fields.Many2many(
+        'res.users', 'clearance_ops_close_approver_rel',
+        string="Operations Close Approvers",
+        help="Who may close a file for operations. Empty = any Clearance "
+             "Operations Manager.")
     clearance_advance_waiver_approver_ids = fields.Many2many(
         'res.users', 'clearance_advance_waiver_approver_rel',
         string="Unjustified Advance Waiver Approvers",
@@ -84,7 +106,7 @@ class ResCompany(models.Model):
         """Enforce the configured approver list for a checkpoint; fall back
         to the default security group when no list is configured."""
         self.ensure_one()
-        field_name, group_xmlid, label = APPROVAL_KINDS[kind]
+        field_name, group_xmlids, label = APPROVAL_KINDS[kind]
         approvers = self[field_name]
         user = self.env.user
         if approvers:
@@ -92,6 +114,6 @@ class ResCompany(models.Model):
                 raise UserError(self.env._(
                     "You are not among the users configured to %(what)s "
                     "(Settings → Clearance).", what=label))
-        elif not user.has_group(group_xmlid):
+        elif not any(user.has_group(g) for g in group_xmlids):
             raise UserError(self.env._(
                 "You do not have the rights to %(what)s.", what=label))

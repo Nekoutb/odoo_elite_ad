@@ -39,7 +39,7 @@ where no explicit approver list is set, the security groups apply.
     'author': "Elite Advisors",
     'website': "https://eliteadvisors.cm-ea.com",
     'category': 'Services/Clearance',
-    'version': '19.0.5.0.0',
+    'version': '19.0.6.0.0',
     'license': 'LGPL-3',
     'depends': ['base', 'mail', 'analytic', 'account', 'hr'],
     'data': [

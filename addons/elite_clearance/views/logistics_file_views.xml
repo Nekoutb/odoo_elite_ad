@@ -22,7 +22,8 @@
                     <button name="action_reload_checklist" type="object" string="Reload Checklist"
                             invisible="state not in ('draft', 'in_progress')"/>
                     <button name="action_close_operations" type="object" string="Close for Operations"
-                            invisible="state != 'in_progress'"/>
+                            invisible="state != 'in_progress'"
+                            groups="elite_clearance.group_clearance_ops_manager"/>
                     <button name="action_create_invoice" type="object" string="Create Invoice"
                             class="oe_highlight" invisible="state != 'ops_closed' or invoice_id"
                             groups="elite_clearance.group_clearance_finance"/>
@@ -106,14 +107,14 @@
                             <field name="category_id"/>
                             <field name="description"/>
                             <field name="vendor_id" optional="show"/>
-                            <field name="payment_mode"/>
-                            <field name="employee_id" optional="hide"/>
-                            <field name="journal_id" optional="show"/>
+                            <field name="payment_mode" groups="elite_clearance.group_clearance_finance"/>
+                            <field name="employee_id" optional="hide" groups="elite_clearance.group_clearance_finance"/>
+                            <field name="journal_id" optional="show" groups="elite_clearance.group_clearance_finance"/>
                             <field name="amount" sum="Total"/>
                             <field name="currency_id" column_invisible="1"/>
                             <field name="state" widget="badge"
                                    decoration-info="state in ('draft', 'submitted')"
-                                   decoration-warning="state == 'approved'"
+                                   decoration-warning="state in ('approved', 'settlement_approved')"
                                    decoration-success="state in ('settled', 'justified')"/>
                         </list>
                     </field>

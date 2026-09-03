@@ -1,6 +1,20 @@
 from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
+# Who may key an expense: the teams that spend. Finance is excluded on
+# purpose - the person who pays is not the person who spends.
+ORIGINATING_GROUPS = (
+    'elite_clearance.group_clearance_operations',
+    'elite_clearance.group_clearance_customer_service',
+    'elite_clearance.group_clearance_transit',
+)
+FINANCE_GROUP = 'elite_clearance.group_clearance_finance'
+
+# How an expense is paid is Finance's decision alone. An originating team
+# submits WITHOUT these; Finance fills them in once the expense is approved,
+# and the Finance Manager signs them before any money moves.
+SETTLEMENT_FIELDS = ('payment_mode', 'journal_id', 'vendor_id', 'employee_id')
+
 
 class LogisticsExpenseCategory(models.Model):
     _name = 'logistics.expense.category'
@@ -23,8 +37,12 @@ class LogisticsExpense(models.Model):
     """One out-of-pocket expense on a clearance file.
 
     Lifecycle:
-        draft -> submitted -> approved -> settled            (paid direct)
-        draft -> submitted -> approved -> settled -> justified  (via advance)
+        draft -> submitted            an originating team (never Finance)
+              -> approved             a team manager
+              -> settlement_approved  Finance sets how it is paid, the
+                                      Finance Manager signs it
+              -> settled              Finance posts the payment
+              -> justified            advances only, with documents
 
     Postings (all carry the file's analytic account):
         direct settle:   Dr 47xx Débours engagés    / Cr settlement journal
@@ -63,7 +81,8 @@ class LogisticsExpense(models.Model):
     payment_mode = fields.Selection(
         [('direct', "Direct (bank / cash / mobile money)"),
          ('advance', "Via employee cash advance")],
-        required=True, default='direct', tracking=True)
+        tracking=True,
+        help="Set by Finance once the expense is approved. Blank until then.")
     journal_id = fields.Many2one(
         'account.journal', string="Settlement Journal",
         domain="[('type', 'in', ('cash', 'bank'))]", check_company=True,
@@ -76,6 +95,7 @@ class LogisticsExpense(models.Model):
         [('draft', "Draft"),
          ('submitted', "Submitted"),
          ('approved', "Approved"),
+         ('settlement_approved', "Settlement Approved"),
          ('settled', "Settled"),
          ('justified', "Justified"),
          ('cancel', "Cancelled")],
@@ -114,9 +134,40 @@ class LogisticsExpense(models.Model):
                     "(%s). Create the employee first, then hand over the "
                     "money.", exp.name))
 
+    def _check_originating_team(self):
+        """Only a spending team keys an expense, and Finance never does.
+
+        Skipped under su: hooks, migrations and the test superuser are not
+        people. Every real user - administrators included - is bound.
+        """
+        if self.env.su:
+            return
+        user = self.env.user
+        if user.has_group(FINANCE_GROUP):
+            raise UserError(self.env._(
+                "Finance does not key expenses. The team that incurred the "
+                "cost enters it; Finance decides how it is paid."))
+        if not any(user.has_group(g) for g in ORIGINATING_GROUPS):
+            raise UserError(self.env._(
+                "Only the Operations, Customer Service or Transit team may "
+                "enter an expense."))
+
+    def _check_settlement_fields(self, vals):
+        """The payment mode, vendor, holder and journal are Finance's."""
+        if self.env.su:
+            return
+        touched = [f for f in SETTLEMENT_FIELDS if f in vals]
+        if touched and not self.env.user.has_group(FINANCE_GROUP):
+            raise UserError(self.env._(
+                "How an expense is paid is decided by Finance, not by the "
+                "team submitting it. Leave %s blank.",
+                ", ".join(self._fields[f].string for f in touched)))
+
     @api.model_create_multi
     def create(self, vals_list):
+        self._check_originating_team()
         for vals in vals_list:
+            self._check_settlement_fields(vals)
             if vals.get('name', "New") == "New":
                 vals['name'] = self.env['ir.sequence'].next_by_code(
                     'logistics.expense') or "New"
@@ -127,6 +178,10 @@ class LogisticsExpense(models.Model):
                     "Expenses can only be captured on a file that is in "
                     "progress (%s).", exp.file_id.name))
         return records
+
+    def write(self, vals):
+        self._check_settlement_fields(vals)
+        return super().write(vals)
 
     def unlink(self):
         if any(exp.state not in ('draft', 'cancel') for exp in self):
@@ -179,13 +234,36 @@ class LogisticsExpense(models.Model):
         self._check_manager()
         self.write({'state': 'cancel'})
 
+    def action_approve_settlement(self):
+        """The Finance Manager signs how Finance proposes to pay."""
+        for exp in self:
+            exp.company_id._clearance_check_approver('settlement')
+            if exp.state != 'approved':
+                raise UserError(self.env._(
+                    "%s is not approved by its team manager yet.", exp.name))
+            if not exp.payment_mode or not exp.journal_id:
+                raise UserError(self.env._(
+                    "Finance must set the payment mode and the settlement "
+                    "journal on %s before it can be approved.", exp.name))
+            exp.state = 'settlement_approved'
+            labels = dict(exp._fields['payment_mode'].selection)
+            holder = ""
+            if exp.payment_mode == 'advance':
+                holder = ", held by %s" % exp.employee_id.name
+            exp.message_post(body=self.env._(
+                "Settlement approved: %(mode)s via %(journal)s%(holder)s.",
+                mode=labels[exp.payment_mode],
+                journal=exp.journal_id.name, holder=holder))
+
     def action_settle(self):
-        """Money leaves the company. Direct: hits OOP. Advance: hits the
-        employee's advance account until justified."""
+        """Money leaves the company. Direct: hits 47xx. Advance: hits 421101
+        against the holder until justified."""
         self._check_finance()
         for exp in self:
-            if exp.state != 'approved':
-                raise UserError(self.env._("%s is not approved.", exp.name))
+            if exp.state != 'settlement_approved':
+                raise UserError(self.env._(
+                    "The settlement of %s has not been approved by the "
+                    "Finance Manager.", exp.name))
             if not exp.journal_id:
                 raise UserError(self.env._(
                     "Choose the settlement journal on %s — Cash, Bank, "
@@ -297,6 +375,10 @@ class LogisticsExpense(models.Model):
 
     def action_reset_to_draft(self):
         for exp in self:
+            if exp.state == 'settlement_approved':
+                raise UserError(self.env._(
+                    "%s has an approved settlement. Ask Finance to refuse "
+                    "it first.", exp.name))
             if exp.settlement_move_id:
                 raise UserError(self.env._(
                     "%s has been settled — the journal entry exists. "

@@ -15,7 +15,7 @@ working memory that is *not* obvious from the code.
   M260529302698425, Custom plan). The old Odoo Online db (elite-advisors,
   saas~19.3) holds no data and will lapse. Never build against 19.3 minor APIs.
 
-## The module: addons/elite_clearance (v19.0.5.0.0)
+## The module: addons/elite_clearance (v19.0.6.0.0)
 Customs clearance job files for a logistics/clearance services provider.
 - `logistics.file` — one file = one clearance job. States:
   draft → in_progress → ops_closed → done (+cancel). Gate: cannot start work
@@ -26,7 +26,22 @@ Customs clearance job files for a logistics/clearance services provider.
   Receiving stamps ONE shared transaction timestamp (env.cr.now()) for all
   lines saved together; bulk override via the Set Received Date/Time wizard.
 - `logistics.expense` — out-of-pocket expenses. draft → submitted →
-  approved → settled [→ justified, advances only].
+  approved → settlement_approved → settled [→ justified, advances only].
+- **Segregation of duties (owner spec, 03/09/2026).** Groups are TEAMS:
+  Operations / Customer Service / Transit (each with a Manager), Finance,
+  Finance Manager, plus the older general Manager (config, doc waivers,
+  reopen). An expense is KEYED only by an originating team, never Finance
+  (`_check_originating_team`, su-exempt so hooks/tests pass; admin is NOT
+  exempt). It is APPROVED by any team manager. The settlement fields
+  (`payment_mode`, `journal_id`, `vendor_id`, `employee_id` —
+  `SETTLEMENT_FIELDS`) are Finance-only on create AND write; an originator
+  submits without them. Finance fills them on an `approved` expense, the
+  Finance Manager signs (`action_approve_settlement` → `settlement_approved`),
+  and only then can Finance settle. `payment_mode` has no default any more.
+- **Ops-close gate.** `action_close_operations` requires the caller to pass
+  the `ops_close` approval (Operations Manager) AND `customs_fee_amount`
+  non-zero — the fee is keyed by hand from the declaration and a file closed
+  without it would bill without it.
   Postings: direct settle Dr 47xx Débours engagés / Cr journal (cash|bank|
   Mobile Money|Maviance); advance settle Dr 421101 Personnel débours avancés
   / Cr journal; justify (requires ≥1 attachment) Dr 47xx / Cr 421101.
@@ -51,7 +66,8 @@ Customs clearance job files for a logistics/clearance services provider.
   against the holder, and remains recoverable from them.
 - Approval checkpoints route through `res.company._clearance_check_approver`
   and the `APPROVAL_KINDS` table in `models/res_company.py`: an explicit
-  user list per company wins; empty falls back to the security group.
+  user list per company wins; empty falls back to the security groups (a
+  tuple — `expense` accepts any of the three team-manager groups).
 - Billing (ops_closed only): action_create_invoice builds out_invoice —
   recharge lines at cost against the OOP balance-sheet account (clears it,
   taxes explicitly cleared) + fee lines to fee income, which DO keep default
@@ -107,7 +123,7 @@ Customs clearance job files for a logistics/clearance services provider.
 - Apply code changes: `docker compose restart odoo` then Apps → module → Upgrade
   (XML/schema need the Upgrade; Python needs the restart).
 - Logs: `docker compose logs odoo`
-- Tests (throwaway db, currently 34 tests, must stay green):
+- Tests (throwaway db, currently 41 tests, must stay green):
   `docker compose run --rm odoo odoo -d clr_test -i elite_clearance --with-demo --test-enable --test-tags /elite_clearance --stop-after-init`
 - Static repo checks CI also runs: `python tools/check_manifest.py addons/elite_clearance`
 
