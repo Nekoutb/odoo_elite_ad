@@ -115,6 +115,11 @@ Customs clearance job files for a logistics/clearance services provider.
 - **One compute method may not feed both a stored and a non-stored field.**
   Stored computes default to `compute_sudo=True`, non-stored to `False`; the
   registry warns twice on every load. Split the method.
+- **`ir.sequence.date_range.create()` ignores `number_next`.** With the
+  standard implementation it seeds the PostgreSQL sequence from
+  `number_next_actual`, which `default_get` pins to 1. Create the range
+  bare, then `write({'number_next': N})` — only write() issues
+  `ALTER SEQUENCE ... RESTART WITH`. Cost one CI cycle on 03/09/2026.
 - Static checks (compile, XML well-formedness) cannot see an invalid *value*
   in a valid tag. Only installing the module catches that — which is what CI
   is for, and why it must stay green rather than merely exist.
