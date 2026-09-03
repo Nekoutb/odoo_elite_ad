@@ -86,6 +86,28 @@
                             <field name="analytic_account_id" readonly="1" invisible="not analytic_account_id"/>
                         </group>
                     </group>
+                    <group string="Cargo &amp; Routing" name="cargo">
+                        <group>
+                            <field name="port_id" options="{'no_create': True}"/>
+                            <field name="employee_id"/>
+                            <field name="shipment_type"/>
+                            <field name="incoterm_id" options="{'no_create': True}"/>
+                            <field name="customs_regime"/>
+                        </group>
+                        <group>
+                            <field name="container_count"/>
+                            <field name="package_count"/>
+                            <field name="weight_kg"/>
+                            <field name="cargo_value"/>
+                            <field name="importer_name"/>
+                        </group>
+                    </group>
+                    <group string="Legacy" name="legacy" invisible="not legacy_id">
+                        <group>
+                            <field name="legacy_id" readonly="1"/>
+                            <field name="legacy_type_name" readonly="1"/>
+                        </group>
+                    </group>
                     <separator string="Document Checklist"/>
                     <field name="document_ids">
                         <list editable="bottom">
@@ -137,6 +159,18 @@
                             <field name="reopen_count" readonly="1" invisible="not reopen_count"/>
                         </group>
                     </group>
+                    <field name="invoice_ids" readonly="1" invisible="invoice_count &lt; 2">
+                        <list>
+                            <field name="name"/>
+                            <field name="invoice_date"/>
+                            <field name="amount_total" sum="Total"/>
+                            <field name="amount_residual" sum="Outstanding"/>
+                            <field name="currency_id" column_invisible="1"/>
+                            <field name="state" widget="badge"/>
+                            <field name="payment_state" widget="badge"/>
+                        </list>
+                    </field>
+                    <field name="invoice_count" invisible="1"/>
 
                     <separator string="Documentation Waiver"
                                invisible="waiver_state == 'none' and documents_complete"/>
@@ -186,6 +220,7 @@
                 <field name="name"/>
                 <field name="partner_id"/>
                 <field name="service_type_id"/>
+                <field name="port_id" optional="show"/>
                 <field name="customs_declaration_ref" optional="show"/>
                 <field name="date_opened"/>
                 <field name="date_target" optional="show"/>
@@ -247,7 +282,10 @@
                 <field name="customs_declaration_ref"/>
                 <field name="bl_awb_ref"/>
                 <field name="user_id"/>
+                <field name="port_id"/>
+                <field name="employee_id"/>
                 <filter name="my_files" string="My Files" domain="[('user_id', '=', uid)]"/>
+                <filter name="legacy" string="Legacy (Teese)" domain="[('legacy_id', '!=', 0)]"/>
                 <separator/>
                 <filter name="draft" string="Draft" domain="[('state', '=', 'draft')]"/>
                 <filter name="in_progress" string="In Progress" domain="[('state', '=', 'in_progress')]"/>
@@ -261,6 +299,7 @@
                     <filter name="group_client" string="Client" context="{'group_by': 'partner_id'}"/>
                     <filter name="group_service" string="Service Type" context="{'group_by': 'service_type_id'}"/>
                     <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="group_port" string="Port" context="{'group_by': 'port_id'}"/>
                     <filter name="group_month" string="Opened" context="{'group_by': 'date_opened:month'}"/>
                 </group>
             </search>

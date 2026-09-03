@@ -53,6 +53,40 @@ class LogisticsFile(models.Model):
     date_closed = fields.Date(string="Closed On", readonly=True, copy=False)
     note = fields.Html(string="Internal Notes")
 
+    # --- cargo & routing (from the legacy dossier) -----------------------
+    port_id = fields.Many2one('logistics.port', string="Port", tracking=True)
+    employee_id = fields.Many2one(
+        'hr.employee', string="Follow-up Employee", tracking=True,
+        help="The staff member who follows the file day to day. Distinct "
+             "from the Responsible user: not every declarant has a login.")
+    shipment_type = fields.Selection(
+        [('container', "Container"),
+         ('conventional', "Conventional / break-bulk"),
+         ('flatbed', "Flatbed truck")],
+        string="Shipment Type")
+    container_count = fields.Integer(string="Containers")
+    package_count = fields.Integer(string="Packages")
+    weight_kg = fields.Float(string="Weight (kg)", digits=(16, 3))
+    cargo_value = fields.Monetary(
+        string="Cargo Value", currency_field='currency_id',
+        help="Declared value of the goods.")
+    customs_regime = fields.Char(
+        string="Customs Regime", help="e.g. EX1, EX2, IM4.")
+    incoterm_id = fields.Many2one('account.incoterms', string="Incoterm")
+    importer_name = fields.Char(
+        string="Importer",
+        help="The importer of record when it is not the client.")
+
+    # --- legacy (Teese) provenance -------------------------------------
+    legacy_id = fields.Integer(
+        string="Legacy ID", index=True, copy=False,
+        help="Identifier of this dossier in the legacy Teese system. Set "
+             "only by the migration; makes re-imports idempotent.")
+    legacy_type_name = fields.Char(
+        string="Legacy Type", copy=False,
+        help="The dossier type exactly as the legacy system labelled it, "
+             "kept because the mapping to a service type is a judgement.")
+
     # --- analytic -------------------------------------------------------
     analytic_account_id = fields.Many2one(
         'account.analytic.account', string="Analytic Account",
@@ -154,6 +188,10 @@ class LogisticsFile(models.Model):
     invoice_id = fields.Many2one(
         'account.move', string="Client Invoice", readonly=True, copy=False)
     invoice_state = fields.Selection(related='invoice_id.state', string="Invoice Status")
+    invoice_ids = fields.One2many(
+        'account.move', 'logistics_file_id', string="Client Invoices",
+        domain=[('move_type', 'in', ('out_invoice', 'out_refund'))])
+    invoice_count = fields.Integer(compute='_compute_invoice_count')
     reopen_count = fields.Integer(readonly=True, copy=False)
 
     _name_company_uniq = models.Constraint(
@@ -187,13 +225,22 @@ class LogisticsFile(models.Model):
         for file in self:
             file.expense_count = counts.get(file, 0)
 
-    @api.depends('expense_ids.state', 'expense_ids.amount', 'expense_ids.payment_mode')
+    @api.depends('expense_ids.state', 'expense_ids.amount',
+                 'expense_ids.payment_mode', 'expense_ids.is_legacy')
     def _compute_oop_total(self):
+        # Legacy expenses were billed in the old system and carry no posting
+        # here: they never feed a new invoice.
         for file in self:
             file.oop_total = sum(
                 e.amount for e in file.expense_ids
-                if e.state == 'justified'
-                or (e.state == 'settled' and e.payment_mode == 'direct'))
+                if not e.is_legacy and (
+                    e.state == 'justified'
+                    or (e.state == 'settled' and e.payment_mode == 'direct')))
+
+    @api.depends('invoice_ids')
+    def _compute_invoice_count(self):
+        for file in self:
+            file.invoice_count = len(file.invoice_ids)
 
     @api.depends('expense_ids.state', 'expense_ids.amount',
                  'expense_ids.payment_mode')
@@ -201,7 +248,8 @@ class LogisticsFile(models.Model):
         for file in self:
             file.unjustified_advance_total = sum(
                 e.amount for e in file.expense_ids
-                if e.payment_mode == 'advance' and e.state == 'settled')
+                if not e.is_legacy
+                and e.payment_mode == 'advance' and e.state == 'settled')
 
     @api.depends('oop_total', 'service_type_id.commission_rate')
     def _compute_fee_amounts(self):
@@ -255,6 +303,13 @@ class LogisticsFile(models.Model):
         billing: EL26IM0001  = EL + %(y)s + type code + 4-digit sequence
         The sequence per (kind, type, company) is created on first use and
         resets each year; ir.sequence guarantees no duplicates."""
+        return self._get_reference_sequence(kind, service_type, company).next_by_id()
+
+    @api.model
+    def _get_reference_sequence(self, kind, service_type, company):
+        """The ir.sequence behind a (kind, service type, company) reference,
+        created on first use. Exposed so the legacy import can advance it
+        past the numbers already taken in the old system."""
         code = (service_type.code or 'XX').upper()
         seq_code = 'logistics.%s.%s' % (kind, code)
         Seq = self.env['ir.sequence'].sudo()
@@ -270,7 +325,7 @@ class LogisticsFile(models.Model):
                 'company_id': company.id,
                 'use_date_range': True,
             })
-        return seq.next_by_id()
+        return seq
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -282,8 +337,9 @@ class LogisticsFile(models.Model):
                     vals['service_type_id'])
                 vals['name'] = self._next_reference('file', service_type, company)
         files = super().create(vals_list)
+        skip_checklist = self.env.context.get('skip_checklist')
         for file in files:
-            if not file.document_ids and file.service_type_id:
+            if not file.document_ids and file.service_type_id and not skip_checklist:
                 file._build_checklist()
             if not file.analytic_account_id:
                 file._create_analytic_account()
@@ -576,8 +632,9 @@ class LogisticsFile(models.Model):
             'name': self.env._("Out-of-pocket expenses recharged at cost"),
         })]
         for exp in self.expense_ids.filtered(
-                lambda e: e.state == 'justified'
-                or (e.state == 'settled' and e.payment_mode == 'direct')):
+                lambda e: not e.is_legacy and (
+                    e.state == 'justified'
+                    or (e.state == 'settled' and e.payment_mode == 'direct'))):
             lines.append(fields.Command.create({
                 'name': "%s — %s" % (exp.category_id.name, exp.description),
                 'quantity': 1.0,

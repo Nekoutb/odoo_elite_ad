@@ -50,6 +50,7 @@
                                    required="payment_mode == 'advance'"
                                    readonly="state != 'approved'"/>
                             <field name="journal_id" readonly="state != 'approved'"/>
+                            <field name="date_requested"/>
                             <field name="settlement_move_id" invisible="not settlement_move_id"/>
                             <field name="justification_move_id" invisible="not justification_move_id"/>
                             <field name="date_settled" invisible="not date_settled"/>
@@ -77,6 +78,7 @@
                 <field name="journal_id" optional="hide"/>
                 <field name="amount" sum="Total"/>
                 <field name="currency_id" column_invisible="1"/>
+                <field name="is_legacy" optional="hide"/>
                 <field name="state" widget="badge"
                        decoration-info="state in ('draft', 'submitted')"
                        decoration-warning="state in ('approved', 'settlement_approved')"
@@ -94,6 +96,9 @@
                 <field name="file_id"/>
                 <field name="vendor_id"/>
                 <filter name="to_approve" string="To Approve" domain="[('state', '=', 'submitted')]"/>
+                <filter name="legacy" string="Legacy (Teese)" domain="[('is_legacy', '=', True)]"/>
+                <filter name="legacy_unjustified" string="Legacy, unjustified" domain="[('is_legacy', '=', True), ('legacy_justified', '=', False), ('legacy_reversal', '=', False)]"/>
+                <separator/>
                 <filter name="to_set_settlement" string="Settlement To Set (Finance)" domain="[('state', '=', 'approved')]"/>
                 <filter name="to_approve_settlement" string="Settlement To Approve" domain="[('state', '=', 'approved'), ('payment_mode', '!=', False)]"/>
                 <filter name="to_settle" string="To Settle" domain="[('state', '=', 'settlement_approved')]"/>

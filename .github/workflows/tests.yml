@@ -32,7 +32,7 @@ jobs:
               sys.exit("Malformed XML:\n" + "\n".join(bad))
           PY
       - name: Manifest declares every data file that exists
-        run: python tools/check_manifest.py addons/elite_clearance
+        run: python tools/check_manifest.py addons/elite_clearance addons/elite_clearance_teese
 
   odoo-tests:
     name: Odoo 19 test suite
@@ -55,7 +55,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install elite_clearance and run its tests
+      - name: Install both modules and run their tests
         shell: bash
         run: |
           set -euo pipefail

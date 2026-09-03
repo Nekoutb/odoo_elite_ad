@@ -104,11 +104,34 @@ class LogisticsExpense(models.Model):
         'account.move', string="Settlement Entry", readonly=True, copy=False)
     justification_move_id = fields.Many2one(
         'account.move', string="Justification Entry", readonly=True, copy=False)
+    date_requested = fields.Date(
+        string="Requested On", copy=False,
+        help="When the disbursement was asked for. With Settled On, this is "
+             "the disbursement lag.")
     date_settled = fields.Datetime(readonly=True, copy=False)
     is_final = fields.Boolean(compute='_compute_is_final', store=True)
 
+    # --- legacy (Teese) provenance -------------------------------------
+    is_legacy = fields.Boolean(
+        string="Legacy", copy=False, index=True,
+        help="Imported from the legacy system: historical, billed there, "
+             "posted nowhere here. Never feeds a new invoice or the "
+             "unjustified-advance gate.")
+    legacy_id = fields.Integer(string="Legacy ID", index=True, copy=False)
+    legacy_justified = fields.Boolean(
+        string="Justified (legacy)", copy=False,
+        help="The legacy system's own justification flag, kept verbatim.")
+    legacy_reversal = fields.Boolean(
+        string="Reversal (legacy)", copy=False,
+        help="The legacy row carried a negative or zero amount - a return "
+             "or correction. Kept with its absolute value, cancelled, so "
+             "the audit trail is complete and no total counts it.")
+
+    # Legacy rows may carry a zero amount (reversals kept for the record);
+    # every live expense must be strictly positive.
     _amount_positive = models.Constraint(
-        'CHECK(amount > 0)', "The expense amount must be positive.")
+        'CHECK(amount > 0 OR is_legacy)',
+        "The expense amount must be positive.")
 
     @api.depends('state', 'payment_mode')
     def _compute_is_final(self):
@@ -172,6 +195,8 @@ class LogisticsExpense(models.Model):
                 vals['name'] = self.env['ir.sequence'].next_by_code(
                     'logistics.expense') or "New"
         records = super().create(vals_list)
+        if self.env.context.get('legacy_import'):
+            return records   # history: the file's state is whatever it was
         for exp in records:
             if exp.file_id.state != 'in_progress':
                 raise UserError(self.env._(

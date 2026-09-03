@@ -8,7 +8,7 @@ billing that clears the balance sheet.
 | | |
 |---|---|
 | Module | `addons/elite_clearance` |
-| Version | `19.0.6.0.0` |
+| Version | `19.0.7.0.0` |
 | Odoo | 19.0 Community (lab) / 19.0 Enterprise (production, Odoo.sh) |
 | Licence | LGPL-3 |
 | Currency / locale | XAF, Cameroon (SYSCOHADA — `l10n_cm`) |
@@ -88,10 +88,20 @@ settlement approval, disbursement, billing, operations close, unjustified-
 advance waiver — takes an explicit list of users under *Settings → Clearance*.
 Where no list is configured the security groups above apply.
 
+## Legacy data (Elimelec / Teese)
+
+`addons/elite_clearance_teese` is a one-off importer for the Teese warehouse
+export: upload the zip on *Clearance → Configuration → Teese Legacy Import*.
+It is idempotent and never puts the data in this repository. The mapping,
+every judgement call and the reconciliation figures are in
+[docs/legacy-migration-teese.md](docs/legacy-migration-teese.md). Uninstall
+it after go-live; the fields it needs live in `elite_clearance`.
+
 ## Repository layout
 
 ```
 addons/elite_clearance/     the deliverable — the only thing that ships
+addons/elite_clearance_teese/  one-off legacy importer; uninstall after go-live
   models/                   persistent models
   wizard/                   TransientModels and their views
   views/                    list / form / kanban / search / settings / menus

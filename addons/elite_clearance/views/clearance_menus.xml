@@ -32,6 +32,9 @@
     <menuitem id="menu_clearance_expense_category" name="Expense Categories"
               parent="menu_clearance_config" action="action_logistics_expense_category" sequence="30"/>
 
+    <menuitem id="menu_clearance_port" name="Ports"
+              parent="menu_clearance_config" action="action_logistics_port" sequence="40"/>
+
     <menuitem id="menu_clearance_settings" name="Settings"
               parent="menu_clearance_config" action="action_clearance_config_settings"
               sequence="90" groups="base.group_system"/>

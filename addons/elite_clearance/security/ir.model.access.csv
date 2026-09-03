@@ -13,3 +13,5 @@ access_logistics_expense_user,logistics.expense.user,model_logistics_expense,gro
 access_logistics_expense_category_user,logistics.expense.category.user,model_logistics_expense_category,group_clearance_user,1,0,0,0
 access_logistics_expense_category_manager,logistics.expense.category.manager,model_logistics_expense_category,group_clearance_manager,1,1,1,1
 access_logistics_reopen_wizard_user,logistics.file.reopen.wizard.user,model_logistics_file_reopen_wizard,group_clearance_user,1,1,1,1
+access_logistics_port_user,logistics.port.user,model_logistics_port,group_clearance_user,1,0,0,0
+access_logistics_port_manager,logistics.port.manager,model_logistics_port,group_clearance_manager,1,1,1,1
