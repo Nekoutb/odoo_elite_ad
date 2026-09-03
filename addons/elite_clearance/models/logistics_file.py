@@ -26,6 +26,11 @@ class LogisticsFile(models.Model):
         'res.partner', string="Client", required=True, index=True,
         tracking=True, domain="[('is_company', '=', True)]",
     )
+    partner_slug = fields.Char(
+        related='partner_id.clearance_slug', string="Client Slug",
+        readonly=True,
+        help="The client's three letters, as they appear in this file's "
+             "analytic tag. Assigned when the client's first file is opened.")
     service_type_id = fields.Many2one(
         'logistics.service.type', string="Service Type", required=True,
         tracking=True,
@@ -416,12 +421,19 @@ class LogisticsFile(models.Model):
         )
         if not plan:
             return
+        # The name IS the label: the file number once, then the client's
+        # three-letter slug, so every tag in the analytic distribution reads
+        # the same width - 2026AI0072 - CTC. account.analytic.account's
+        # display_name is overridden for this plan to use it verbatim
+        # instead of Odoo's "[code] name - full client name".
+        slug = self.partner_id._clearance_ensure_slug()
+        label = "%s - %s" % (self.name, slug) if slug else self.name
         # sudo(): the analytic account is a technical record the system owns,
         # not something the ops agent is choosing to create. Without this, a
         # clearance user without the Analytic Accounting group cannot open a
         # file at all.
         self.analytic_account_id = self.env['account.analytic.account'].sudo().create({
-            'name': self.name,
+            'name': label,
             'code': self.name,
             'plan_id': plan.id,
             'partner_id': self.partner_id.id,

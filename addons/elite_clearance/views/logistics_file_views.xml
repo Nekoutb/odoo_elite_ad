@@ -96,6 +96,7 @@
                     <group>
                         <group name="client">
                             <field name="partner_id" options="{'no_quick_create': True}"/>
+                            <field name="partner_slug" invisible="not partner_slug"/>
                             <field name="service_type_id" options="{'no_create': True}"/>
                             <field name="user_id" widget="many2one_avatar_user"/>
                             <field name="company_id" groups="base.group_multi_company" options="{'no_create': True}"/>

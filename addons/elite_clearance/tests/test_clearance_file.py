@@ -47,11 +47,71 @@ class TestClearanceFile(TransactionCase):
         self.assertFalse(file.documents_complete)
 
     def test_02_analytic_account_created(self):
-        """Every file carries its own analytic account from creation."""
+        """Every file carries its own analytic account from creation, and its
+        tag reads the file number ONCE followed by the client's slug."""
         file = self._new_file()
-        self.assertTrue(file.analytic_account_id)
-        self.assertEqual(file.analytic_account_id.name, file.name)
-        self.assertEqual(file.analytic_account_id.partner_id, self.client)
+        analytic = file.analytic_account_id
+        self.assertTrue(analytic)
+        self.assertEqual(analytic.partner_id, self.client)
+        slug = self.client.clearance_slug
+        self.assertEqual(len(slug or ''), 3, "the slug is always three letters")
+        self.assertEqual(analytic.name, "%s - %s" % (file.name, slug))
+        self.assertEqual(analytic.code, file.name)
+        # the label the user sees: no brackets, no repeat, no full client name
+        self.assertEqual(analytic.display_name, "%s - %s" % (file.name, slug))
+        self.assertNotIn("[", analytic.display_name)
+        self.assertEqual(analytic.display_name.count(file.name), 1)
+        self.assertNotIn(self.client.name, analytic.display_name)
+
+    def test_02b_the_slug_is_generated_once_and_kept(self):
+        """Three letters per client, assigned at the first file and stable
+        for every file after it."""
+        first = self._new_file()
+        slug = self.client.clearance_slug
+        self.assertTrue(slug)
+        second = self._new_file()
+        self.assertEqual(self.client.clearance_slug, slug, "never regenerated")
+        self.assertTrue(second.analytic_account_id.name.endswith(" - " + slug))
+        self.assertEqual(first.partner_slug, slug)
+
+    def test_02c_slug_rules_and_collisions(self):
+        """Initials for a long name, opening letters for a short one, and
+        never the same three letters for two different clients."""
+        Partner = self.env['res.partner']
+        cases = {
+            "PIZZAROTI": "PIZ",                # one word -> opening letters
+            "CTC": "CTC",
+            "AB": "ABX",                       # padded to three
+            "CTC SA": "CTC",                   # SA is noise
+            "Élimelec Sarl": "ELI",            # accents folded, SARL dropped
+            "SOCIETE DES BOISSONS DU CAMEROUN": "BOI",   # two telling words
+            # three telling words -> initials
+            "Societe Nationale des Hydrocarbures du Cameroun": "NHC",
+        }
+        for name, expected in cases.items():
+            candidate = Partner.new({'name': name})._clearance_slug_candidate()
+            self.assertEqual(candidate, expected, "%s -> %s" % (name, candidate))
+
+        # two clients that want the same three letters get different ones
+        a = Partner.create({'name': "Pizzaroti Cameroun", 'is_company': True})
+        b = Partner.create({'name': "Pizzaroti Douala", 'is_company': True})
+        slug_a = a._clearance_ensure_slug()
+        slug_b = b._clearance_ensure_slug()
+        self.assertEqual(len(slug_a), 3)
+        self.assertEqual(len(slug_b), 3)
+        self.assertNotEqual(slug_a, slug_b, "slugs must identify one client")
+
+    def test_02d_a_non_clearance_analytic_account_is_untouched(self):
+        """The override applies to the Clearance plan only; Odoo's own
+        labelling elsewhere is left exactly as it was."""
+        plan = self.env['account.analytic.plan'].create({'name': "Other"})
+        other = self.env['account.analytic.account'].create({
+            'name': "Something", 'code': "SMT", 'plan_id': plan.id,
+            'partner_id': self.client.id})
+        self.assertEqual(
+            other.display_name,
+            "[SMT] Something - %s" % self.client.name,
+            "core behaviour must survive outside the Clearance plan")
 
     def test_03_cannot_start_without_documents(self):
         """The gate holds: no work while a mandatory document is missing."""
