@@ -396,9 +396,13 @@ class LogisticsLegacyImport(models.Model):
             rng = seq.date_range_ids.filtered(
                 lambda d: str(d.date_from) == date_from and str(d.date_to) == date_to)
             if not rng:
+                # Create, THEN write. ir.sequence.date_range.create() seeds the
+                # PostgreSQL sequence from number_next_actual (forced to 1 by
+                # default_get) and ignores a number_next passed at creation;
+                # only write() issues ALTER SEQUENCE ... RESTART WITH.
                 rng = E['ir.sequence.date_range'].create({
-                    'sequence_id': seq.id, 'date_from': date_from, 'date_to': date_to,
-                    'number_next': highest + 1})
+                    'sequence_id': seq.id, 'date_from': date_from, 'date_to': date_to})
+                rng.write({'number_next': highest + 1})
                 ctx['log']("sequence %s/%s starts at %d" % (code, year, highest + 1))
             elif rng.number_next <= highest:
                 rng.number_next = highest + 1
