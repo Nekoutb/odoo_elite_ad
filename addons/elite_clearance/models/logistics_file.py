@@ -807,8 +807,9 @@ class LogisticsFile(models.Model):
         regime for them would be worse than leaving it blank.
         """
         for file in self:
-            if file.state == 'imported' or self.env.context.get('legacy_import'):
-                continue
+            if (file.legacy_id or file.state == 'imported'
+                    or self.env.context.get('legacy_import')):
+                continue        # Teese history, in whatever state
             if not file.customs_regime:
                 raise ValidationError(self.env._(
                     "Choose the customs regime for %s (IM4, IM5, IM7 or "

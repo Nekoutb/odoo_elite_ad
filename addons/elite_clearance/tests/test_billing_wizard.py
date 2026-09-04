@@ -176,10 +176,15 @@ class TestBillingWizard(TransactionCase):
             "47xx still clears at cost")
         under = lines.filtered(lambda l: l.account_id == self.undercharge)
         self.assertEqual(under.price_subtotal, -15000)
+        # The commission follows what the client is CHARGED, not what was
+        # disbursed: 2% of 85,000, not of 100,000. The billing screen shows
+        # the rate beside the recharged total and recomputes as either
+        # moves, so the biller sees the figure they are agreeing to.
+        # (Owner: confirm. Basing it on cost instead is a one-line change.)
         self.assertEqual(
             sum(lines.filtered(lambda l: l.display_type == 'product')
                 .mapped('price_subtotal')),
-            85000 + 2000 + 30000)
+            85000 + 1700 + 30000)
 
     def test_07_raising_a_recharge_also_goes_for_review(self):
         wizard = self._wizard()

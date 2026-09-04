@@ -172,6 +172,7 @@ class TestClearanceFile(TransactionCase):
             ])],
         })
         file = self.env['logistics.file'].with_user(user).create({
+            'customs_regime': 'im4',
             'partner_id': self.client.id,
             'service_type_id': self.service.id,
         })
@@ -233,6 +234,7 @@ class TestClearanceFile(TransactionCase):
             ])],
         })
         file = self.env['logistics.file'].with_user(user).create({
+            'customs_regime': 'im4',
             'partner_id': self.client.id,
             'service_type_id': self.service.id,
         })

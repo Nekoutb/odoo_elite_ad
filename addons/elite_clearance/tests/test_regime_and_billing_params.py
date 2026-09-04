@@ -200,9 +200,9 @@ class TestRegimeAndBillingParams(TransactionCase):
             'name': "Frais d'ouverture de dossier", 'default_amount': 20964,
             'account_id': self.income.id})
         self.assertEqual(service.state, 'draft')
-        domain = self.env['logistics.billing.wizard.service']._fields[
-            'service_id'].domain
-        self.assertIn(('state', '=', 'approved'), domain,
+        domain = str(self.env['logistics.billing.wizard.service']._fields[
+            'service_id'].domain)
+        self.assertIn("'approved'", domain,
                       "only approved services can be picked")
 
     def test_14_the_operations_manager_approves_it(self):

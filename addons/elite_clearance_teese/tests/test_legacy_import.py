@@ -166,7 +166,8 @@ class TestLegacyImport(TransactionCase):
         self.assertEqual(f.shipment_type, 'container')
         self.assertEqual(f.container_count, 2)
         self.assertEqual(f.incoterm_id.code, "CIF")
-        self.assertEqual(f.customs_regime, "EX1")
+        self.assertEqual(f.legacy_customs_regime, "EX1",
+                         "Teese regimes are history, not IM codes")
         self.assertEqual(f.legacy_type_name, "MISE A LA CONSOMMATION")
         self.assertEqual(f.state, 'imported', "History, not live work.")
         self.assertFalse(f.document_ids, "Historical files carry no checklist.")

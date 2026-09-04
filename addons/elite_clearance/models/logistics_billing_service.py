@@ -15,7 +15,9 @@ class LogisticsBillingService(models.Model):
     _inherit = ['mail.thread']
     _order = 'sequence, name'
 
-    name = fields.Char(required=True, tracking=True, translate=True)
+    # NOT translate=True: a translated Char is stored as jsonb and
+    # clearance.task UNIONs this column against plain varchar ones.
+    name = fields.Char(required=True, tracking=True)
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
     description = fields.Text(
