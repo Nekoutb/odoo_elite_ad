@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+  <record id="view_logistics_billing_service_list" model="ir.ui.view">
+    <field name="name">logistics.billing.service.list</field>
+    <field name="model">logistics.billing.service</field>
+    <field name="arch" type="xml">
+      <list string="Billable Services"
+            decoration-muted="state == 'refused'"
+            decoration-success="state == 'approved'">
+        <field name="sequence" widget="handle"/>
+        <field name="name"/>
+        <field name="unit_label"/>
+        <field name="default_amount"/>
+        <field name="account_id" optional="show"/>
+        <field name="requested_by_id" optional="hide"/>
+        <field name="approved_by_id" optional="show"/>
+        <field name="state" widget="badge"
+               decoration-success="state == 'approved'"
+               decoration-danger="state == 'refused'"/>
+        <field name="currency_id" column_invisible="1"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="view_logistics_billing_service_form" model="ir.ui.view">
+    <field name="name">logistics.billing.service.form</field>
+    <field name="model">logistics.billing.service</field>
+    <field name="arch" type="xml">
+      <form string="Billable Service">
+        <header>
+          <button name="action_approve" type="object" string="Approve"
+                  class="oe_highlight" invisible="state == 'approved'"
+                  groups="elite_clearance.group_clearance_ops_manager"/>
+          <button name="action_refuse" type="object" string="Refuse"
+                  invisible="state != 'draft'"
+                  groups="elite_clearance.group_clearance_ops_manager"/>
+          <button name="action_reset_draft" type="object" string="Reset to Draft"
+                  invisible="state == 'draft'"/>
+          <field name="state" widget="statusbar"
+                 statusbar_visible="draft,approved"/>
+        </header>
+        <sheet>
+          <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger"
+                  invisible="active"/>
+          <div class="alert alert-info" role="alert"
+               invisible="state == 'approved'">
+            This service cannot be billed until an Operations Manager
+            approves it.
+          </div>
+          <div class="oe_title">
+            <label for="name"/>
+            <h1><field name="name" placeholder="e.g. Frais d'ouverture de dossier"/></h1>
+          </div>
+          <group>
+            <group>
+              <field name="unit_label"/>
+              <field name="default_amount"/>
+              <field name="account_id"/>
+              <field name="active" invisible="1"/>
+              <field name="currency_id" invisible="1"/>
+              <field name="company_id" groups="base.group_multi_company"/>
+            </group>
+            <group>
+              <field name="requested_by_id"/>
+              <field name="approved_by_id" invisible="not approved_by_id"/>
+              <field name="approved_date" invisible="not approved_date"/>
+            </group>
+          </group>
+          <group string="What it covers">
+            <field name="description" nolabel="1"
+                   placeholder="So the next biller charges it for the same thing you did."/>
+          </group>
+        </sheet>
+        <chatter/>
+      </form>
+    </field>
+  </record>
+
+  <record id="view_logistics_billing_service_search" model="ir.ui.view">
+    <field name="name">logistics.billing.service.search</field>
+    <field name="model">logistics.billing.service</field>
+    <field name="arch" type="xml">
+      <search string="Billable Services">
+        <field name="name"/>
+        <filter name="approved" string="Approved"
+                domain="[('state', '=', 'approved')]"/>
+        <filter name="pending" string="Awaiting approval"
+                domain="[('state', '=', 'draft')]"/>
+        <separator/>
+        <filter name="archived" string="Archived"
+                domain="[('active', '=', False)]"/>
+        <group>
+          <filter name="by_state" string="Status"
+                  context="{'group_by': 'state'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+
+  <record id="action_logistics_billing_service" model="ir.actions.act_window">
+    <field name="name">Billable Services</field>
+    <field name="res_model">logistics.billing.service</field>
+    <field name="view_mode">list,form</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">Propose a billable service</p>
+      <p>Anything the company charges for beyond the commission and the
+      customs fee. Billing writes it down; an Operations Manager approves it
+      before it can reach a client invoice.</p>
+    </field>
+  </record>
+
+</odoo>

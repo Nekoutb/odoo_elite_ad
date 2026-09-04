@@ -29,7 +29,24 @@ class LogisticsBillingWizard(models.TransientModel):
         'logistics.billing.wizard.debours', 'wizard_id',
         string="Out-of-pocket expenses")
     service_line_ids = fields.One2many(
-        'logistics.billing.wizard.service', 'wizard_id', string="Services")
+        'logistics.billing.wizard.service', 'wizard_id',
+        string="Additional services")
+
+    # The two structured parameters. They are only settable here, on a file
+    # that is already OK for billing: nothing about what the client is
+    # charged is adjustable while operations are still running.
+    commission_rate = fields.Float(
+        string="Commission Rate (%)", digits=(6, 3),
+        help="Charged on what the disbursements are recharged at. Proposed "
+             "from the service type; the billing agent may change it for "
+             "this file.")
+    commission_amount = fields.Monetary(
+        compute='_compute_totals', currency_field='currency_id',
+        string="Commission sur débours")
+    customs_fee_amount = fields.Monetary(
+        string="Honoraires Agréés en Douane", currency_field='currency_id',
+        help="Read from the customs declaration. Keyed here, at billing, "
+             "by the agent who bills it.")
 
     debours_engaged_total = fields.Monetary(
         compute='_compute_totals', currency_field='currency_id',
@@ -56,6 +73,16 @@ class LogisticsBillingWizard(models.TransientModel):
         help="True while the recharge differs from what was disbursed and "
              "that difference has not been approved. No invoice can be "
              "raised until it is.")
+    advance_had_amount = fields.Monetary(
+        string="Advance HAD/DAU", currency_field='currency_id',
+        help="Already advanced by the client against the customs fee. "
+             "Deducted on the face of the invoice, not from the total due "
+             "in the accounts.")
+    advance_had_vat_amount = fields.Monetary(
+        string="Advance VAT on HAD/DAU", currency_field='currency_id')
+    advance_other_amount = fields.Monetary(
+        string="Other Advances", currency_field='currency_id')
+
     review_reason = fields.Text(
         string="Why the recharge differs from cost",
         help="Required before anyone can approve it. Below cost the company "
@@ -76,33 +103,65 @@ class LogisticsBillingWizard(models.TransientModel):
                 'expense_id': expense.id,
                 'name': "%s — %s" % (expense.category_id.name, expense.description),
                 'amount_engaged': expense.amount,
+                'unit_label': expense.unit_label or "Par dossier",
                 'amount_recharged': (
                     expense.recharge_amount or expense.amount),
             })
             for expense in file._billable_expenses()
         ]
-        services = []
-        if file.commission_amount:
-            services.append({
-                'name': SERVICE_COMMISSION,
-                'amount': file.commission_amount,
-                'account_id': (file.company_id.clearance_commission_account_id
-                               or file.company_id.clearance_fee_account_id).id,
-            })
-        if file.customs_fee_amount:
-            services.append({
-                'name': SERVICE_HAD,
-                'amount': file.customs_fee_amount,
-                'account_id': (file.company_id.clearance_service_fee_account_id
-                               or file.company_id.clearance_fee_account_id).id,
-            })
-        vals['service_line_ids'] = [
-            fields.Command.create(service) for service in services]
+        # The commission and the customs fee are parameters now, not rows:
+        # the agent sets a rate and a figure and watches the total move.
+        # The list below is for anything else the job carried.
+        vals['commission_rate'] = (
+            file.billing_commission_rate or file.commission_rate)
+        vals['customs_fee_amount'] = file.customs_fee_amount
+        vals['advance_had_amount'] = file.advance_had_amount
+        vals['advance_had_vat_amount'] = file.advance_had_vat_amount
+        vals['advance_other_amount'] = file.advance_other_amount
+        vals['service_line_ids'] = []
         return vals
+
+    def _service_lines_for_invoice(self):
+        """What the invoice's service section will contain."""
+        self.ensure_one()
+        company = self.file_id.company_id
+        fallback = company.clearance_fee_account_id
+        services = []
+        if not self.currency_id.is_zero(self.commission_amount):
+            services.append({
+                'name': self.env._("%(label)s (%(rate).2f%%)",
+                                   label=SERVICE_COMMISSION,
+                                   rate=self.commission_rate),
+                'amount': self.commission_amount,
+                'unit': "Par dossier",
+                'account_id': (company.clearance_commission_account_id
+                               or fallback).id,
+            })
+        if not self.currency_id.is_zero(self.customs_fee_amount):
+            services.append({
+                'name': self.env._(
+                    "%(label)s (déclaration %(ref)s)", label=SERVICE_HAD,
+                    ref=self.file_id.customs_declaration_ref or "-"),
+                'amount': self.customs_fee_amount,
+                'unit': "Par dossier",
+                'account_id': (company.clearance_service_fee_account_id
+                               or fallback).id,
+            })
+        for line in self.service_line_ids:
+            if self.currency_id.is_zero(line.amount):
+                continue
+            services.append({
+                'name': line.name,
+                'amount': line.amount,
+                'unit': line.unit_label or "Par dossier",
+                'account_id': (line.account_id or fallback).id,
+            })
+        return services
 
     @api.depends('debours_line_ids.amount_engaged',
                  'debours_line_ids.amount_recharged',
-                 'service_line_ids.amount',
+                 'service_line_ids.amount', 'commission_rate',
+                 'customs_fee_amount',
                  'file_id.recharge_state', 'file_id.recharge_amount')
     def _compute_totals(self):
         for wizard in self:
@@ -111,7 +170,12 @@ class LogisticsBillingWizard(models.TransientModel):
             wizard.debours_engaged_total = engaged
             wizard.debours_recharged_total = recharged
             wizard.debours_variance = recharged - engaged
-            wizard.service_total = sum(wizard.service_line_ids.mapped('amount'))
+            wizard.commission_amount = wizard.currency_id.round(
+                recharged * wizard.commission_rate / 100.0
+            ) if wizard.currency_id else 0.0
+            wizard.service_total = (
+                wizard.commission_amount + wizard.customs_fee_amount
+                + sum(wizard.service_line_ids.mapped('amount')))
             # VAT rides on the services and never on the disbursements, so
             # the biller sees the same split the invoice will carry.
             taxes = wizard.file_id.company_id.clearance_service_tax_ids
@@ -151,6 +215,11 @@ class LogisticsBillingWizard(models.TransientModel):
         self.file_id.write({
             'recharge_amount': 0.0 if at_cost else recharged,
             'recharge_reason': self.review_reason or False,
+            'billing_commission_rate': self.commission_rate,
+            'customs_fee_amount': self.customs_fee_amount,
+            'advance_had_amount': self.advance_had_amount,
+            'advance_had_vat_amount': self.advance_had_vat_amount,
+            'advance_other_amount': self.advance_other_amount,
         })
 
     def action_submit_for_review(self):
@@ -173,16 +242,16 @@ class LogisticsBillingWizard(models.TransientModel):
                 "The recharge on %s differs from what was disbursed and has "
                 "not been approved. Send it for review first.",
                 self.file_id.name))
-        if not self.debours_line_ids and not self.service_line_ids:
+        services = self._service_lines_for_invoice()
+        if not self.debours_line_ids and not services:
             raise UserError(self.env._("There is nothing to bill on %s.",
                                        self.file_id.name))
         self._persist()
         invoice = self.file_id._create_client_invoice(
-            [{'name': line.name, 'amount': line.amount_engaged}
+            [{'name': line.name, 'amount': line.amount_engaged,
+              'unit': line.unit_label or "Par dossier"}
              for line in self.debours_line_ids],
-            [{'name': line.name, 'amount': line.amount,
-              'account_id': line.account_id.id}
-             for line in self.service_line_ids if line.amount],
+            services,
         )
         return {
             'type': 'ir.actions.act_window',
@@ -202,6 +271,7 @@ class LogisticsBillingWizardDebours(models.TransientModel):
     currency_id = fields.Many2one(related='wizard_id.currency_id')
     expense_id = fields.Many2one('logistics.expense', readonly=True)
     name = fields.Char(string="Description", required=True)
+    unit_label = fields.Char(string="Unit", default="Par dossier")
     amount_engaged = fields.Monetary(
         string="Disbursed", readonly=True, currency_field='currency_id')
     amount_recharged = fields.Monetary(
@@ -226,6 +296,12 @@ class LogisticsBillingWizardService(models.TransientModel):
     wizard_id = fields.Many2one(
         'logistics.billing.wizard', required=True, ondelete='cascade')
     currency_id = fields.Many2one(related='wizard_id.currency_id')
+    unit_label = fields.Char(string="Unit", default="Par dossier")
+    service_id = fields.Many2one(
+        'logistics.billing.service', string="Billable Service",
+        domain="[('state', '=', 'approved')]",
+        help="Only services an Operations Manager has approved can be "
+             "billed. Propose a new one from Billing > Billable Services.")
     name = fields.Char(string="Service", required=True)
     amount = fields.Monetary(string="Amount", currency_field='currency_id')
     account_id = fields.Many2one(
@@ -233,3 +309,12 @@ class LogisticsBillingWizardService(models.TransientModel):
         domain="[('account_type', 'in', ('income', 'income_other'))]",
         help="Where this fee is credited. Left empty it falls back to the "
              "company's clearance fee income account.")
+
+    @api.onchange('service_id')
+    def _onchange_service_id(self):
+        for line in self:
+            if line.service_id:
+                line.name = line.service_id.name
+                line.amount = line.service_id.default_amount
+                line.account_id = line.service_id.account_id
+                line.unit_label = line.service_id.unit_label

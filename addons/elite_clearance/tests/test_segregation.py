@@ -43,6 +43,7 @@ class TestSegregationOfDuties(TransactionCase):
         cls.service = env['logistics.service.type'].create({
             'name': "Segregation test", 'code': "T-SEG"})
         cls.file = env['logistics.file'].create({
+            'customs_regime': 'im4',
             'partner_id': cls.client.id, 'service_type_id': cls.service.id})
         cls.file.state = 'in_progress'
 
@@ -197,11 +198,14 @@ class TestSegregationOfDuties(TransactionCase):
         self.assertEqual(exp.state, 'draft')
 
     # -- who closes -------------------------------------------------------
-    def test_07_close_needs_the_customs_fee_and_an_operations_manager(self):
+    def test_07_close_needs_an_operations_manager(self):
+        """The customs fee is no longer a gate here.
+
+        It is a billing parameter, set on the billing screen by the agent
+        who bills it, so Operations is not asked to key a figure it does
+        not own before it can hand the file on.
+        """
         self.assertFalse(self.file.customs_fee_amount)
-        with self.assertRaises(UserError):
-            self.file.action_close_operations()          # fee not keyed
-        self.file.customs_fee_amount = 45000
         with self.assertRaises(UserError):
             self.file.with_user(self.plain).action_close_operations()
         with self.assertRaises(UserError):

@@ -99,3 +99,16 @@ class AccountMove(models.Model):
                 "uploaded at the cutoff date; posting it would count that "
                 "revenue twice.", ", ".join(legacy.mapped('name'))))
         return super().action_post()
+
+
+class AccountMoveLine(models.Model):
+    _inherit = 'account.move.line'
+
+    clearance_category = fields.Selection(
+        [('debours', "Débours"), ('prestation', "Prestations")],
+        string="Clearance Category", copy=False,
+        help="Which block of the printed clearance invoice this line "
+             "belongs under.")
+    clearance_unit = fields.Char(
+        string="Unit", copy=False,
+        help="Printed as Unité, e.g. Par dossier or Par Conteneur.")

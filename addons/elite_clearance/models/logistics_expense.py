@@ -79,6 +79,10 @@ class LogisticsExpense(models.Model):
         'logistics.expense.category', required=True, tracking=True)
     description = fields.Char(required=True)
     amount = fields.Monetary(required=True, tracking=True)
+    unit_label = fields.Char(
+        string="Unit", default="Par dossier",
+        help="How the client is told this was charged - Par dossier, Par "
+             "Conteneur, Par tonne. Printed on the invoice.")
     vendor_id = fields.Many2one(
         'res.partner', string="Paid To (Vendor)", tracking=True,
         help="The third party ultimately receiving the money — customs, "

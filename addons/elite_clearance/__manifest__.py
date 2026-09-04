@@ -39,7 +39,7 @@ where no explicit approver list is set, the security groups apply.
     'author': "Elite Advisors",
     'website': "https://eliteadvisors.cm-ea.com",
     'category': 'Services/Clearance',
-    'version': '19.0.17.0.0',
+    'version': '19.0.18.0.0',
     'license': 'LGPL-3',
     'depends': ['base', 'mail', 'analytic', 'account', 'hr'],
     'data': [
@@ -66,6 +66,9 @@ where no explicit approver list is set, the security groups apply.
         'views/res_partner_views.xml',
         'views/hr_employee_views.xml',
         'views/res_config_settings_views.xml',
+        'views/logistics_billing_service_views.xml',
+        'report/clearance_invoice_report.xml',
+        'report/clearance_invoice_templates.xml',
         'views/clearance_menus.xml',
         'views/clearance_tasks_views.xml',
     ],

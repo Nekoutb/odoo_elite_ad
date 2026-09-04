@@ -44,6 +44,7 @@ class TestStaffAdvances(TransactionCase):
             'name': "Advance test", 'code': "T-ADV", 'commission_rate': 2.0})
         cls.employee = env['hr.employee'].create({'name': "Declarant Ndoh"})
         cls.file = env['logistics.file'].create({
+            'customs_regime': 'im4',
             'partner_id': cls.client.id, 'service_type_id': cls.service.id})
         cls.file.state = 'in_progress'
         cls.file.customs_fee_amount = 50000   # closing requires it keyed

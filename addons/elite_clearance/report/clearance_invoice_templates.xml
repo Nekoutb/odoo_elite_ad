@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+  <!--
+    The clearance invoice as Elimelec already issues it. Everything that
+    exists elsewhere in Odoo is read from there and never re-keyed: the
+    company's NIU and RC are its Tax ID and Company Registry, the bank
+    blocks are its own bank accounts, the client block is the partner.
+  -->
+
+  <template id="report_clearance_invoice_document">
+    <t t-set="file" t-value="doc.logistics_file_id"/>
+    <t t-set="company" t-value="doc.company_id"/>
+    <t t-set="partner" t-value="doc.partner_id"/>
+    <t t-set="cur" t-value="doc.currency_id"/>
+    <div class="page o_clearance_invoice">
+
+      <style>
+        .o_clearance_invoice { font-size: 11px; color: #000; }
+        .o_clearance_invoice table { width: 100%; border-collapse: collapse; }
+        .o_clearance_invoice .box td { border: 1px solid #000; padding: 3px 5px;
+                                       vertical-align: top; }
+        .o_clearance_invoice .box td.lbl { font-weight: bold; width: 15%; }
+        .o_clearance_invoice .lines th,
+        .o_clearance_invoice .lines td { border: 1px solid #000;
+                                         padding: 2px 5px; }
+        .o_clearance_invoice .lines th { background: #d9d9d9;
+                                         text-align: center;
+                                         font-weight: bold; }
+        .o_clearance_invoice .lines td.num { text-align: right;
+                                             white-space: nowrap; }
+        .o_clearance_invoice .lines td.ctr { text-align: center; }
+        .o_clearance_invoice .lines tr.sub td { font-weight: bold; }
+        .o_clearance_invoice .totals td { border: 1px solid #000;
+                                          padding: 3px 6px;
+                                          font-weight: bold; }
+        .o_clearance_invoice .totals td.num { text-align: right;
+                                              white-space: nowrap; }
+        .o_clearance_invoice .bank td { border: 0; padding: 1px 4px;
+                                        font-style: italic; font-size: 10px; }
+        .o_clearance_invoice .bankbox { border: 1px solid #000; padding: 4px; }
+        .o_clearance_invoice h2 { font-size: 20px; margin: 0; font-weight: bold; }
+        .o_clearance_invoice .foot { text-align: center; font-size: 9px;
+                                     border-top: 1px solid #000;
+                                     padding-top: 4px; margin-top: 10px; }
+      </style>
+
+      <!-- masthead -->
+      <table style="margin-bottom:10px;">
+        <tr>
+          <td style="width:45%; vertical-align:top;">
+            <img t-if="company.logo" t-att-src="image_data_uri(company.logo)"
+                 style="max-height:70px;" alt="Logo"/>
+          </td>
+          <td style="text-align:right; vertical-align:top;">
+            <div>Facture doit N°</div>
+            <h2><span t-field="doc.name"/></h2>
+            <div><span t-field="doc.invoice_date"/></div>
+          </td>
+        </tr>
+      </table>
+
+      <!-- shipment identity, and who is being billed -->
+      <table style="margin-bottom:6px;">
+        <tr>
+          <td style="width:52%; padding-right:6px;">
+            <table class="box">
+              <tr>
+                <td class="lbl">N° BL/N° LTA</td>
+                <td class="lbl">Reference</td>
+              </tr>
+              <tr>
+                <td><span t-field="file.bl_awb_ref"/></td>
+                <td><span t-field="file.client_reference"/></td>
+              </tr>
+              <tr>
+                <td class="lbl">N° Dossier</td>
+                <td class="lbl">Fournisseur</td>
+              </tr>
+              <tr>
+                <td><span t-field="file.name"/></td>
+                <td><span t-field="file.supplier_name"/></td>
+              </tr>
+              <tr>
+                <td class="lbl">Produits</td>
+                <td class="lbl">Valeur RVC</td>
+              </tr>
+              <tr>
+                <td><span t-field="file.goods_description"/></td>
+                <td>
+                  <span t-field="file.cargo_value"
+                        t-options="{'widget': 'monetary',
+                                    'display_currency': file.cargo_value_currency_id or cur}"/>
+                </td>
+              </tr>
+            </table>
+          </td>
+          <td style="width:48%;">
+            <table class="box">
+              <tr><td><strong><span t-field="partner.name"/></strong></td></tr>
+              <tr><td>
+                <span t-field="partner.street"/>
+                <t t-if="partner.street2"> - <span t-field="partner.street2"/></t>
+              </td></tr>
+              <tr><td><span t-field="partner.phone"/></td></tr>
+              <tr><td><span t-field="partner.email"/></td></tr>
+              <tr><td>
+                <span t-field="partner.vat"/>
+                <span style="margin-left:18px;" t-field="partner.company_registry"/>
+              </td></tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+
+      <!-- the cargo itself -->
+      <table class="box" style="margin-bottom:6px;">
+        <tr>
+          <td class="lbl">NBRE TC</td>
+          <td class="lbl">Type de TC</td>
+          <td class="lbl">POIDS (KG)</td>
+          <td class="lbl">NBRE DE COLIS</td>
+        </tr>
+        <tr>
+          <td><span t-field="file.container_count"/></td>
+          <td><span t-field="file.container_type"/></td>
+          <td><span t-esc="'{:,.0f}'.format(file.weight_kg or 0).replace(',', ' ')"/></td>
+          <td><span t-field="file.package_count"/></td>
+        </tr>
+      </table>
+
+      <!-- what is charged -->
+      <t t-set="debours" t-value="doc.invoice_line_ids.filtered(lambda l: l.display_type == 'product' and l.clearance_category == 'debours')"/>
+      <t t-set="prestations" t-value="doc.invoice_line_ids.filtered(lambda l: l.display_type == 'product' and l.clearance_category == 'prestation')"/>
+      <t t-set="other" t-value="doc.invoice_line_ids.filtered(lambda l: l.display_type == 'product' and not l.clearance_category)"/>
+
+      <table class="lines" style="margin-bottom:10px;">
+        <thead>
+          <tr>
+            <th style="width:11%;">Catégorie</th>
+            <th>Désignation</th>
+            <th style="width:12%;">Unité</th>
+            <th style="width:8%;">Quantité</th>
+            <th style="width:14%;">Prix unitaire</th>
+            <th style="width:14%;">Montant</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr t-foreach="debours" t-as="line">
+            <td>Debours</td>
+            <td><span t-field="line.name"/></td>
+            <td><span t-field="line.clearance_unit"/></td>
+            <td class="ctr"><span t-esc="'%g' % line.quantity"/></td>
+            <td class="num"><span t-esc="'{:,.0f}'.format(line.price_unit).replace(',', ' ')"/></td>
+            <td class="num"><span t-esc="'{:,.0f}'.format(line.price_subtotal).replace(',', ' ')"/></td>
+          </tr>
+          <tr class="sub" t-if="debours">
+            <td colspan="3">Sous total</td>
+            <td class="ctr"><span t-esc="len(debours)"/></td>
+            <td></td>
+            <td class="num"><span t-esc="'{:,.0f}'.format(sum(debours.mapped('price_subtotal'))).replace(',', ' ')"/></td>
+          </tr>
+
+          <tr t-foreach="prestations" t-as="line">
+            <td>Prestations</td>
+            <td><span t-field="line.name"/></td>
+            <td><span t-field="line.clearance_unit"/></td>
+            <td class="ctr"><span t-esc="'%g' % line.quantity"/></td>
+            <td class="num"><span t-esc="'{:,.0f}'.format(line.price_unit).replace(',', ' ')"/></td>
+            <td class="num"><span t-esc="'{:,.0f}'.format(line.price_subtotal).replace(',', ' ')"/></td>
+          </tr>
+          <tr class="sub" t-if="prestations">
+            <td colspan="5">Sous total</td>
+            <td class="num"><span t-esc="'{:,.0f}'.format(sum(prestations.mapped('price_subtotal'))).replace(',', ' ')"/></td>
+          </tr>
+
+          <tr t-foreach="other" t-as="line">
+            <td></td>
+            <td><span t-field="line.name"/></td>
+            <td><span t-field="line.clearance_unit"/></td>
+            <td class="ctr"><span t-esc="'%g' % line.quantity"/></td>
+            <td class="num"><span t-esc="'{:,.0f}'.format(line.price_unit).replace(',', ' ')"/></td>
+            <td class="num"><span t-esc="'{:,.0f}'.format(line.price_subtotal).replace(',', ' ')"/></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- totals, and what the client has already advanced -->
+      <t t-set="advances" t-value="(file.advance_had_amount + file.advance_had_vat_amount + file.advance_other_amount) if file else 0.0"/>
+      <t t-set="due" t-value="doc.amount_total - advances"/>
+      <table style="margin-bottom:8px;">
+        <tr>
+          <td style="width:48%;"></td>
+          <td>
+            <table class="totals">
+              <tr>
+                <td>TOTAL HT</td>
+                <td class="num"><span t-esc="'{:,.0f}'.format(doc.amount_untaxed).replace(',', ' ')"/> <span t-field="cur.name"/></td>
+              </tr>
+              <tr>
+                <td>TVA SUR PRESTATIONS</td>
+                <td class="num"><span t-esc="'{:,.0f}'.format(doc.amount_tax).replace(',', ' ')"/> <span t-field="cur.name"/></td>
+              </tr>
+              <tr>
+                <td>TOTAL TTC</td>
+                <td class="num"><span t-esc="'{:,.0f}'.format(doc.amount_total).replace(',', ' ')"/> <span t-field="cur.name"/></td>
+              </tr>
+              <tr t-if="file">
+                <td>AVANCE HAD/DAU</td>
+                <td class="num"><span t-esc="'{:,.0f}'.format(file.advance_had_amount).replace(',', ' ')"/> <span t-field="cur.name"/></td>
+              </tr>
+              <tr t-if="file">
+                <td>AVANCE TVA/HAD DAU</td>
+                <td class="num"><span t-esc="'{:,.0f}'.format(file.advance_had_vat_amount).replace(',', ' ')"/> <span t-field="cur.name"/></td>
+              </tr>
+              <tr t-if="file">
+                <td>AUTRES AVANCES</td>
+                <td class="num"><span t-esc="'{:,.0f}'.format(file.advance_other_amount).replace(',', ' ')"/> <span t-field="cur.name"/></td>
+              </tr>
+              <tr t-if="file">
+                <td>RESTE</td>
+                <td class="num"><span t-esc="'{:,.0f}'.format(due).replace(',', ' ')"/> <span t-field="cur.name"/></td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+
+      <p style="font-style:italic; margin-bottom:2px;">
+        Arrêté la présente facture au montant de :
+      </p>
+      <p style="text-transform:uppercase;">
+        <span t-esc="cur.amount_to_text(due if file else doc.amount_total)"/>
+      </p>
+
+      <!-- the company's own bank accounts, read from the company -->
+      <div class="bankbox" style="margin-top:14px;"
+           t-if="company.partner_id.bank_ids">
+        <table class="bank">
+          <tr>
+            <td style="width:18%;">BANK :</td>
+            <td t-foreach="company.partner_id.bank_ids[:2]" t-as="bank">
+              <span t-field="bank.bank_id.name"/>
+            </td>
+          </tr>
+          <tr>
+            <td>ACCOUNT NAME :</td>
+            <td t-foreach="company.partner_id.bank_ids[:2]" t-as="bank">
+              <span t-field="bank.partner_id.name"/>
+            </td>
+          </tr>
+          <tr>
+            <td>ACCOUNT N° :</td>
+            <td t-foreach="company.partner_id.bank_ids[:2]" t-as="bank">
+              <span t-field="bank.acc_number"/>
+            </td>
+          </tr>
+          <tr>
+            <td>PAYMENT CONDITIONS :</td>
+            <td colspan="2">
+              <span t-if="doc.invoice_payment_term_id"
+                    t-field="doc.invoice_payment_term_id.name"/>
+              <span t-else="">As per agreement with customer</span>
+              <span style="margin-left:20px;">
+                Max period for complaints regarding invoices: 15 days
+              </span>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="foot">
+        <span t-field="company.name"/>
+        <t t-if="company.street"> - <span t-field="company.street"/></t>
+        <t t-if="company.city"> - <span t-field="company.city"/></t>
+        <t t-if="company.phone"> - TEL : <span t-field="company.phone"/></t>
+        <t t-if="company.email"> - Email : <span t-field="company.email"/></t>
+        <t t-if="company.website"> - Site : <span t-field="company.website"/></t>
+        <t t-if="company.vat"> - NIU : <span t-field="company.vat"/></t>
+        <t t-if="company.company_registry"> - RC : <span t-field="company.company_registry"/></t>
+      </div>
+
+    </div>
+  </template>
+
+  <template id="report_clearance_invoice">
+    <t t-call="web.html_container">
+      <t t-foreach="docs" t-as="doc">
+        <t t-call="elite_clearance.report_clearance_invoice_document"/>
+      </t>
+    </t>
+  </template>
+
+</odoo>

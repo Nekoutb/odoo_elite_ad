@@ -119,6 +119,9 @@
                             <field name="transit_authorisation_ref"/>
                             <field name="customs_declaration_ref"/>
                             <field name="bl_awb_ref"/>
+                            <field name="client_reference"/>
+                            <field name="supplier_name"/>
+                            <field name="goods_description"/>
                             <field name="date_opened"/>
                             <field name="date_target"/>
                             <field name="date_closed" invisible="not date_closed"/>
@@ -131,13 +134,17 @@
                             <field name="employee_id"/>
                             <field name="shipment_type"/>
                             <field name="incoterm_id" options="{'no_create': True}"/>
-                            <field name="customs_regime"/>
+                            <field name="customs_regime" required="state not in ('imported', 'cancel')"/>
+                            <field name="legacy_customs_regime" readonly="1"
+                                   invisible="not legacy_customs_regime"/>
                         </group>
                         <group>
                             <field name="container_count"/>
+                            <field name="container_type"/>
                             <field name="package_count"/>
                             <field name="weight_kg"/>
                             <field name="cargo_value"/>
+                            <field name="cargo_value_currency_id"/>
                             <field name="importer_name"/>
                         </group>
                     </group>
@@ -197,18 +204,29 @@
                                invisible="not legacy_expense_total"/>
                     </group>
 
+                    <!-- Nothing here is editable. Every billing parameter
+                         is set in the billing screen, on a file that is
+                         already OK for billing; what shows here is the
+                         record of what was billed. -->
                     <separator string="Billing" invisible="state == 'draft'"/>
                     <group invisible="state == 'draft'">
                         <group>
-                            <field name="commission_rate" readonly="1"/>
-                            <field name="commission_amount" readonly="1"/>
-                            <field name="customs_fee_amount" readonly="state not in ('in_progress', 'ops_closed')"/>
-                            <field name="recharge_amount"
-                                   readonly="state not in ('in_progress', 'ops_closed')"/>
+                            <field name="billing_commission_rate" readonly="1"
+                                   invisible="not billing_commission_rate"/>
+                            <field name="customs_fee_amount" readonly="1"
+                                   invisible="not customs_fee_amount"/>
+                            <field name="recharge_amount" readonly="1"
+                                   invisible="not recharge_amount"/>
                             <field name="recharge_variance" readonly="1"
                                    invisible="not recharge_amount"/>
                             <field name="recharge_state" readonly="1"
                                    invisible="recharge_state == 'none'"/>
+                            <field name="advance_had_amount" readonly="1"
+                                   invisible="not advance_had_amount"/>
+                            <field name="advance_had_vat_amount" readonly="1"
+                                   invisible="not advance_had_vat_amount"/>
+                            <field name="advance_other_amount" readonly="1"
+                                   invisible="not advance_other_amount"/>
                         </group>
                         <group>
                             <field name="invoice_id" readonly="1"/>

@@ -24,10 +24,25 @@
                     </group>
                 </group>
 
+                <separator string="Billing parameters"/>
+                <group>
+                    <group>
+                        <field name="commission_rate"/>
+                        <field name="commission_amount" readonly="1"/>
+                        <field name="customs_fee_amount"/>
+                    </group>
+                    <group string="Advances already paid by the client">
+                        <field name="advance_had_amount"/>
+                        <field name="advance_had_vat_amount"/>
+                        <field name="advance_other_amount"/>
+                    </group>
+                </group>
+
                 <separator string="Out-of-pocket expenses (débours)"/>
                 <field name="debours_line_ids">
                     <list editable="bottom" create="0" delete="0">
                         <field name="name"/>
+                        <field name="unit_label"/>
                         <field name="amount_engaged" sum="Disbursed"/>
                         <field name="amount_recharged" sum="Recharged"/>
                         <field name="variance" sum="Variance"
@@ -42,10 +57,16 @@
                     booked as a cost, an overcharge as revenue.
                 </div>
 
-                <separator string="Services"/>
+                <separator string="Additional services"/>
+                <div class="text-muted mb-1">
+                    Anything beyond the commission and the customs fee. Only services an
+                    Operations Manager has approved can be picked here.
+                </div>
                 <field name="service_line_ids">
                     <list editable="bottom">
-                        <field name="name" placeholder="e.g. Honoraires Agréés en Douane"/>
+                        <field name="service_id" options="{'no_create': True}"/>
+                        <field name="name" placeholder="e.g. Frais d'ouverture de dossier"/>
+                        <field name="unit_label"/>
                         <field name="account_id" options="{'no_create': True}"/>
                         <field name="amount" sum="Services"/>
                         <field name="currency_id" column_invisible="1"/>

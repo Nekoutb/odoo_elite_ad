@@ -60,6 +60,7 @@ class TestVendorPayableAndRecharge(TransactionCase):
         cls.service = env['logistics.service.type'].create({
             'name': "Recharge test", 'code': "T-RCH", 'commission_rate': 2.0})
         cls.file = env['logistics.file'].create({
+            'customs_regime': 'im4',
             'partner_id': cls.client.id, 'service_type_id': cls.service.id})
         cls.file.state = 'in_progress'
         cls.file.customs_fee_amount = 30000

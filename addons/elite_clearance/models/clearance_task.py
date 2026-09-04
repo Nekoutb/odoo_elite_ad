@@ -25,7 +25,8 @@ KIND_GROUPS = {
     'recharge_gm': ('elite_clearance.group_clearance_manager',),
     'reopen_imported': ('elite_clearance.group_clearance_ops_manager',),
     'ops_close': ('elite_clearance.group_clearance_ops_manager',),
-    'billing': ('elite_clearance.group_clearance_finance',),
+    'billing': ('elite_clearance.group_clearance_billing',),
+    'billing_service': ('elite_clearance.group_clearance_ops_manager',),
 }
 
 KINDS = [
@@ -42,6 +43,7 @@ KINDS = [
     ('reopen_imported', "Approve reopening"),
     ('ops_close', "Close for operations"),
     ('billing', "Bill the file"),
+    ('billing_service', "Approve a billable service"),
 ]
 
 
@@ -159,6 +161,24 @@ class ClearanceTask(models.Model):
                 offset=13, kind='billing',
                 detail="'OK for billing'", amount='f.oop_total',
                 where="f.state = 'ops_closed' AND f.invoice_id IS NULL"),
+            # a proposed revenue line, waiting for Operations to allow it
+            """
+            SELECT (14 * 10000000 + s.id) AS id,
+                   s.name AS name,
+                   'billing_service' AS kind,
+                   'logistics.billing.service' AS res_model,
+                   s.id AS res_id,
+                   NULL::integer AS file_id,
+                   NULL::integer AS partner_id,
+                   'New billable service awaiting approval' AS detail,
+                   s.default_amount AS amount,
+                   s.create_date::date AS date_deadline,
+                   s.company_id AS company_id,
+                   c.currency_id AS currency_id
+              FROM logistics_billing_service s
+              JOIN res_company c ON c.id = s.company_id
+             WHERE s.state = 'draft' AND s.active = TRUE
+            """,
         ]
         return selects
 
@@ -181,6 +201,7 @@ class ClearanceTask(models.Model):
         self.env['logistics.file'].flush_model()
         self.env['logistics.expense'].flush_model()
         self.env['account.journal'].flush_model()
+        self.env['logistics.billing.service'].flush_model()
         # Narrow every read, so the one screen is a different list for each
         # role and nobody sees a queue they cannot act on.
         domain = [('kind', 'in', self._allowed_kinds())] + list(domain or [])

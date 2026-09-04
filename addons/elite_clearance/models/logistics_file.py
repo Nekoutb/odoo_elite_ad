@@ -49,6 +49,15 @@ class LogisticsFile(models.Model):
         string="Transit Order / Authorisation", tracking=True,
         help="The client's transit order or authorisation to act.",
     )
+    customs_regime = fields.Selection(
+        [('im4', "IM4 - Mise à la consommation"),
+         ('im5', "IM5 - Admission temporaire"),
+         ('im7', "IM7 - Entrepôt"),
+         ('im8', "IM8 - Transit")],
+        string="Customs Regime", tracking=True, index=True,
+        help="The regime declared to Customs. It decides what the file is "
+             "for, so it is chosen when the file is opened and cannot be "
+             "left blank once work starts.")
     customs_declaration_ref = fields.Char(string="Customs Declaration", tracking=True)
     bl_awb_ref = fields.Char(string="BL / AWB")
     date_opened = fields.Date(
@@ -75,8 +84,24 @@ class LogisticsFile(models.Model):
     cargo_value = fields.Monetary(
         string="Cargo Value", currency_field='currency_id',
         help="Declared value of the goods.")
-    customs_regime = fields.Char(
-        string="Customs Regime", help="e.g. EX1, EX2, IM4.")
+    legacy_customs_regime = fields.Char(
+        string="Legacy Regime", readonly=True, copy=False,
+        help="Whatever Teese recorded as the regime, kept verbatim. New "
+             "files use the Customs Regime field, which is a closed list.")
+    container_type = fields.Char(
+        string="Container Type", help="e.g. 20, 40, 40HC.")
+    goods_description = fields.Char(
+        string="Goods", help="Printed on the invoice as Produits.")
+    supplier_name = fields.Char(
+        string="Supplier", help="The shipper or supplier, printed on the "
+                                "invoice as Fournisseur.")
+    client_reference = fields.Char(
+        string="Client Reference",
+        help="The client's own reference for this shipment.")
+    cargo_value_currency_id = fields.Many2one(
+        'res.currency', string="Cargo Value Currency",
+        help="The currency the declared value is expressed in - often not "
+             "XAF. Empty prints in the company currency.")
     incoterm_id = fields.Many2one('account.incoterms', string="Incoterm")
     importer_name = fields.Char(
         string="Importer",
@@ -181,6 +206,10 @@ class LogisticsFile(models.Model):
     currency_id = fields.Many2one(related='company_id.currency_id')
     commission_rate = fields.Float(
         related='service_type_id.commission_rate', string="Commission Rate (%)")
+    billing_commission_rate = fields.Float(
+        string="Billed Commission Rate (%)", digits=(6, 3), readonly=True,
+        help="The rate the billing agent actually used, kept once the file "
+             "is billed. Zero means the service type's own rate was used.")
     commission_amount = fields.Monetary(
         compute='_compute_fee_amounts', store=True, currency_field='currency_id',
         string="Commission (on OOP)")
@@ -213,6 +242,19 @@ class LogisticsFile(models.Model):
         'res.users', readonly=True, copy=False)
     advance_waiver_date = fields.Datetime(readonly=True, copy=False)
     # --- recharging the client at other than cost -----------------------
+    advance_had_amount = fields.Monetary(
+        string="Advance HAD/DAU", currency_field='currency_id', readonly=True,
+        help="Already advanced by the client against the customs fee. Set "
+             "on the billing screen and deducted on the invoice.")
+    advance_had_vat_amount = fields.Monetary(
+        string="Advance VAT on HAD/DAU", currency_field='currency_id',
+        readonly=True)
+    advance_other_amount = fields.Monetary(
+        string="Other Advances", currency_field='currency_id', readonly=True)
+    invoice_balance_due = fields.Monetary(
+        compute='_compute_invoice_balance_due', currency_field='currency_id',
+        string="Balance Due")
+
     recharge_amount = fields.Monetary(
         string="Recharge to the Client", currency_field='currency_id',
         tracking=True, copy=False,
@@ -406,6 +448,16 @@ class LogisticsFile(models.Model):
                 file.oop_total * (file.service_type_id.commission_rate or 0.0) / 100.0)
 
     @api.depends('documents_complete', 'waiver_state')
+    @api.depends('invoice_id.amount_total', 'advance_had_amount',
+                 'advance_had_vat_amount', 'advance_other_amount')
+    def _compute_invoice_balance_due(self):
+        """What the client still owes once their advances come off."""
+        for file in self:
+            total = file.invoice_id.amount_total if file.invoice_id else 0.0
+            file.invoice_balance_due = total - (
+                file.advance_had_amount + file.advance_had_vat_amount
+                + file.advance_other_amount)
+
     def _compute_can_start(self):
         for file in self:
             file.can_start = file.documents_complete or file.waiver_state == 'approved'
@@ -747,12 +799,31 @@ class LogisticsFile(models.Model):
                 "Reopening refused: the file stays an imported record."))
         return True
 
+    @api.constrains('customs_regime', 'state')
+    def _check_customs_regime(self):
+        """Mandatory to open a file and to work it.
+
+        Imported files are exempt: they are Teese history, and inventing a
+        regime for them would be worse than leaving it blank.
+        """
+        for file in self:
+            if file.state == 'imported' or self.env.context.get('legacy_import'):
+                continue
+            if not file.customs_regime:
+                raise ValidationError(self.env._(
+                    "Choose the customs regime for %s (IM4, IM5, IM7 or "
+                    "IM8) before saving it.", file.name or "the file"))
+
     def action_start_work(self):
         for file in self:
             if file.state != 'draft':
                 raise UserError(self.env._(
                     "File %s is not in draft.", file.name,
                 ))
+            if not file.customs_regime:
+                raise UserError(self.env._(
+                    "Work cannot start on %s until its customs regime is "
+                    "chosen.", file.name))
             if not file.can_start:
                 raise UserError(self.env._(
                     "Work cannot start on %(name)s: %(count)s mandatory "
@@ -766,9 +837,15 @@ class LogisticsFile(models.Model):
     def action_close_operations(self):
         """Operations are finished: no further expenses can be captured.
 
-        Three gates, in order: an Operations Manager is closing it; the
-        customs fee has been keyed; every expense is final (an unjustified
-        staff advance being the one waivable exception)."""
+        Two gates, in order: an Operations Manager is closing it, and every
+        expense is final (an unjustified staff advance being the one
+        waivable exception).
+
+        The customs fee used to be a third gate here. It is a BILLING
+        parameter and now lives in the billing screen, where the billing
+        agent sets it - so Operations no longer has to key a figure it does
+        not own in order to hand the file on.
+        """
         for file in self:
             # Closing is the Operations Manager's decision, not the agent's.
             file.company_id._clearance_check_approver('ops_close')
@@ -776,13 +853,6 @@ class LogisticsFile(models.Model):
                 raise UserError(self.env._(
                     "Only a file in progress can be closed for operations "
                     "(%s).", file.name))
-            # The customs service fee is keyed by hand from the declaration.
-            # A file closed with it blank would bill without it, silently.
-            if file.currency_id.is_zero(file.customs_fee_amount):
-                raise UserError(self.env._(
-                    "Key the customs service fee on %s before closing it for "
-                    "operations — it is read from the declaration, not "
-                    "computed.", file.name))
             pending = file.expense_ids.filtered(
                 lambda e: not e.is_final
                 and not (e.payment_mode == 'advance' and e.state == 'settled'))
@@ -997,6 +1067,8 @@ class LogisticsFile(models.Model):
                 # are the client's own liability paid on their behalf. The
                 # fee lines below deliberately keep the default taxes.
                 'tax_ids': [fields.Command.clear()],
+                'clearance_category': 'debours',
+                'clearance_unit': line.get('unit') or "Par dossier",
                 'analytic_distribution': analytic,
             }))
 
@@ -1052,6 +1124,8 @@ class LogisticsFile(models.Model):
                 'price_unit': line['amount'],
                 'account_id': line.get('account_id') or fee_account.id,
                 'tax_ids': [fields.Command.set(service_taxes.ids)],
+                'clearance_category': 'prestation',
+                'clearance_unit': line.get('unit') or "Par dossier",
                 'analytic_distribution': analytic,
             }))
 

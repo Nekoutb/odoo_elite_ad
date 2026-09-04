@@ -50,6 +50,7 @@ class TestBillingWizard(TransactionCase):
         cls.service = env['logistics.service.type'].create({
             'name': "Wizard test", 'code': "T-WIZ", 'commission_rate': 2.0})
         cls.file = env['logistics.file'].create({
+            'customs_regime': 'im4',
             'partner_id': cls.client.id, 'service_type_id': cls.service.id})
         cls.file.state = 'in_progress'
         cls.file.customs_fee_amount = 30000
@@ -93,7 +94,15 @@ class TestBillingWizard(TransactionCase):
                          "proposed at cost until somebody changes it")
         self.assertEqual(wizard.debours_variance, 0)
         self.assertFalse(wizard.needs_review)
-        names = wizard.service_line_ids.mapped('name')
+        # the commission and the customs fee are parameters, not rows:
+        # the agent sets a rate and a figure and watches the total move
+        self.assertFalse(wizard.service_line_ids,
+                         "the list is for ADDITIONAL services only")
+        self.assertEqual(wizard.commission_rate, 2.0)
+        self.assertEqual(wizard.commission_amount, 2000)
+        self.assertEqual(wizard.customs_fee_amount, 30000)
+        names = [line['name']
+                 for line in wizard._service_lines_for_invoice()]
         self.assertTrue(any("Commission sur débours" in n for n in names), names)
         self.assertTrue(any("Honoraires Agréés en Douane" in n for n in names), names)
         self.assertEqual(wizard.service_total, 2000 + 30000)

@@ -29,6 +29,7 @@ class TestClearanceFile(TransactionCase):
 
     def _new_file(self):
         return self.env['logistics.file'].create({
+            'customs_regime': 'im4',
             'partner_id': self.client.id,
             'service_type_id': self.service.id,
         })

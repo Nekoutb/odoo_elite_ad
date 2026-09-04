@@ -393,7 +393,7 @@ class LogisticsLegacyImport(models.Model):
                 'package_count': int(_f(r['packages'])),
                 'weight_kg': _f(r['weight_kg']),
                 'cargo_value': _f(r['cargo_value']),
-                'customs_regime': r['regime'].strip() or False,
+                'legacy_customs_regime': r['regime'].strip() or False,
                 'incoterm_id': incoterms.get(r['incoterm'].strip().upper(), E['account.incoterms']).id or False,
                 'importer_name': r['importer'].strip() or False,
                 'legacy_id': lid,

@@ -45,6 +45,7 @@ class TestTasksAndVat(TransactionCase):
         cls.service = env['logistics.service.type'].create({
             'name': "VAT test", 'code': "Z-VAT", 'commission_rate': 2.0})
         cls.file = env['logistics.file'].create({
+            'customs_regime': 'im4',
             'partner_id': cls.client.id, 'service_type_id': cls.service.id})
         cls.file.state = 'in_progress'
         cls.file.customs_fee_amount = 30000
@@ -136,7 +137,7 @@ class TestTasksAndVat(TransactionCase):
                          "and an Ops Manager does not pay out cash")
 
     def test_07_the_queue_follows_the_record_through_its_states(self):
-        finance = self._user("Fin S", 'group_clearance_finance')
+        finance = self._user("Bill S", 'group_clearance_billing')
         Task = self.env['clearance.task']
 
         def kinds_for(user):
@@ -146,7 +147,7 @@ class TestTasksAndVat(TransactionCase):
                          "nothing to bill while the file is in progress")
         self.file.action_close_operations()
         self.assertIn('billing', kinds_for(finance),
-                      "closing for operations puts it in Finance's queue")
+                      "closing for operations puts it in Billing's queue")
         self.file.action_create_invoice()
         self.assertNotIn('billing', kinds_for(finance),
                          "and billing it takes it back out")

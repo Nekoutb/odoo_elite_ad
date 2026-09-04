@@ -8,6 +8,7 @@ from . import ir_attachment
 from . import logistics_port
 from . import logistics_document_type
 from . import logistics_service_type
+from . import logistics_billing_service
 from . import logistics_file
 from . import logistics_expense
 from . import clearance_task

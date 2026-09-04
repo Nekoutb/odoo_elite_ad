@@ -22,7 +22,7 @@
          ================================================================ -->
 
     <record id="group_clearance_operations" model="res.groups">
-        <field name="name">Operations</field>
+        <field name="name">Operations Agent</field>
         <field name="sequence">12</field>
         <field name="privilege_id" ref="res_groups_privilege_clearance"/>
         <field name="implied_ids" eval="[(4, ref('group_clearance_user'))]"/>
@@ -30,7 +30,7 @@
     </record>
 
     <record id="group_clearance_customer_service" model="res.groups">
-        <field name="name">Customer Service</field>
+        <field name="name">Customer Service Agent</field>
         <field name="sequence">13</field>
         <field name="privilege_id" ref="res_groups_privilege_clearance"/>
         <field name="implied_ids" eval="[(4, ref('group_clearance_user'))]"/>
@@ -46,7 +46,7 @@
     </record>
 
     <record id="group_clearance_transit" model="res.groups">
-        <field name="name">Transit</field>
+        <field name="name">Transit Agent</field>
         <field name="sequence">15</field>
         <field name="privilege_id" ref="res_groups_privilege_clearance"/>
         <field name="implied_ids" eval="[(4, ref('group_clearance_user'))]"/>
@@ -62,7 +62,7 @@
     </record>
 
     <record id="group_clearance_manager" model="res.groups">
-        <field name="name">Manager</field>
+        <field name="name">General Manager</field>
         <field name="sequence">20</field>
         <field name="privilege_id" ref="res_groups_privilege_clearance"/>
         <field name="implied_ids" eval="[(4, ref('group_clearance_user'))]"/>
@@ -80,7 +80,7 @@
     </record>
 
     <record id="group_clearance_finance" model="res.groups">
-        <field name="name">Finance</field>
+        <field name="name">Finance Agent</field>
         <field name="sequence">30</field>
         <field name="privilege_id" ref="res_groups_privilege_clearance"/>
         <field name="implied_ids" eval="[(4, ref('group_clearance_user')), (4, ref('account.group_account_invoice'))]"/>
@@ -113,6 +113,24 @@
         <field name="implied_ids" eval="[(4, ref('group_clearance_finance'))]"/>
         <field name="user_ids" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
         <field name="comment">Approves the settlement method Finance has proposed on an expense before any money leaves. Implies Finance.</field>
+    </record>
+
+    <record id="group_clearance_billing" model="res.groups">
+        <field name="name">Billing Agent</field>
+        <field name="sequence">40</field>
+        <field name="privilege_id" ref="res_groups_privilege_clearance"/>
+        <field name="implied_ids" eval="[(4, ref('group_clearance_user'))]"/>
+        <field name="user_ids" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+        <field name="comment">Bills a file that is OK for billing: opens the billing screen, sets the commission rate and the service fee, and raises the draft invoice. Deliberately NOT Finance - the department that bills the client is not the one that pays the suppliers.</field>
+    </record>
+
+    <record id="group_clearance_billing_manager" model="res.groups">
+        <field name="name">Billing Manager</field>
+        <field name="sequence">45</field>
+        <field name="privilege_id" ref="res_groups_privilege_clearance"/>
+        <field name="implied_ids" eval="[(4, ref('group_clearance_billing'))]"/>
+        <field name="user_ids" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+        <field name="comment">Everything a Billing Agent does, and answers for the department. Implies Billing Agent.</field>
     </record>
 
 

@@ -6,18 +6,23 @@
               groups="group_clearance_user"/>
 
     <!-- Operations -->
+    <!-- One child each, so the parent carries the action itself: clicking
+         Files shows the files rather than a submenu of one. -->
     <menuitem id="menu_clearance_files" name="Files"
-              parent="menu_clearance_root" sequence="10"/>
-
-    <menuitem id="menu_clearance_file_all" name="Clearance Files"
-              parent="menu_clearance_files" action="action_logistics_file" sequence="10"/>
-
+              parent="menu_clearance_root" action="action_logistics_file"
+              sequence="10"/>
 
     <menuitem id="menu_clearance_expenses" name="Expenses"
-              parent="menu_clearance_root" sequence="20"/>
+              parent="menu_clearance_root" action="action_logistics_expense"
+              sequence="20"/>
 
-    <menuitem id="menu_clearance_expense_all" name="Out-of-Pocket Expenses"
-              parent="menu_clearance_expenses" action="action_logistics_expense" sequence="10"/>
+    <menuitem id="menu_clearance_billing" name="Billing"
+              parent="menu_clearance_root" sequence="30"
+              groups="group_clearance_billing,group_clearance_ops_manager"/>
+
+    <menuitem id="menu_clearance_billing_services" name="Billable Services"
+              parent="menu_clearance_billing"
+              action="action_logistics_billing_service" sequence="10"/>
 
     <!-- Configuration -->
     <menuitem id="menu_clearance_config" name="Configuration"

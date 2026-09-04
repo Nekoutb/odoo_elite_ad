@@ -277,6 +277,7 @@ class TestLegacyImport(TransactionCase):
         self.batch.action_import()
         im = self.env['logistics.service.type'].search([('code', '=', 'IM')], limit=1)
         new = self.env['logistics.file'].create({
+            'customs_regime': 'im4',
             'partner_id': self.env.company.partner_id.id, 'service_type_id': im.id,
             'date_opened': "2026-06-01"})
         self.assertEqual(new.name, "2026IM0008", "Must not reuse a legacy number.")

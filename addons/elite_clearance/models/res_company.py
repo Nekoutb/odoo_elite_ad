@@ -24,8 +24,13 @@ APPROVAL_KINDS = {
                 ('elite_clearance.group_clearance_finance',),
                 "settle and justify disbursements"),
     'billing': ("clearance_billing_approver_ids",
-                ('elite_clearance.group_clearance_finance',),
+                ('elite_clearance.group_clearance_billing',),
                 "approve billing and completion"),
+    # Billing proposes a new revenue line; Operations decides whether the
+    # company charges for it at all.
+    'billing_service': ("clearance_billing_service_approver_ids",
+                        ('elite_clearance.group_clearance_ops_manager',),
+                        "approve a new billable service"),
     # Finance keys the settlement, the Finance Manager signs it, then the
     # money leaves through whoever holds the till or the bank.
     'cash_disburse': ("clearance_cashier_approver_ids",
@@ -142,6 +147,12 @@ class ResCompany(models.Model):
         'res.users', 'clearance_finance_approver_rel', string="Disbursement (Finance) Approvers",
         help="Who may settle disbursements and justify advances. "
              "Empty = any Clearance Finance user.")
+    clearance_billing_service_approver_ids = fields.Many2many(
+        'res.users', 'res_company_clearance_billing_service_approver_rel',
+        'company_id', 'user_id', string="Billable Service Approvers",
+        help="Who may approve a new billable service proposed by Billing. "
+             "Empty = any Operations Manager.")
+
     clearance_billing_approver_ids = fields.Many2many(
         'res.users', 'clearance_billing_approver_rel', string="Billing Approvers",
         help="Who may raise the client invoice and mark files complete. "

@@ -48,6 +48,7 @@ class TestExpensesAndBilling(TransactionCase):
         cls.service = env['logistics.service.type'].create({
             'name': "Import test", 'code': "T-IMP2", 'commission_rate': 2.0})
         cls.file = env['logistics.file'].create({
+            'customs_regime': 'im4',
             'partner_id': cls.client.id, 'service_type_id': cls.service.id})
         cls.file.state = 'in_progress'
         cls.file.customs_fee_amount = 75000   # closing requires it keyed
@@ -191,8 +192,10 @@ class TestExpensesAndBilling(TransactionCase):
             else self.env['logistics.service.type'].search(
                 [('code', '=', 'IM')], limit=1)
         f1 = self.env['logistics.file'].create({
+            'customs_regime': 'im4',
             'partner_id': self.client.id, 'service_type_id': st_im.id})
         f2 = self.env['logistics.file'].create({
+            'customs_regime': 'im4',
             'partner_id': self.client.id, 'service_type_id': st_im.id})
         self.assertTrue(f1.name.startswith(year + "IM"))
         self.assertEqual(int(f2.name[-4:]), int(f1.name[-4:]) + 1)
