@@ -172,6 +172,15 @@ class ClearanceTask(models.Model):
 
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None, **kwargs):
+        # This model is a view over other tables, and the ORM has no way to
+        # know that: it flushes pending writes for the models a query
+        # names, and this query names none of them. Without these flushes a
+        # file whose state changed a moment ago is simply missing from the
+        # queue - the write is still sitting in the cache while the SQL
+        # reads the table underneath it.
+        self.env['logistics.file'].flush_model()
+        self.env['logistics.expense'].flush_model()
+        self.env['account.journal'].flush_model()
         # Narrow every read, so the one screen is a different list for each
         # role and nobody sees a queue they cannot act on.
         domain = [('kind', 'in', self._allowed_kinds())] + list(domain or [])
