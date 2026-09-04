@@ -73,7 +73,25 @@ def check_action_targets(path, text, problems):
                            ' / '.join(sorted(VALID_TARGETS))))
 
 
-CHECKS = (check_renamed, check_inherited_view_groups, check_action_targets)
+def check_search_group_string(path, text, problems):
+    """<group string="..."> inside a search view is refused on install.
+
+    Odoo 19 validates a search view's arch against a schema that allows no
+    string on <group>; the group-by block must be a bare <group>. It parses
+    as well-formed XML and fails only when the view is loaded, so nothing
+    but this check catches it before CI. Cost one run on 04/09/2026.
+    """
+    for match in re.finditer(r"<search[ >].*?</search>", text, re.S):
+        block = match.group(0)
+        for group in re.finditer(r"<group [^>]*string=", block):
+            line = len(text[:match.start() + group.start()].splitlines()) + 1
+            problems.append(
+                "%s:%d: <group string=...> inside a search view - Odoo 19 "
+                "refuses it at install; use a bare <group>" % (path, line))
+
+
+CHECKS = (check_renamed, check_inherited_view_groups, check_action_targets,
+          check_search_group_string)
 
 
 def main(argv):

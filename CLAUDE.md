@@ -221,6 +221,19 @@ Customs clearance job files for a logistics/clearance services provider.
   hard install failure, not a warning. A `res.config.settings` action sets no
   target at all and adds `'bin_size': False` to its context — copy
   `base_setup.action_general_configuration`, not a pre-19 module.
+- **An `_auto = False` model over other tables must flush them itself.** The
+  ORM flushes pending writes only for the models a query names; a
+  `_table_query` view names none of them, so a record written a moment ago
+  is missing from the results and it looks like an access-rights problem.
+  Call `self.env['x'].flush_model()` for every source table at the top of
+  `_search`. `clearance.task` does; cost one CI cycle 04/09/2026.
+- **`<group string="...">` is invalid inside a search view** (valid in a
+  form). The group-by block must be a bare `<group>`; anything else is
+  refused when the view loads. Guarded by `tools/check_view_pitfalls.py`.
+- **A stored computed field may NOT be `required=True`.** `create()` inserts
+  the row and computes stored computes on the following flush, so the NOT
+  NULL is checked before the compute has run and every create fails on
+  INSERT. Enforce it with an `@api.constrains` instead.
 - **One compute method may not feed both a stored and a non-stored field.**
   Stored computes default to `compute_sudo=True`, non-stored to `False`; the
   registry warns twice on every load. Split the method.
