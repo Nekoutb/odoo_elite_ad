@@ -72,12 +72,27 @@ class ClearanceTask(models.Model):
             SELECT * FROM (%s) AS clearance_task_union
         """ % " UNION ALL ".join(self._task_selects())
 
+    @staticmethod
+    def _text(column):
+        """Read a name column whether it is varchar or jsonb.
+
+        Odoo stores a translate=True Char as jsonb, and this view UNIONs
+        name columns from three different tables: the moment one of them
+        becomes translated, Postgres refuses the whole query and My Tasks
+        dies for everyone. to_jsonb() of a jsonb value is itself, so the
+        ->> extracts the English text; to_jsonb() of a varchar is a JSON
+        *string*, where ->> returns NULL and the COALESCE falls through to
+        the plain value. Both shapes come out as text, which unions.
+        """
+        return ("COALESCE(to_jsonb({col}) ->> 'en_US', {col}::text)"
+                .format(col=column))
+
     def _task_selects(self):
         # ids are synthetic: kind ordinal * 10^7 + record id, so every row
         # in the union is unique and stable between reads.
         expense = """
             SELECT (%(offset)s * 10000000 + e.id) AS id,
-                   e.name AS name,
+                   %(name_expr)s AS name,
                    '%(kind)s' AS kind,
                    'logistics.expense' AS res_model,
                    e.id AS res_id,
@@ -95,7 +110,7 @@ class ClearanceTask(models.Model):
         """
         file_task = """
             SELECT (%(offset)s * 10000000 + f.id) AS id,
-                   f.name AS name,
+                   %(name_expr)s AS name,
                    '%(kind)s' AS kind,
                    'logistics.file' AS res_model,
                    f.id AS res_id,
@@ -110,6 +125,8 @@ class ClearanceTask(models.Model):
               JOIN res_company c ON c.id = f.company_id
              WHERE %(where)s
         """
+        expense = expense.replace('%(name_expr)s', self._text('e.name'))
+        file_task = file_task.replace('%(name_expr)s', self._text('f.name'))
         selects = [
             expense % dict(offset=1, kind='expense_approve',
                            state='submitted', extra='TRUE'),
@@ -164,7 +181,7 @@ class ClearanceTask(models.Model):
             # a proposed revenue line, waiting for Operations to allow it
             """
             SELECT (14 * 10000000 + s.id) AS id,
-                   s.name AS name,
+                   COALESCE(to_jsonb(s.name) ->> 'en_US', s.name::text) AS name,
                    'billing_service' AS kind,
                    'logistics.billing.service' AS res_model,
                    s.id AS res_id,

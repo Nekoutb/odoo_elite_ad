@@ -221,6 +221,16 @@ Customs clearance job files for a logistics/clearance services provider.
   hard install failure, not a warning. A `res.config.settings` action sets no
   target at all and adds `'bin_size': False` to its context — copy
   `base_setup.action_general_configuration`, not a pre-19 module.
+- **CI installs; production UPGRADES. They are different code paths.** A
+  `translate=True` Char is stored as jsonb, and REMOVING `translate=True`
+  does not convert an existing column - Odoo leaves it. A fresh install had
+  a varchar column and passed; staging, upgraded from the previous build,
+  kept jsonb and `clearance.task` died with "UNION types character varying
+  and jsonb cannot be matched" for every user. Two guards now: the
+  `Upgrade from what production runs` CI job installs prod's version and
+  upgrades to HEAD before running the suite, and `clearance.task._text()`
+  reads a name column whichever type it is. Cost a live staging outage
+  04/09/2026.
 - **An `_auto = False` model over other tables must flush them itself.** The
   ORM flushes pending writes only for the models a query names; a
   `_table_query` view names none of them, so a record written a moment ago

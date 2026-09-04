@@ -36,6 +36,62 @@ jobs:
       - name: No known Odoo 19 install-time pitfalls
         run: python tools/check_view_pitfalls.py addons/elite_clearance addons/elite_clearance_teese
 
+  upgrade:
+    name: Upgrade from what production runs
+    # A fresh install and an upgrade are different code paths, and only the
+    # second one is what actually happens to the client's database. This
+    # job installs the version prod is on, upgrades it to this commit, and
+    # runs the suite against the upgraded database. It exists because a
+    # column left as jsonb by an earlier build killed My Tasks on staging
+    # while CI, which only ever installed, stayed green. 04/09/2026.
+    runs-on: ubuntu-latest
+    container:
+      image: odoo:19
+      options: --user root
+    services:
+      db:
+        image: postgres:16
+        env:
+          POSTGRES_USER: odoo
+          POSTGRES_PASSWORD: odoo
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd "pg_isready -U odoo"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Also fetch the version production is running
+        uses: actions/checkout@v4
+        with:
+          ref: prod
+          path: prod-src
+      - name: Install production's version
+        shell: bash
+        run: |
+          set -euo pipefail
+          odoo -d up_test             --db_host=db --db_port=5432 --db_user=odoo --db_password=odoo             --addons-path=/usr/lib/python3/dist-packages/odoo/addons,"$GITHUB_WORKSPACE/prod-src/addons"             -i elite_clearance,elite_clearance_teese             --with-demo --log-level=warn --stop-after-init
+      - name: Upgrade it to this commit, then run the suite on it
+        shell: bash
+        run: |
+          set -euo pipefail
+          odoo -d up_test             --db_host=db --db_port=5432 --db_user=odoo --db_password=odoo             --addons-path=/usr/lib/python3/dist-packages/odoo/addons,"$GITHUB_WORKSPACE/addons"             -u elite_clearance,elite_clearance_teese             --test-enable --test-tags /elite_clearance,/elite_clearance_teese             --log-level=test --stop-after-init 2>&1 | tee upgrade.log
+      - name: Fail on any test error in the upgraded database
+        shell: bash
+        run: |
+          if grep -E "odoo\.tests.*(FAIL|ERROR)" upgrade.log; then
+            echo "::error::the suite did not pass after upgrading"
+            exit 1
+          fi
+          echo "upgrade path green"
+      - name: Keep the upgrade log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: upgrade-log
+          path: upgrade.log
+
   odoo-tests:
     name: Odoo 19 test suite
     runs-on: ubuntu-latest
