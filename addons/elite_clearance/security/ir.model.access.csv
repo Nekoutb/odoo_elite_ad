@@ -18,3 +18,4 @@ access_logistics_port_manager,logistics.port.manager,model_logistics_port,group_
 access_logistics_billing_wizard_finance,logistics.billing.wizard.finance,model_logistics_billing_wizard,group_clearance_finance,1,1,1,1
 access_logistics_billing_wizard_debours_finance,logistics.billing.wizard.debours.finance,model_logistics_billing_wizard_debours,group_clearance_finance,1,1,1,1
 access_logistics_billing_wizard_service_finance,logistics.billing.wizard.service.finance,model_logistics_billing_wizard_service,group_clearance_finance,1,1,1,1
+access_clearance_task_user,clearance.task.user,model_clearance_task,group_clearance_user,1,0,0,0

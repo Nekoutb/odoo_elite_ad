@@ -51,7 +51,12 @@
                             invisible="state != 'in_progress'"
                             groups="elite_clearance.group_clearance_ops_manager"/>
                     <button name="action_open_billing" type="object" string="Billing"
-                            class="oe_highlight" invisible="state != 'ops_closed' or invoice_id"
+                            class="oe_highlight"
+                            invisible="state != 'ops_closed' or invoice_id or recharge_state == 'approved'"
+                            groups="elite_clearance.group_clearance_finance"/>
+                    <button name="action_open_billing" type="object" string="Resume Billing"
+                            class="oe_highlight"
+                            invisible="state != 'ops_closed' or invoice_id or recharge_state != 'approved'"
                             groups="elite_clearance.group_clearance_finance"/>
                     <button name="action_mark_complete" type="object" string="Mark Complete"
                             invisible="state != 'ops_closed' or invoice_state != 'posted'"/>
@@ -249,6 +254,15 @@
                     <field name="waiver_reason" placeholder="Why should work begin before the file is complete? Name the missing documents and when they are expected."
                            invisible="waiver_state == 'none' and documents_complete"/>
 
+                    <div class="alert alert-success" role="alert"
+                         invisible="state != 'ops_closed' or invoice_id or recharge_state != 'approved'">
+                        <strong>The recharge adjustment is approved.</strong>
+                        Billing can resume: press <em>Resume Billing</em> above to
+                        raise the invoice at
+                        <field name="recharge_amount" nolabel="1" readonly="1" class="fw-bold"/>
+                        against a cost of
+                        <field name="oop_total" nolabel="1" readonly="1" class="fw-bold"/>.
+                    </div>
                     <div class="alert alert-warning" role="alert"
                          invisible="recharge_state not in ('requested', 'ops_approved')">
                         This file recharges

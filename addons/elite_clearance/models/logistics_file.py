@@ -1039,12 +1039,19 @@ class LogisticsFile(models.Model):
                 'display_type': 'line_section',
                 'name': self.env._("Service fees"),
             }))
+        # VAT applies to what the company sells - its commission and its
+        # fees - and never to disbursements, which are the client's own
+        # liability settled on their behalf. The tax is named in Settings
+        # rather than inherited from whichever account a line lands on, so
+        # the invoice does not change meaning when an account does.
+        service_taxes = self.company_id.clearance_service_tax_ids
         for line in services:
             lines.append(fields.Command.create({
                 'name': line['name'],
                 'quantity': 1.0,
                 'price_unit': line['amount'],
                 'account_id': line.get('account_id') or fee_account.id,
+                'tax_ids': [fields.Command.set(service_taxes.ids)],
                 'analytic_distribution': analytic,
             }))
 

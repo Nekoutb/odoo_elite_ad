@@ -14,6 +14,8 @@ class ResConfigSettings(models.TransientModel):
         related='company_id.clearance_misc_journal_id', readonly=False)
     clearance_sale_journal_id = fields.Many2one(
         related='company_id.clearance_sale_journal_id', readonly=False)
+    clearance_service_tax_ids = fields.Many2many(
+        related='company_id.clearance_service_tax_ids', readonly=False)
     clearance_waiver_approver_ids = fields.Many2many(
         related='company_id.clearance_waiver_approver_ids', readonly=False)
     clearance_expense_approver_ids = fields.Many2many(

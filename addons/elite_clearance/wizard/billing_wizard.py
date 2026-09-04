@@ -43,6 +43,11 @@ class LogisticsBillingWizard(models.TransientModel):
     service_total = fields.Monetary(
         compute='_compute_totals', currency_field='currency_id',
         string="Services")
+    service_tax_total = fields.Monetary(
+        compute='_compute_totals', currency_field='currency_id',
+        string="VAT on services",
+        help="Configured in Settings, and charged on the service lines "
+             "only. Disbursements are recharged without VAT.")
     invoice_total = fields.Monetary(
         compute='_compute_totals', currency_field='currency_id',
         string="Invoice Total")
@@ -107,7 +112,18 @@ class LogisticsBillingWizard(models.TransientModel):
             wizard.debours_recharged_total = recharged
             wizard.debours_variance = recharged - engaged
             wizard.service_total = sum(wizard.service_line_ids.mapped('amount'))
-            wizard.invoice_total = recharged + wizard.service_total
+            # VAT rides on the services and never on the disbursements, so
+            # the biller sees the same split the invoice will carry.
+            taxes = wizard.file_id.company_id.clearance_service_tax_ids
+            tax = 0.0
+            if taxes and wizard.service_total:
+                tax = sum(
+                    step['amount'] for step in taxes.compute_all(
+                        wizard.service_total,
+                        currency=wizard.currency_id,
+                    )['taxes'])
+            wizard.service_tax_total = tax
+            wizard.invoice_total = recharged + wizard.service_total + tax
             file = wizard.file_id
             settled = (
                 file.recharge_state == 'approved'

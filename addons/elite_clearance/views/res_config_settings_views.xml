@@ -46,6 +46,17 @@
                             <field name="clearance_sale_journal_id"/>
                         </setting>
                     </block>
+
+                    <block title="Billing">
+                        <setting string="VAT on Service Fees"
+                                 help="Applied to commission, customs fees and any other
+                                       service line. Disbursements are never taxed here:
+                                       they are the client's own liability paid on their
+                                       behalf, outside the scope of VAT.">
+                            <field name="clearance_service_tax_ids"
+                                   widget="many2many_tags"/>
+                        </setting>
+                    </block>
                     <block title="Approvals">
                         <setting string="Waiver Approvers"
                                  help="Who may approve starting work with incomplete documentation. Empty = any Clearance Manager.">

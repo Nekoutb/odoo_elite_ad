@@ -58,6 +58,8 @@
                     <field name="debours_variance" readonly="1"
                            invisible="not debours_variance"/>
                     <field name="service_total" readonly="1"/>
+                    <field name="service_tax_total" readonly="1"
+                           invisible="not service_tax_total"/>
                     <field name="invoice_total" readonly="1" class="oe_subtotal_footer_separator"/>
                 </group>
 

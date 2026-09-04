@@ -110,6 +110,15 @@ class ResCompany(models.Model):
              "credited. Also a subdivision of 706, kept apart from the "
              "commission so the two revenue streams are reportable.",
     )
+    clearance_service_tax_ids = fields.Many2many(
+        'account.tax', 'res_company_clearance_service_tax_rel',
+        'company_id', 'tax_id', string="VAT on Service Fees",
+        domain="[('type_tax_use', '=', 'sale')]",
+        help="Applied to commission, customs fees and any other service "
+             "line on a clearance invoice. Disbursements are NEVER taxed "
+             "here: they are the client's own liability paid on their "
+             "behalf, outside the scope of VAT.")
+
     clearance_misc_journal_id = fields.Many2one(
         'account.journal', string="Clearance Miscellaneous Journal",
         domain="[('type', '=', 'general')]",

@@ -1,168 +1,79 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- My Tasks: what is waiting for THIS user, and nothing else.
-         Each action is restricted to the group that can actually act on it,
-         so a Cashier never sees a list they cannot do anything about. -->
+  <!--
+    One screen, not a menu of queues. The rows a user sees are already
+    narrowed to the kinds their groups let them act on, so Finance and the
+    Operations Manager open the same menu and find different work.
+  -->
 
-    <record id="action_task_expense_to_approve" model="ir.actions.act_window">
-        <field name="name">Expenses to approve</field>
-        <field name="res_model">logistics.expense</field>
-        <field name="view_mode">list,form</field>
-        <field name="domain">[('state', '=', 'submitted')]</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Nothing waiting for your approval</p>
-            <p>Expenses your teams have submitted appear here until a team manager approves or refuses them.</p>
-        </field>
-    </record>
+  <record id="view_clearance_task_list" model="ir.ui.view">
+    <field name="name">clearance.task.list</field>
+    <field name="model">clearance.task</field>
+    <field name="arch" type="xml">
+      <list string="My Tasks" create="false" delete="false"
+            default_order="date_deadline asc"
+            decoration-warning="kind in ['doc_waiver', 'advance_waiver']"
+            decoration-info="kind in ['recharge_ops', 'recharge_gm']">
+        <field name="kind" string="Action needed"/>
+        <field name="name" string="Reference"/>
+        <field name="partner_id"/>
+        <field name="detail"/>
+        <field name="amount" sum="Total"/>
+        <field name="date_deadline"/>
+        <field name="file_id" optional="hide"/>
+        <field name="res_model" column_invisible="1"/>
+        <field name="currency_id" column_invisible="1"/>
+        <field name="company_id" column_invisible="1"
+               groups="base.group_multi_company"/>
+        <button name="action_open" type="object" string="Open"
+                class="btn-primary" icon="fa-arrow-circle-right"/>
+      </list>
+    </field>
+  </record>
 
-    <record id="action_task_settlement_to_key" model="ir.actions.act_window">
-        <field name="name">Settlements to prepare</field>
-        <field name="res_model">logistics.expense</field>
-        <field name="view_mode">list,form</field>
-        <field name="domain">[('state', '=', 'approved')]</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Nothing to prepare</p>
-            <p>Approved expenses waiting for Finance to set the payment mode, the counterparty and the journal, then send them to the Finance Manager.</p>
-        </field>
-    </record>
+  <record id="view_clearance_task_search" model="ir.ui.view">
+    <field name="name">clearance.task.search</field>
+    <field name="model">clearance.task</field>
+    <field name="arch" type="xml">
+      <search string="My Tasks">
+        <field name="name"/>
+        <field name="partner_id"/>
+        <field name="file_id"/>
+        <filter name="expenses" string="Expenses"
+                domain="[('res_model', '=', 'logistics.expense')]"/>
+        <filter name="files" string="Files"
+                domain="[('res_model', '=', 'logistics.file')]"/>
+        <separator/>
+        <filter name="waiting_a_week" string="Waiting over a week"
+                domain="[('date_deadline', '&lt;', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+        <group>
+          <filter name="by_kind" string="Action needed"
+                  context="{'group_by': 'kind'}"/>
+          <filter name="by_client" string="Client"
+                  context="{'group_by': 'partner_id'}"/>
+          <filter name="by_file" string="File"
+                  context="{'group_by': 'file_id'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
 
-    <record id="action_task_settlement_to_approve" model="ir.actions.act_window">
-        <field name="name">Settlements to approve</field>
-        <field name="res_model">logistics.expense</field>
-        <field name="view_mode">list,form</field>
-        <field name="domain">[('state', '=', 'settlement_submitted')]</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Nothing awaiting your signature</p>
-            <p>Settlements Finance has prepared and sent up for approval.</p>
-        </field>
-    </record>
+  <record id="action_clearance_tasks" model="ir.actions.act_window">
+    <field name="name">My Tasks</field>
+    <field name="res_model">clearance.task</field>
+    <field name="view_mode">list</field>
+    <field name="context">{'search_default_by_kind': 1}</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">Nothing is waiting on you</p>
+      <p>This list shows only the work your role can act on. When a file or
+      an expense reaches a checkpoint that is yours, it appears here.</p>
+    </field>
+  </record>
 
-    <record id="action_task_to_disburse" model="ir.actions.act_window">
-        <field name="name">To disburse or pay</field>
-        <field name="res_model">logistics.expense</field>
-        <field name="view_mode">list,form</field>
-        <field name="domain">[('state', '=', 'settlement_approved')]</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Nothing to pay out</p>
-            <p>Approved settlements waiting for the till or the bank. Cash goes through the Cashier, bank and mobile money through Treasury.</p>
-        </field>
-    </record>
-
-    <record id="action_task_justification_to_approve" model="ir.actions.act_window">
-        <field name="name">Justifications to approve</field>
-        <field name="res_model">logistics.expense</field>
-        <field name="view_mode">list,form</field>
-        <field name="domain">[('state', '=', 'justification_submitted')]</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">No justification waiting</p>
-            <p>Staff advances whose supporting documents are in and need reviewing before the advance becomes billable.</p>
-        </field>
-    </record>
-
-    <record id="action_task_waivers_to_approve" model="ir.actions.act_window">
-        <field name="name">Waivers to approve</field>
-        <field name="res_model">logistics.file</field>
-        <field name="view_mode">list,form</field>
-        <field name="domain">['|', ('waiver_state', '=', 'requested'), ('advance_waiver_state', '=', 'requested')]</field>
-        <field name="context">{'search_default_my_files': 0}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">No waiver waiting</p>
-            <p>Files asking to start work without complete documentation, or to be billed with a staff advance still unjustified.</p>
-        </field>
-    </record>
-
-    <record id="action_task_recharge_to_approve" model="ir.actions.act_window">
-        <field name="name">Recharge adjustments to approve</field>
-        <field name="res_model">logistics.file</field>
-        <field name="view_mode">list,form</field>
-        <field name="domain">[('recharge_state', 'in', ('requested', 'ops_approved'))]</field>
-        <field name="context">{'search_default_my_files': 0}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">No adjustment waiting</p>
-            <p>Files where the biller is charging the client other than what was disbursed.</p>
-        </field>
-    </record>
-
-    <record id="action_task_reopen_to_approve" model="ir.actions.act_window">
-        <field name="name">Reopening requests</field>
-        <field name="res_model">logistics.file</field>
-        <field name="view_mode">list,form</field>
-        <field name="domain">[('reopen_request_state', '=', 'requested')]</field>
-        <field name="context">{'search_default_my_files': 0}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">No reopening request</p>
-            <p>Imported files the billing agent wants brought back into the workflow.</p>
-        </field>
-    </record>
-
-    <record id="action_task_files_to_close" model="ir.actions.act_window">
-        <field name="name">Files to close for operations</field>
-        <field name="res_model">logistics.file</field>
-        <field name="view_mode">list,form</field>
-        <field name="domain">[('state', '=', 'in_progress')]</field>
-        <field name="context">{'search_default_my_files': 0}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">No file in progress</p>
-            <p>Files still being worked. Closing one needs the customs fee keyed and an Operations Manager.</p>
-        </field>
-    </record>
-
-    <record id="action_task_files_to_bill" model="ir.actions.act_window">
-        <field name="name">Files OK for billing</field>
-        <field name="res_model">logistics.file</field>
-        <field name="view_mode">list,form</field>
-        <field name="domain">[('state', '=', 'ops_closed')]</field>
-        <field name="context">{'search_default_my_files': 0}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Nothing to bill</p>
-            <p>Files closed for operations and waiting for their invoice.</p>
-        </field>
-    </record>
-
-    <!-- ============================== the menu ============================== -->
-    <menuitem id="menu_clearance_tasks" name="My Tasks"
-              parent="menu_clearance_root" sequence="5"
-              groups="group_clearance_user"/>
-
-    <menuitem id="menu_task_expense_to_approve" name="Expenses to approve"
-              parent="menu_clearance_tasks" action="action_task_expense_to_approve" sequence="10"
-              groups="group_clearance_ops_manager,group_clearance_customer_service_manager,group_clearance_transit_manager"/>
-
-    <menuitem id="menu_task_settlement_to_key" name="Settlements to prepare"
-              parent="menu_clearance_tasks" action="action_task_settlement_to_key" sequence="20"
-              groups="group_clearance_finance"/>
-
-    <menuitem id="menu_task_settlement_to_approve" name="Settlements to approve"
-              parent="menu_clearance_tasks" action="action_task_settlement_to_approve" sequence="30"
-              groups="group_clearance_finance_manager"/>
-
-    <menuitem id="menu_task_to_disburse" name="To disburse or pay"
-              parent="menu_clearance_tasks" action="action_task_to_disburse" sequence="40"
-              groups="group_clearance_cashier,group_clearance_treasury"/>
-
-    <menuitem id="menu_task_justification_to_approve" name="Justifications to approve"
-              parent="menu_clearance_tasks" action="action_task_justification_to_approve" sequence="50"
-              groups="group_clearance_ops_manager"/>
-
-    <menuitem id="menu_task_waivers_to_approve" name="Waivers to approve"
-              parent="menu_clearance_tasks" action="action_task_waivers_to_approve" sequence="60"
-              groups="group_clearance_manager,group_clearance_ops_manager"/>
-
-    <menuitem id="menu_task_recharge_to_approve" name="Recharge adjustments"
-              parent="menu_clearance_tasks" action="action_task_recharge_to_approve" sequence="70"
-              groups="group_clearance_ops_manager,group_clearance_manager"/>
-
-    <menuitem id="menu_task_reopen_to_approve" name="Reopening requests"
-              parent="menu_clearance_tasks" action="action_task_reopen_to_approve" sequence="80"
-              groups="group_clearance_ops_manager"/>
-
-    <menuitem id="menu_task_files_to_close" name="Files to close"
-              parent="menu_clearance_tasks" action="action_task_files_to_close" sequence="90"
-              groups="group_clearance_ops_manager"/>
-
-    <menuitem id="menu_task_files_to_bill" name="Files OK for billing"
-              parent="menu_clearance_tasks" action="action_task_files_to_bill" sequence="100"
-              groups="group_clearance_finance"/>
+  <menuitem id="menu_clearance_tasks" name="My Tasks"
+            parent="menu_clearance_root"
+            action="action_clearance_tasks"
+            sequence="5" groups="group_clearance_user"/>
 
 </odoo>

@@ -4,3 +4,4 @@ from . import test_staff_advances
 from . import test_segregation
 from . import test_billing_and_vendor
 from . import test_billing_wizard
+from . import test_tasks_and_vat

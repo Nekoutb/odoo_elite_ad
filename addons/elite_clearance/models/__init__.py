@@ -10,3 +10,4 @@ from . import logistics_document_type
 from . import logistics_service_type
 from . import logistics_file
 from . import logistics_expense
+from . import clearance_task
