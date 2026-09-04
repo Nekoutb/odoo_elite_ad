@@ -316,7 +316,9 @@ class TestLegacyImport(TransactionCase):
                 'name': name,
                 'login': name.lower().replace(' ', '.') + "@reopen.test",
                 'group_ids': [(6, 0, [self.env.ref(G + group).id])]})
-        finance = user("Billing Agent", 'finance')
+        # Reopening an imported file is the BILLING agent's request,
+        # and billing left Finance for its own department.
+        finance = user("Billing Agent", 'billing')
         ops_manager = user("Ops Manager R", 'ops_manager')
         plain = user("Plain R", 'user')
 
