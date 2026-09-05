@@ -1183,9 +1183,14 @@ class LogisticsFile(models.Model):
             raise UserError(self.env._(
                 "%s has not been billed yet, so there is nothing to "
                 "preview.", self.name))
+        # config=False deliberately. With it, an admin whose company has
+        # no external_report_layout_id gets Odoo's "Configure Document
+        # Layout" wizard INSTEAD of the invoice - and this template does
+        # not use web.external_layout at all, so that layout has no say in
+        # how the page looks. Pressing Preview must show the document.
         return self.env.ref(
             'elite_clearance.action_report_clearance_invoice'
-        ).report_action(self.invoice_id)
+        ).report_action(self.invoice_id, config=False)
 
     def action_create_invoice(self):
         """Bill at the proposed figures, without opening the screen."""

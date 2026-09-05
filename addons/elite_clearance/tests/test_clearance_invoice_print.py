@@ -126,12 +126,15 @@ class TestClearanceInvoicePrint(TransactionCase):
 
     def test_03_the_amount_in_words_is_french_and_ends_in_the_code(self):
         file = self._billed_file()
-        words = file.invoice_id._clearance_amount_in_words(5797029)
-        self.assertTrue(words.endswith("XAF"), words)
+        invoice = file.invoice_id
+        words = invoice._clearance_amount_in_words(5797029)
+        # Odoo's own amount_to_text would give English and append the
+        # currency's UNIT LABEL ("Units"); the document does neither.
+        self.assertTrue(words.endswith(invoice.currency_id.name), words)
         self.assertIn("MILLIONS", words, words)
         self.assertEqual(words, words.upper(), "the document shouts it")
-        self.assertNotIn("MILLION ", words.replace("MILLIONS", ""),
-                         "French, not English")
+        self.assertIn("QUATRE-VINGT", words, "French, not English")
+        self.assertNotIn("THOUSAND", words, "French, not English")
 
     def test_04_the_vat_row_carries_the_rate(self):
         file = self._billed_file()
@@ -153,14 +156,40 @@ class TestClearanceInvoicePrint(TransactionCase):
         file = self._billed_file()
         text = self._html(file.invoice_id)
         self.assertIn("FACTURE N°", text)
-        self.assertIn("30 days", text)
+        self.assertIn("Max period for complaints", text)
+        self.assertIn(">30<", text, "the configured window is printed")
         self.assertIn("30 jours fin de mois", text)
 
-    def test_07_amounts_are_grouped_and_whole_in_xaf(self):
-        file = self._billed_file()
-        self.assertEqual(file.invoice_id._clearance_money(6049966),
-                         "6 049 966")
-        self.assertEqual(file.invoice_id._clearance_money(53504), "53 504")
+    def test_07_amounts_are_space_grouped_to_the_currency_precision(self):
+        """Space separators, and the CURRENCY decides the decimals.
+
+        The old template hardcoded zero decimal places. XAF has none, so
+        it looked right - but the precision is the currency's to decide,
+        and this asserts that rather than a hardcoded shape.
+        """
+        nbsp = chr(160)
+        invoice = self._billed_file().invoice_id
+        text = invoice._clearance_money(6049966)
+        self.assertTrue(text.startswith("6" + nbsp + "049" + nbsp + "966"),
+                        repr(text))
+        self.assertNotIn(",", text.split(",")[0],
+                         "grouped with spaces, never commas")
+        if invoice.currency_id.decimal_places:
+            self.assertIn(",", text, repr(text))
+        else:
+            self.assertEqual(text, "6" + nbsp + "049" + nbsp + "966")
+
+    def test_07b_a_zero_decimal_currency_prints_whole_units(self):
+        """XAF has no minor unit and the invoice must not invent one."""
+        nbsp = chr(160)
+        invoice = self._billed_file().invoice_id
+        xaf = self.env.ref('base.XAF')
+        xaf.active = True
+        invoice.currency_id = xaf
+        self.assertEqual(invoice._clearance_money(6049966),
+                         "6" + nbsp + "049" + nbsp + "966")
+        self.assertEqual(invoice._clearance_money(53504),
+                         "53" + nbsp + "504")
 
     def test_08_a_large_quantity_is_not_printed_in_scientific_notation(self):
         file = self._billed_file(quantity=1000000)
