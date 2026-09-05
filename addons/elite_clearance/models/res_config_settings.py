@@ -16,6 +16,16 @@ class ResConfigSettings(models.TransientModel):
         related='company_id.clearance_sale_journal_id', readonly=False)
     clearance_service_tax_ids = fields.Many2many(
         related='company_id.clearance_service_tax_ids', readonly=False)
+    clearance_invoice_title = fields.Char(
+        related='company_id.clearance_invoice_title', readonly=False)
+    clearance_invoice_vat_label = fields.Char(
+        related='company_id.clearance_invoice_vat_label', readonly=False)
+    clearance_invoice_payment_terms = fields.Char(
+        related='company_id.clearance_invoice_payment_terms', readonly=False)
+    clearance_invoice_complaint_days = fields.Integer(
+        related='company_id.clearance_invoice_complaint_days', readonly=False)
+    clearance_invoice_bank_ids = fields.Many2many(
+        related='company_id.clearance_invoice_bank_ids', readonly=False)
     clearance_waiver_approver_ids = fields.Many2many(
         related='company_id.clearance_waiver_approver_ids', readonly=False)
     clearance_expense_approver_ids = fields.Many2many(

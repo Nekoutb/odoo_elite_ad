@@ -57,6 +57,39 @@
                                    widget="many2many_tags"/>
                         </setting>
                     </block>
+                    <block title="Invoice Layout"
+                           help="Only the wording the printed invoice invents.
+                                 The logo, NIU, RC, address and bank accounts
+                                 are read from the company itself, and the
+                                 client block from the customer - so there is
+                                 never a second copy to keep in step.">
+                        <setting string="Invoice title"
+                                 help="Printed above the invoice number.">
+                            <field name="clearance_invoice_title"/>
+                        </setting>
+                        <setting string="VAT line label"
+                                 help="The rate is appended automatically from the
+                                       tax actually charged, e.g. (19,25%).">
+                            <field name="clearance_invoice_vat_label"/>
+                        </setting>
+                        <setting string="Payment conditions"
+                                 help="Used when the invoice carries no payment term
+                                       of its own.">
+                            <field name="clearance_invoice_payment_terms"/>
+                        </setting>
+                        <setting string="Complaints window (days)">
+                            <field name="clearance_invoice_complaint_days"/>
+                        </setting>
+                        <setting string="Bank accounts on the invoice"
+                                 help="Which accounts print, and in what order.
+                                       Empty prints the first two the company has.
+                                       Maintain the accounts themselves under
+                                       Invoicing > Bank Accounts.">
+                            <field name="clearance_invoice_bank_ids"
+                                   widget="many2many_tags"/>
+                        </setting>
+                    </block>
+
                     <block title="Turnaround Targets"
                            help="How long each step of the workflow may take
                                  before Reporting flags it. An advance

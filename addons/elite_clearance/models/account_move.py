@@ -101,6 +101,73 @@ class AccountMove(models.Model):
         return super().action_post()
 
 
+    # ------------------------------------------------------------------
+    # What the printed clearance invoice needs and Odoo will not give it.
+    # ------------------------------------------------------------------
+    def _get_name_invoice_report(self):
+        """A clearance invoice prints Elimelec's own document.
+
+        This is the hook Odoo's own localisations use to swap the invoice
+        template. Anything without a clearance file keeps Odoo's standard
+        report, so ordinary invoicing is untouched.
+        """
+        self.ensure_one()
+        if self.logistics_file_id:
+            return 'elite_clearance.report_clearance_invoice_document'
+        return super()._get_name_invoice_report()
+
+    def _clearance_amount_in_words(self, amount):
+        """`CINQ MILLIONS ... XAF`, the way the document reads.
+
+        Odoo's own amount_to_text follows the reader's language and appends
+        the currency's UNIT LABEL ("Units", "Francs CFA"). This invoice is
+        always French and always ends in the currency CODE, so the words
+        are built here rather than borrowed.
+        """
+        self.ensure_one()
+        currency = self.currency_id
+        rounded = int(round(amount or 0.0))
+        try:
+            from num2words import num2words
+            words = num2words(rounded, lang='fr')
+        except (ImportError, NotImplementedError):
+            # num2words is a hard dependency of Odoo 19, so this is the
+            # belt to the braces: a figure is better than a blank line.
+            words = "{:,}".format(rounded).replace(",", " ")
+        return "%s %s" % (words.upper(), currency.name or "")
+
+    def _clearance_money(self, amount):
+        """A figure the way the document shows it: space-grouped, and to
+        the currency's own precision rather than a hardcoded zero."""
+        self.ensure_one()
+        places = self.currency_id.decimal_places or 0
+        text = "{:,.{p}f}".format(amount or 0.0, p=places)
+        whole, _dot, fraction = text.partition(".")
+        whole = whole.replace(",", " ")
+        return "%s,%s" % (whole, fraction) if fraction else whole
+
+    def _clearance_service_tax_label(self):
+        """The VAT wording plus the rate actually charged, e.g.
+        `TVA SUR PRESTATIONS (19,25%)`."""
+        self.ensure_one()
+        label = (self.company_id.clearance_invoice_vat_label
+                 or "TVA SUR PRESTATIONS")
+        taxes = self.invoice_line_ids.mapped('tax_ids').filtered(
+            lambda t: t.amount_type == 'percent')
+        if not taxes:
+            return label
+        rate = "{:.2f}".format(taxes[0].amount).rstrip('0').rstrip('.')
+        return "%s (%s%%)" % (label, rate.replace('.', ','))
+
+    def _clearance_invoice_banks(self):
+        """The accounts the owner chose, in the order they chose them."""
+        self.ensure_one()
+        chosen = self.company_id.clearance_invoice_bank_ids
+        if chosen:
+            return chosen
+        return self.company_id.partner_id.bank_ids[:2]
+
+
 class AccountMoveLine(models.Model):
     _inherit = 'account.move.line'
 

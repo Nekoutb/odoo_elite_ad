@@ -1176,6 +1176,17 @@ class LogisticsFile(models.Model):
                 amount=self.unjustified_advance_total))
         return invoice
 
+    def action_preview_invoice(self):
+        """See the document before the client does."""
+        self.ensure_one()
+        if not self.invoice_id:
+            raise UserError(self.env._(
+                "%s has not been billed yet, so there is nothing to "
+                "preview.", self.name))
+        return self.env.ref(
+            'elite_clearance.action_report_clearance_invoice'
+        ).report_action(self.invoice_id)
+
     def action_create_invoice(self):
         """Bill at the proposed figures, without opening the screen."""
         self.ensure_one()

@@ -115,6 +115,31 @@ class ResCompany(models.Model):
              "credited. Also a subdivision of 706, kept apart from the "
              "commission so the two revenue streams are reportable.",
     )
+    # --- what the printed invoice says -----------------------------
+    # ONLY the strings Odoo has nowhere else to keep. The logo, NIU, RC,
+    # address and bank accounts are read from the company and its bank
+    # accounts, never copied here: a second copy would keep printing the
+    # old account number after somebody updated the real one.
+    clearance_invoice_title = fields.Char(
+        string="Invoice Title", default="Facture doit N°",
+        help="Printed above the invoice number.")
+    clearance_invoice_vat_label = fields.Char(
+        string="VAT Line Label", default="TVA SUR PRESTATIONS",
+        help="The rate is appended automatically from the tax actually "
+             "charged, so this is the wording only.")
+    clearance_invoice_payment_terms = fields.Char(
+        string="Payment Conditions", default="As per agreement with customer",
+        help="Printed in the bank block when the invoice carries no payment "
+             "term of its own.")
+    clearance_invoice_complaint_days = fields.Integer(
+        string="Complaints Window (days)", default=15,
+        help="Printed as 'Max period for complaints regarding invoices'.")
+    clearance_invoice_bank_ids = fields.Many2many(
+        'res.partner.bank', 'res_company_clearance_invoice_bank_rel',
+        'company_id', 'bank_id', string="Bank Accounts on the Invoice",
+        help="Which accounts print, and in what order. Empty prints the "
+             "first two the company has.")
+
     clearance_service_tax_ids = fields.Many2many(
         'account.tax', 'res_company_clearance_service_tax_rel',
         'company_id', 'tax_id', string="VAT on Service Fees",

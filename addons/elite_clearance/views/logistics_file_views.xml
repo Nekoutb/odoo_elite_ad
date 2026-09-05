@@ -58,6 +58,9 @@
                             class="oe_highlight"
                             invisible="state != 'ops_closed' or invoice_id or recharge_state != 'approved'"
                             groups="elite_clearance.group_clearance_finance"/>
+                    <button name="action_preview_invoice" type="object"
+                            string="Preview Invoice" invisible="not invoice_id"
+                            groups="elite_clearance.group_clearance_user"/>
                     <button name="action_mark_complete" type="object" string="Mark Complete"
                             invisible="state != 'ops_closed' or invoice_state != 'posted'"/>
                     <button name="%(action_logistics_reopen_wizard)d" type="action" string="Reopen (Approval)"
