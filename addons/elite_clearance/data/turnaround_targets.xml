@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- Starting targets. Change them in Settings; they are data,
+       not doctrine, and every company keeps its own. -->
+  <data noupdate="1">
+    <record id="tat_file_start" model="clearance.turnaround.target">
+      <field name="step">file_start</field>
+      <field name="target_days">2</field>
+    </record>
+    <record id="tat_file_waiver" model="clearance.turnaround.target">
+      <field name="step">file_waiver</field>
+      <field name="target_days">1</field>
+    </record>
+    <record id="tat_file_ops_close" model="clearance.turnaround.target">
+      <field name="step">file_ops_close</field>
+      <field name="target_days">10</field>
+    </record>
+    <record id="tat_file_bill" model="clearance.turnaround.target">
+      <field name="step">file_bill</field>
+      <field name="target_days">2</field>
+    </record>
+    <record id="tat_file_adv_waiver" model="clearance.turnaround.target">
+      <field name="step">file_adv_waiver</field>
+      <field name="target_days">2</field>
+    </record>
+    <record id="tat_file_recharge" model="clearance.turnaround.target">
+      <field name="step">file_recharge</field>
+      <field name="target_days">2</field>
+    </record>
+    <record id="tat_file_reopen" model="clearance.turnaround.target">
+      <field name="step">file_reopen</field>
+      <field name="target_days">2</field>
+    </record>
+    <record id="tat_doc_receive" model="clearance.turnaround.target">
+      <field name="step">doc_receive</field>
+      <field name="target_days">3</field>
+    </record>
+    <record id="tat_exp_submit" model="clearance.turnaround.target">
+      <field name="step">exp_submit</field>
+      <field name="target_days">1</field>
+    </record>
+    <record id="tat_exp_approve" model="clearance.turnaround.target">
+      <field name="step">exp_approve</field>
+      <field name="target_days">1</field>
+    </record>
+    <record id="tat_exp_settle_key" model="clearance.turnaround.target">
+      <field name="step">exp_settle_key</field>
+      <field name="target_days">1</field>
+    </record>
+    <record id="tat_exp_settle_approve" model="clearance.turnaround.target">
+      <field name="step">exp_settle_approve</field>
+      <field name="target_days">1</field>
+    </record>
+    <record id="tat_exp_pay" model="clearance.turnaround.target">
+      <field name="step">exp_pay</field>
+      <field name="target_days">2</field>
+    </record>
+    <record id="tat_exp_justify_docs" model="clearance.turnaround.target">
+      <field name="step">exp_justify_docs</field>
+      <field name="target_days">3</field>
+    </record>
+    <record id="tat_exp_justify" model="clearance.turnaround.target">
+      <field name="step">exp_justify</field>
+      <field name="target_days">2</field>
+    </record>
+  </data>
+</odoo>

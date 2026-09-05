@@ -210,23 +210,14 @@
                          record of what was billed. -->
                     <separator string="Billing" invisible="state == 'draft'"/>
                     <group invisible="state == 'draft'">
+                        <!-- No billing parameter is shown here at all.
+                             Every one of them is set in the billing screen
+                             and only there; the approval banner below tells
+                             an approver what they need without inviting
+                             anyone to edit a figure on the file. -->
                         <group>
-                            <field name="billing_commission_rate" readonly="1"
-                                   invisible="not billing_commission_rate"/>
-                            <field name="customs_fee_amount" readonly="1"
-                                   invisible="not customs_fee_amount"/>
-                            <field name="recharge_amount" readonly="1"
-                                   invisible="not recharge_amount"/>
-                            <field name="recharge_variance" readonly="1"
-                                   invisible="not recharge_amount"/>
                             <field name="recharge_state" readonly="1"
                                    invisible="recharge_state == 'none'"/>
-                            <field name="advance_had_amount" readonly="1"
-                                   invisible="not advance_had_amount"/>
-                            <field name="advance_had_vat_amount" readonly="1"
-                                   invisible="not advance_had_vat_amount"/>
-                            <field name="advance_other_amount" readonly="1"
-                                   invisible="not advance_other_amount"/>
                         </group>
                         <group>
                             <field name="invoice_id" readonly="1"/>

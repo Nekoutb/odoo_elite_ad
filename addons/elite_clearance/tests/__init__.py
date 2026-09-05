@@ -6,3 +6,4 @@ from . import test_billing_and_vendor
 from . import test_billing_wizard
 from . import test_tasks_and_vat
 from . import test_regime_and_billing_params
+from . import test_reporting_and_billing_fix

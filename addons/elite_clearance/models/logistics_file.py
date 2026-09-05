@@ -65,6 +65,15 @@ class LogisticsFile(models.Model):
     )
     date_target = fields.Date(string="Target Clearance Date", tracking=True)
     date_closed = fields.Date(string="Closed On", readonly=True, copy=False)
+    # The clock the reporting section reads. Every one of these is written
+    # by the action that performs the step, never by hand, so a turnaround
+    # figure is a record of what happened rather than what was typed.
+    date_started = fields.Datetime(
+        string="Work Started", readonly=True, copy=False)
+    date_ops_closed = fields.Datetime(
+        string="Closed for Operations", readonly=True, copy=False)
+    date_billed = fields.Datetime(
+        string="Invoiced On", readonly=True, copy=False)
     note = fields.Html(string="Internal Notes")
 
     # --- cargo & routing (from the legacy dossier) -----------------------
@@ -191,6 +200,7 @@ class LogisticsFile(models.Model):
     waiver_requested_by_id = fields.Many2one('res.users', readonly=True, copy=False)
     waiver_approved_by_id = fields.Many2one('res.users', readonly=True, copy=False)
     waiver_date = fields.Datetime(readonly=True, copy=False)
+    waiver_requested_date = fields.Datetime(readonly=True, copy=False)
 
     can_start = fields.Boolean(compute='_compute_can_start')
 
@@ -241,6 +251,7 @@ class LogisticsFile(models.Model):
     advance_waiver_approved_by_id = fields.Many2one(
         'res.users', readonly=True, copy=False)
     advance_waiver_date = fields.Datetime(readonly=True, copy=False)
+    advance_waiver_requested_date = fields.Datetime(readonly=True, copy=False)
     # --- recharging the client at other than cost -----------------------
     advance_had_amount = fields.Monetary(
         string="Advance HAD/DAU", currency_field='currency_id', readonly=True,
@@ -283,6 +294,7 @@ class LogisticsFile(models.Model):
     recharge_gm_approved_by_id = fields.Many2one(
         'res.users', readonly=True, copy=False, string="General Manager Approval")
     recharge_approved_date = fields.Datetime(readonly=True, copy=False)
+    recharge_requested_date = fields.Datetime(readonly=True, copy=False)
     invoice_id = fields.Many2one(
         'account.move', string="Client Invoice", readonly=True, copy=False)
     invoice_state = fields.Selection(related='invoice_id.state', string="Invoice Status")
@@ -418,6 +430,8 @@ class LogisticsFile(models.Model):
             return
         self.with_context(clearance_recharge_sync=True).write({
             'recharge_state': target,
+            'recharge_requested_date': (
+                fields.Datetime.now() if target == 'requested' else False),
             'recharge_ops_approved_by_id': False,
             'recharge_gm_approved_by_id': False,
             'recharge_approved_date': False,
@@ -660,6 +674,7 @@ class LogisticsFile(models.Model):
                 ))
             file.write({
                 'waiver_state': 'requested',
+                'waiver_requested_date': fields.Datetime.now(),
                 'waiver_requested_by_id': self.env.user.id,
             })
             file.message_post(body=self.env._(
@@ -709,6 +724,8 @@ class LogisticsFile(models.Model):
                     "staff advance, and how the advance will be recovered.",
                     file.name))
             file.write({'advance_waiver_state': 'requested',
+                        'advance_waiver_requested_date':
+                            fields.Datetime.now(),
                         'advance_waiver_requested_by_id': self.env.user.id})
             file.message_post(body=self.env._(
                 "Waiver requested for %(amount)s of unjustified staff "
@@ -832,7 +849,8 @@ class LogisticsFile(models.Model):
                     "approved.",
                     name=file.name, count=file.missing_mandatory_count,
                 ))
-            file.state = 'in_progress'
+            file.write({'state': 'in_progress',
+                        'date_started': fields.Datetime.now()})
         return True
 
     def action_close_operations(self):
@@ -866,13 +884,19 @@ class LogisticsFile(models.Model):
             # A settled-but-unjustified advance is handled separately: it is
             # waivable, where a half-processed expense is simply unfinished.
             file._check_advances_billable()
-            file.state = 'ops_closed'
+            file.write({'state': 'ops_closed',
+                        'date_ops_closed': fields.Datetime.now()})
         return True
 
     # --- recharge adjustment --------------------------------------------
     def _check_recharge_documented(self):
-        """Below cost the company absorbs the difference, so the file has to
-        say why in writing and carry something to show for it."""
+        """Below cost the company absorbs the difference, so the file has
+        to say why, in writing.
+
+        A supporting document is welcome and is NOT required: owner's
+        decision 05/09/2026. The explanation is the control; demanding an
+        attachment as well only taught people to upload anything.
+        """
         self.ensure_one()
         if self.recharge_variance >= 0:
             return
@@ -881,13 +905,6 @@ class LogisticsFile(models.Model):
                 "Recharging %(amount)s BELOW what was disbursed has to be "
                 "explained in writing before anyone can approve it (%(file)s).",
                 amount=abs(self.recharge_variance), file=self.name))
-        documents = self.env['ir.attachment'].search_count([
-            ('res_model', '=', self._name), ('res_id', '=', self.id)])
-        if not documents:
-            raise UserError(self.env._(
-                "Attach the supporting document for the undercharge on %s - "
-                "the client's agreement, the credit note, whatever justifies "
-                "absorbing the difference.", self.name))
 
     def action_approve_recharge_ops(self):
         """Operations signs every adjustment. Below cost it is not enough."""
@@ -1145,6 +1162,7 @@ class LogisticsFile(models.Model):
             'invoice_line_ids': lines,
         })
         self.invoice_id = invoice
+        self.date_billed = fields.Datetime.now()
         self.message_post(body=self.env._(
             "Draft invoice created: disbursements %(oop)s recharged at "
             "%(charged)s, services %(fees)s.",

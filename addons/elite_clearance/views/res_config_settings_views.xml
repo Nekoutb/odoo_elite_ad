@@ -57,6 +57,18 @@
                                    widget="many2many_tags"/>
                         </setting>
                     </block>
+                    <block title="Turnaround Targets"
+                           help="How long each step of the workflow may take
+                                 before Reporting flags it. An advance
+                                 requested on Monday and paid on Friday shows
+                                 as over target, so somebody can chase it.">
+                        <setting string="Targets per step">
+                            <button name="%(elite_clearance.action_clearance_turnaround_target)d"
+                                    type="action" string="Set Targets"
+                                    class="btn-link" icon="fa-arrow-right"/>
+                        </setting>
+                    </block>
+
                     <block title="Approvals">
                         <setting string="Waiver Approvers"
                                  help="Who may approve starting work with incomplete documentation. Empty = any Clearance Manager.">

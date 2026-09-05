@@ -102,7 +102,6 @@ class LogisticsBillingWizard(models.TransientModel):
             fields.Command.create({
                 'expense_id': expense.id,
                 'name': "%s — %s" % (expense.category_id.name, expense.description),
-                'amount_engaged': expense.amount,
                 'unit_label': expense.unit_label or "Par dossier",
                 'amount_recharged': (
                     expense.recharge_amount or expense.amount),
@@ -269,11 +268,19 @@ class LogisticsBillingWizardDebours(models.TransientModel):
     wizard_id = fields.Many2one(
         'logistics.billing.wizard', required=True, ondelete='cascade')
     currency_id = fields.Many2one(related='wizard_id.currency_id')
-    expense_id = fields.Many2one('logistics.expense', readonly=True)
+    # What was disbursed is a FACT about the expense, so it is read from
+    # the expense rather than copied onto the line. A plain readonly field
+    # here was silently dropped by the web client on save - the documented
+    # one2many readonly trap - and the whole column arrived as zero, which
+    # then read as a variance and demanded an approval nobody had asked
+    # for. A related field cannot be dropped: there is nothing to send.
+    expense_id = fields.Many2one(
+        'logistics.expense', required=True, ondelete='cascade')
     name = fields.Char(string="Description", required=True)
     unit_label = fields.Char(string="Unit", default="Par dossier")
     amount_engaged = fields.Monetary(
-        string="Disbursed", readonly=True, currency_field='currency_id')
+        string="Disbursed", related='expense_id.amount', readonly=True,
+        currency_field='currency_id')
     amount_recharged = fields.Monetary(
         string="To Recharge", currency_field='currency_id',
         help="What the client is charged for this disbursement. Any "

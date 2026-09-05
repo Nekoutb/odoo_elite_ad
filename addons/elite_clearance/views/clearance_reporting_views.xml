@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+  <!-- ===================== turnaround targets ===================== -->
+
+  <record id="view_clearance_turnaround_target_list" model="ir.ui.view">
+    <field name="name">clearance.turnaround.target.list</field>
+    <field name="model">clearance.turnaround.target</field>
+    <field name="arch" type="xml">
+      <list string="Turnaround Targets" editable="bottom">
+        <field name="step"/>
+        <field name="target_days"/>
+        <field name="active" optional="hide"/>
+        <field name="company_id" groups="base.group_multi_company"
+               optional="hide"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="action_clearance_turnaround_target" model="ir.actions.act_window">
+    <field name="name">Turnaround Targets</field>
+    <field name="res_model">clearance.turnaround.target</field>
+    <field name="view_mode">list</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">Set a target</p>
+      <p>How many days each step may take before it is worth chasing. A
+      step over its target shows in Reporting as Over target.</p>
+    </field>
+  </record>
+
+  <!-- ======================== the measurements ==================== -->
+
+  <record id="view_clearance_turnaround_list" model="ir.ui.view">
+    <field name="name">clearance.turnaround.list</field>
+    <field name="model">clearance.turnaround</field>
+    <field name="arch" type="xml">
+      <list string="Turnaround" create="false" delete="false"
+            default_order="started desc"
+            decoration-danger="is_late and not is_done"
+            decoration-warning="is_late and is_done"
+            decoration-muted="is_done and not is_late">
+        <field name="file_id"/>
+        <field name="partner_id"/>
+        <field name="name" string="Record"/>
+        <field name="step"/>
+        <field name="started"/>
+        <field name="completed"/>
+        <field name="days_taken" widget="float" digits="[6,2]"
+               sum="Average" optional="show"/>
+        <field name="target_days" optional="show"/>
+        <field name="is_done" optional="hide"/>
+        <field name="is_late" optional="show"/>
+        <field name="file_state" optional="hide"/>
+        <field name="res_model" column_invisible="1"/>
+        <button name="action_open" type="object" string="Open"
+                icon="fa-arrow-circle-right"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="view_clearance_turnaround_pivot" model="ir.ui.view">
+    <field name="name">clearance.turnaround.pivot</field>
+    <field name="model">clearance.turnaround</field>
+    <field name="arch" type="xml">
+      <pivot string="Turnaround" sample="1">
+        <field name="step" type="row"/>
+        <field name="partner_id" type="col"/>
+        <field name="days_taken" type="measure"/>
+      </pivot>
+    </field>
+  </record>
+
+  <record id="view_clearance_turnaround_graph" model="ir.ui.view">
+    <field name="name">clearance.turnaround.graph</field>
+    <field name="model">clearance.turnaround</field>
+    <field name="arch" type="xml">
+      <graph string="Turnaround" type="bar" sample="1">
+        <field name="step"/>
+        <field name="days_taken" type="measure"/>
+      </graph>
+    </field>
+  </record>
+
+  <record id="view_clearance_turnaround_search" model="ir.ui.view">
+    <field name="name">clearance.turnaround.search</field>
+    <field name="model">clearance.turnaround</field>
+    <field name="arch" type="xml">
+      <search string="Turnaround">
+        <field name="partner_id" string="Customer"/>
+        <field name="file_id" string="File"/>
+        <field name="name" string="Record"/>
+        <field name="step"/>
+        <separator/>
+        <filter name="open_steps" string="Still waiting"
+                domain="[('is_done', '=', False)]"/>
+        <filter name="done_steps" string="Completed"
+                domain="[('is_done', '=', True)]"/>
+        <separator/>
+        <filter name="late" string="Over target"
+                domain="[('is_late', '=', True)]"/>
+        <filter name="late_and_open" string="Over target and still waiting"
+                domain="[('is_late', '=', True), ('is_done', '=', False)]"/>
+        <separator/>
+        <filter name="on_expenses" string="Expenses"
+                domain="[('res_model', '=', 'logistics.expense')]"/>
+        <filter name="on_files" string="Files"
+                domain="[('res_model', '=', 'logistics.file')]"/>
+        <filter name="on_documents" string="Documents"
+                domain="[('res_model', '=', 'logistics.file.document')]"/>
+        <separator/>
+        <filter name="started_this_month" string="Started this month"
+                date="started"/>
+        <group>
+          <filter name="by_customer" string="Customer"
+                  context="{'group_by': 'partner_id'}"/>
+          <filter name="by_file" string="File"
+                  context="{'group_by': 'file_id'}"/>
+          <filter name="by_step" string="Step"
+                  context="{'group_by': 'step'}"/>
+          <filter name="by_file_state" string="File Status"
+                  context="{'group_by': 'file_state'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+
+  <record id="action_clearance_turnaround" model="ir.actions.act_window">
+    <field name="name">Turnaround</field>
+    <field name="res_model">clearance.turnaround</field>
+    <field name="view_mode">list,pivot,graph</field>
+    <field name="context">{'search_default_by_step': 1}</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">Nothing measured yet</p>
+      <p>Every step of every file, expense and document, with how long it
+      took against its target. A step that has not finished measures
+      against now, so anything overdue is visible while it can still be
+      chased.</p>
+    </field>
+  </record>
+
+  <record id="action_clearance_turnaround_late" model="ir.actions.act_window">
+    <field name="name">Overdue Steps</field>
+    <field name="res_model">clearance.turnaround</field>
+    <field name="view_mode">list,pivot,graph</field>
+    <field name="domain">[('is_late', '=', True), ('is_done', '=', False)]</field>
+    <field name="context">{'search_default_by_step': 1}</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">Nothing is overdue</p>
+      <p>Steps that have passed their target and still have not happened.</p>
+    </field>
+  </record>
+
+  <!-- ================== file status by customer =================== -->
+
+  <record id="action_clearance_file_status" model="ir.actions.act_window">
+    <field name="name">File Status</field>
+    <field name="res_model">logistics.file</field>
+    <field name="view_mode">list,form</field>
+    <field name="context">{'search_default_group_client': 1}</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">No files yet</p>
+      <p>Every file grouped by customer, with its status. Group by status
+      instead, or filter to one customer, from the search bar.</p>
+    </field>
+  </record>
+
+</odoo>

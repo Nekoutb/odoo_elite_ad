@@ -24,6 +24,22 @@
               parent="menu_clearance_billing"
               action="action_logistics_billing_service" sequence="10"/>
 
+    <menuitem id="menu_clearance_reporting" name="Reporting"
+              parent="menu_clearance_root" sequence="70"
+              groups="group_clearance_user"/>
+
+    <menuitem id="menu_clearance_file_status" name="File Status"
+              parent="menu_clearance_reporting"
+              action="action_clearance_file_status" sequence="10"/>
+
+    <menuitem id="menu_clearance_turnaround" name="Turnaround"
+              parent="menu_clearance_reporting"
+              action="action_clearance_turnaround" sequence="20"/>
+
+    <menuitem id="menu_clearance_turnaround_late" name="Overdue Steps"
+              parent="menu_clearance_reporting"
+              action="action_clearance_turnaround_late" sequence="30"/>
+
     <!-- Configuration -->
     <menuitem id="menu_clearance_config" name="Configuration"
               parent="menu_clearance_root" sequence="90"
@@ -40,6 +56,10 @@
 
     <menuitem id="menu_clearance_port" name="Ports"
               parent="menu_clearance_config" action="action_logistics_port" sequence="40"/>
+
+    <menuitem id="menu_clearance_turnaround_targets" name="Turnaround Targets"
+              parent="menu_clearance_config"
+              action="action_clearance_turnaround_target" sequence="50"/>
 
     <menuitem id="menu_clearance_settings" name="Settings"
               parent="menu_clearance_config" action="action_clearance_config_settings"

@@ -11,4 +11,5 @@ from . import logistics_service_type
 from . import logistics_billing_service
 from . import logistics_file
 from . import logistics_expense
+from . import clearance_turnaround
 from . import clearance_task
