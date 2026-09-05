@@ -215,16 +215,20 @@ class ClearanceTurnaround(models.Model):
                    base.res_id, base.file_id, base.partner_id,
                    base.file_state, base.started, base.completed,
                    (base.completed IS NOT NULL) AS is_done,
+                   -- clock_timestamp(), never now(): now() is the
+                   -- TRANSACTION's start time, which is earlier than a
+                   -- timestamp written by this same transaction, and an
+                   -- unfinished step then measures as NEGATIVE elapsed.
                    EXTRACT(EPOCH FROM (
-                       COALESCE(base.completed, now()) - base.started
+                       COALESCE(base.completed, clock_timestamp()) - base.started
                    )) / 3600.0 AS hours_taken,
                    EXTRACT(EPOCH FROM (
-                       COALESCE(base.completed, now()) - base.started
+                       COALESCE(base.completed, clock_timestamp()) - base.started
                    )) / 86400.0 AS days_taken,
                    COALESCE(tgt.target_days, 0) AS target_days,
                    (tgt.target_days IS NOT NULL
                     AND EXTRACT(EPOCH FROM (
-                            COALESCE(base.completed, now()) - base.started
+                            COALESCE(base.completed, clock_timestamp()) - base.started
                         )) / 86400.0 > tgt.target_days) AS is_late,
                    base.company_id
               FROM (%s) AS base
@@ -240,6 +244,12 @@ class ClearanceTurnaround(models.Model):
         for model in ('logistics.file', 'logistics.expense',
                       'logistics.file.document', 'clearance.turnaround.target'):
             self.env[model].flush_model()
+        # Every row id here is derived from the source record, so it is
+        # STABLE between reads - and the ORM will happily hand back the
+        # values it cached last time. That is wrong for a view whose
+        # figures move with the clock and with the targets, so the cache
+        # is dropped on every read. Change a target, see the new answer.
+        self.env['clearance.turnaround'].invalidate_model()
         return super()._search(domain, offset=offset, limit=limit,
                                order=order, **kwargs)
 

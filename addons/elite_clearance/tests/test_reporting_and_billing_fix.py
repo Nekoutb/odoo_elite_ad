@@ -45,6 +45,8 @@ class TestReportingAndBillingFix(TransactionCase):
         cls.service = env['logistics.service.type'].create({
             'name': "Reporting test", 'code': "R-REP",
             'commission_rate': 2.0})
+        cls.doc_type = env['logistics.document.type'].create({
+            'name': "Bill of Lading (reporting test)", 'code': "R-BL"})
 
     def _billable_file(self, amount=566899):
         file = self.env['logistics.file'].create({
@@ -225,6 +227,11 @@ class TestReportingAndBillingFix(TransactionCase):
 
     def test_14_a_document_wait_is_measured_too(self):
         file, _expense = self._billable_file()
+        # this service type carries no checklist template, so the line is
+        # added here: what is being tested is the measurement, not the
+        # checklist generation, which has its own tests
+        self.env['logistics.file.document'].create({
+            'file_id': file.id, 'document_type_id': self.doc_type.id})
         rows = self.env['clearance.turnaround'].search(
             [('file_id', '=', file.id), ('step', '=', 'doc_receive')])
         self.assertTrue(rows, "the checklist lines are measured as well")

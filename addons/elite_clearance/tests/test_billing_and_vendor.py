@@ -219,7 +219,12 @@ class TestVendorPayableAndRecharge(TransactionCase):
         self.file.recharge_amount = 0
         self.assertEqual(self.file.recharge_state, 'none')
 
-    def test_08_below_cost_needs_a_reason_a_document_ops_and_the_gm(self):
+    def test_08_below_cost_needs_a_reason_ops_and_the_gm(self):
+        """A document is welcome; the written reason is the control.
+
+        Owner's decision 05/09/2026: demanding an attachment as well only
+        taught people to upload anything.
+        """
         self._closed_file_with(100000)
         self.file.recharge_amount = 45000
         self.assertEqual(self.file.recharge_state, 'requested')
@@ -227,9 +232,7 @@ class TestVendorPayableAndRecharge(TransactionCase):
         with self.assertRaises(UserError):
             self.file.with_user(self.ops_manager).action_approve_recharge_ops()
         self.file.recharge_reason = "Commercial gesture agreed with the client."
-        with self.assertRaises(UserError):
-            self.file.with_user(self.ops_manager).action_approve_recharge_ops()
-        self._document()
+        # with the reason written, Operations may approve - no upload
         self.file.with_user(self.ops_manager).action_approve_recharge_ops()
         self.assertEqual(self.file.recharge_state, 'ops_approved',
                          "below cost, Operations is not enough on its own")
