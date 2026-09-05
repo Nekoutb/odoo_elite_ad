@@ -72,11 +72,14 @@ jobs:
         run: |
           set -euo pipefail
           odoo -d up_test             --db_host=db --db_port=5432 --db_user=odoo --db_password=odoo             --addons-path=/usr/lib/python3/dist-packages/odoo/addons,"$GITHUB_WORKSPACE/prod-src/addons"             -i elite_clearance,elite_clearance_teese             --with-demo --log-level=warn --stop-after-init
+      # -u only touches modules ALREADY installed, and the Teese
+      # importer did not exist in production's version - so its suite
+      # silently sat out the rehearsal. Install it here instead.
       - name: Upgrade it to this commit, then run the suite on it
         shell: bash
         run: |
           set -euo pipefail
-          odoo -d up_test             --db_host=db --db_port=5432 --db_user=odoo --db_password=odoo             --addons-path=/usr/lib/python3/dist-packages/odoo/addons,"$GITHUB_WORKSPACE/addons"             -u elite_clearance,elite_clearance_teese             --test-enable --test-tags /elite_clearance,/elite_clearance_teese             --log-level=test --stop-after-init 2>&1 | tee upgrade.log
+          odoo -d up_test             --db_host=db --db_port=5432 --db_user=odoo --db_password=odoo             --addons-path=/usr/lib/python3/dist-packages/odoo/addons,"$GITHUB_WORKSPACE/addons"             -u elite_clearance -i elite_clearance_teese             --test-enable --test-tags /elite_clearance,/elite_clearance_teese             --log-level=test --stop-after-init 2>&1 | tee upgrade.log
       - name: Fail on any test error in the upgraded database
         shell: bash
         run: |
