@@ -8,6 +8,16 @@ def migrate(cr, version):
         ALTER TABLE logistics_file
         ADD COLUMN IF NOT EXISTS legacy_customs_regime varchar
     """)
+    # customs_regime arrived with the Teese work, well after the version
+    # production is still running. Upgrading from far enough back there is
+    # nothing to move, and nothing to clean up either.
+    cr.execute("""
+        SELECT 1 FROM information_schema.columns
+         WHERE table_name = 'logistics_file'
+           AND column_name = 'customs_regime'
+    """)
+    if not cr.fetchone():
+        return
     cr.execute("""
         UPDATE logistics_file
            SET legacy_customs_regime = customs_regime
