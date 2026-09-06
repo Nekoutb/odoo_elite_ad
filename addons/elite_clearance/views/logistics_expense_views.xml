@@ -93,7 +93,50 @@
         </field>
     </record>
 
-    <record id="logistics_expense_view_list" model="ir.ui.view">
+    <!--
+    The form the file's expense list opens in its dialog. It carries NO
+    header, NO statusbar and NO chatter, deliberately: the workflow form
+    above has eleven conditionally-visible header buttons, and saving that
+    inside a one2many dialog crashed Owl (VToggler.remove, "Illegal
+    invocation") and left a phantom row behind. Capture happens here; the
+    workflow happens on the record's own page.
+
+    An originator keys WHAT was spent. How it is paid - payment mode,
+    journal, vendor, advance holder - is Finance's, and is deliberately
+    absent from this form.
+  -->
+  <record id="logistics_expense_view_capture_form" model="ir.ui.view">
+    <field name="name">logistics.expense.capture.form</field>
+    <field name="model">logistics.expense</field>
+    <field name="priority">99</field>
+    <field name="arch" type="xml">
+      <form string="Out-of-Pocket Expense">
+        <sheet>
+          <group>
+            <group>
+              <field name="category_id"/>
+              <field name="description" placeholder="What the money was spent on"/>
+              <field name="unit_label"/>
+            </group>
+            <group>
+              <field name="amount"/>
+              <field name="currency_id" invisible="1"/>
+              <field name="date_requested"/>
+              <field name="file_id" invisible="1"/>
+            </group>
+          </group>
+          <div class="alert alert-info" role="alert">
+            Save this, then <strong>Submit</strong> it from the list. How it
+            gets paid - the payment mode, the journal, the vendor or the
+            advance holder - is keyed by Finance afterwards, on the
+            expense's own page.
+          </div>
+        </sheet>
+      </form>
+    </field>
+  </record>
+
+  <record id="logistics_expense_view_list" model="ir.ui.view">
         <field name="name">logistics.expense.list</field>
         <field name="model">logistics.expense</field>
         <field name="arch" type="xml">

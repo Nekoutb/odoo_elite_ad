@@ -177,15 +177,18 @@
                          buttons, a statusbar and a chatter, and saving all of
                          that inside an o2m dialog crashed the Owl renderer
                          (VToggler.remove, "Illegal invocation") and left a
-                         phantom row behind. Editing happens inline; the
-                         workflow happens on the record's own page. -->
+                         phantom row behind. The dialog therefore opens a
+                         CAPTURE form with no header, statusbar or chatter
+                         (form_view_ref below); the workflow happens on the
+                         record's own page, one click away on every row. -->
                     <field name="expense_ids" readonly="state not in ('draft', 'in_progress')"
-                           context="{'default_file_id': id}">
-                        <list editable="bottom" open_form_view="1"
+                           context="{'default_file_id': id,
+                                     'form_view_ref': 'elite_clearance.logistics_expense_view_capture_form'}">
+                        <list open_form_view="1"
                               decoration-muted="state == 'cancel' or is_legacy">
-                            <field name="name" readonly="1" force_save="1"/>
-                            <field name="category_id"/>
-                            <field name="description"/>
+                            <field name="name" readonly="1"/>
+                            <field name="category_id" readonly="1"/>
+                            <field name="description" readonly="1"/>
                             <field name="vendor_id" optional="show"/>
                             <field name="payment_mode" groups="elite_clearance.group_clearance_finance"/>
                             <field name="employee_id" optional="hide" groups="elite_clearance.group_clearance_finance"/>
@@ -197,6 +200,12 @@
                                    decoration-info="state in ('draft', 'submitted')"
                                    decoration-warning="state in ('approved', 'settlement_submitted', 'settlement_approved', 'justification_submitted')"
                                    decoration-success="state in ('settled', 'justified')"/>
+                            <button name="action_submit" type="object"
+                                    string="Submit" class="btn-link"
+                                    invisible="state != 'draft' or is_legacy"/>
+                            <button name="action_open_expense" type="object"
+                                    title="Open the expense"
+                                    icon="fa-arrow-circle-right"/>
                         </list>
                     </field>
                     <group class="oe_subtotal_footer">

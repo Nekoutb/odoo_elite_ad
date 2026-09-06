@@ -164,8 +164,13 @@ Customs clearance job files for a logistics/clearance services provider.
    conditionally-visible header buttons, a statusbar and a chatter; saving
    that inside a dialog crashed Owl (`VToggler.remove`, "Illegal
    invocation") and left a phantom row in the file's list. The file's
-   expense list is therefore `editable="bottom" open_form_view="1"`: edit
-   inline, run the workflow on the record's own page.
+   expense list therefore opens a CAPTURE form in its dialog
+   (`logistics_expense_view_capture_form`, `form_view_ref` in the o2m
+   context) — no header, no statusbar, no chatter, and only the fields an
+   originator keys; the settlement fields are Finance's and are absent.
+   The row carries a Submit button and an Open button, so the workflow is
+   one click away on the record's own page. Owner spec 06/09/2026: the
+   inline editable row is gone.
 - **The billing screen (owner spec, 03/09/2026).** `ops_closed` now reads
    "OK for Billing". The **Billing** button opens `logistics.billing.wizard`:
    a disbursement section (one row per `_billable_expenses()`, columns

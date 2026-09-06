@@ -212,3 +212,79 @@ class TestInvoiceEndToEnd(TransactionCase):
         if destination:
             with open(destination, 'w', encoding='utf-8') as handle:
                 handle.write(text)
+
+
+@tagged('post_install', '-at_install')
+class TestExpenseCapture(TransactionCase):
+    """Capture in a dialog; run the workflow on the record's own page."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        env = cls.env
+        cls.client = env['res.partner'].create({
+            'name': "Capture Client", 'is_company': True})
+        cls.category = env['logistics.expense.category'].create({
+            'name': "Douane", 'code': "C-DOU"})
+        cls.service = env['logistics.service.type'].create({
+            'name': "Capture", 'code': "C-CAP", 'commission_rate': 2.0})
+        cls.file = env['logistics.file'].create({
+            'customs_regime': 'im4',
+            'partner_id': cls.client.id,
+            'service_type_id': cls.service.id})
+        cls.file.state = 'in_progress'
+
+    def _capture_view(self):
+        return self.env.ref(
+            'elite_clearance.logistics_expense_view_capture_form')
+
+    def test_01_the_capture_form_carries_no_workflow_chrome(self):
+        """The reason the inline row existed at all.
+
+        The workflow form's eleven conditional header buttons crashed Owl
+        when saved inside a one2many dialog. This form has none of it.
+        """
+        arch = self._capture_view().arch
+        for forbidden in ("<header", "statusbar", "<chatter"):
+            self.assertNotIn(forbidden, arch, forbidden)
+        self.assertNotIn("action_submit", arch,
+                         "no workflow button belongs in a dialog")
+
+    def test_02_the_capture_form_asks_only_what_an_originator_keys(self):
+        """Payment mode, journal, vendor and holder are Finance's."""
+        arch = self._capture_view().arch
+        for wanted in ("category_id", "description", "amount"):
+            self.assertIn(wanted, arch, wanted)
+        for finance_only in ('name="payment_mode"', 'name="journal_id"',
+                             'name="vendor_id"', 'name="employee_id"'):
+            self.assertNotIn(finance_only, arch, finance_only)
+
+    def test_03_the_file_list_opens_the_capture_form_not_the_workflow_one(self):
+        form = self.env.ref('elite_clearance.logistics_file_view_form')
+        self.assertIn('logistics_expense_view_capture_form', form.arch,
+                      "the dialog must be pointed at the capture form")
+        self.assertNotIn('editable="bottom"', form.arch.split(
+            'name="expense_ids"')[1].split('</field>')[0],
+            "the inline row is gone")
+
+    def test_04_a_captured_expense_appears_and_can_be_submitted(self):
+        expense = self.env['logistics.expense'].create({
+            'file_id': self.file.id,
+            'category_id': self.category.id,
+            'description': "Retrait tardif",
+            'amount': 23850,
+            'unit_label': "Par dossier"})
+        self.assertIn(expense, self.file.expense_ids)
+        self.assertEqual(expense.state, 'draft')
+        expense.action_submit()
+        self.assertEqual(expense.state, 'submitted',
+                         "Submit is reachable straight from the row")
+
+    def test_05_every_row_can_reach_its_own_page(self):
+        expense = self.env['logistics.expense'].create({
+            'file_id': self.file.id, 'category_id': self.category.id,
+            'description': "Surestaries", 'amount': 3094977})
+        action = expense.action_open_expense()
+        self.assertEqual(action['res_model'], 'logistics.expense')
+        self.assertEqual(action['res_id'], expense.id)
+        self.assertEqual(action['view_mode'], 'form')

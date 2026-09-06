@@ -336,6 +336,17 @@ class LogisticsExpense(models.Model):
     # ------------------------------------------------------------------
     # workflow
     # ------------------------------------------------------------------
+    def action_open_expense(self):
+        """The workflow lives on the record's own page, not in the dialog."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'logistics.expense',
+            'res_id': self.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
     def action_submit(self):
         for exp in self:
             if exp.state != 'draft':
