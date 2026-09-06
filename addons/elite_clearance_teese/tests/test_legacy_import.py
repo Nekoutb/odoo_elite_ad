@@ -277,12 +277,19 @@ class TestLegacyImport(TransactionCase):
     def test_06_sequence_jumps_past_the_imported_numbers(self):
         self.batch.action_import()
         im = self.env['logistics.service.type'].search([('code', '=', 'IM')], limit=1)
+        # a NEW file, so it must carry everything the invoice prints - the
+        # company's own partner has none of it, which is the rule working
+        client = self.env['res.partner'].create({
+            'name': "Post-import Client", 'is_company': True,
+            'street': "BP 1234 Douala", 'email': "client@test.cm",
+            'vat': "M000000000002A",
+            'company_registry': "RC/DLA/2026/B/0002"})
         new = self.env['logistics.file'].create({
             'customs_regime': 'im4',
             'bl_awb_ref': "MEDUW000001",
             'goods_description': "Marchandises diverses",
             'cargo_value': 1000000.0,
-            'partner_id': self.env.company.partner_id.id, 'service_type_id': im.id,
+            'partner_id': client.id, 'service_type_id': im.id,
             'date_opened': "2026-06-01"})
         self.assertEqual(new.name, "2026IM0008", "Must not reuse a legacy number.")
 
