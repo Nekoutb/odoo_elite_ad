@@ -269,6 +269,16 @@ class TestLegacyImport(TransactionCase):
         # the accounts, not "already has invoice"
         f.customs_fee_amount = 1000
         f.state = 'ops_closed'
+        # A Teese client arrives with a name and nothing else, so billing
+        # refuses it until somebody records what the invoice prints. That
+        # is the rule working, and it is what the billing agent will meet
+        # on every imported client the first time they bill one.
+        with self.assertRaises(UserError):
+            f.action_create_invoice()
+        f.partner_id.write({
+            'street': "BP 1234 Douala", 'email': "client@test.cm",
+            'vat': "M000000000003A",
+            'company_registry': "RC/DLA/2026/B/0003"})
         f.action_create_invoice()
         self.assertTrue(f.invoice_id)
         self.assertFalse(f.invoice_id.is_legacy)

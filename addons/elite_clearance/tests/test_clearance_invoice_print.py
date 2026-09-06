@@ -393,6 +393,7 @@ class TestClearanceInvoicePrint(TransactionCase):
         wizard.client_email = "q@test.cm"
         wizard.client_vat = "M000000000777A"
         wizard.client_registry = "RC/DLA/2026/B/0777"
+        wizard.customs_fee_amount = 100000        # something to bill
         self.assertFalse(wizard.client_details_missing)
         # written to the CUSTOMER, not held on the wizard
         self.assertEqual(bare.street, "BP 999 Douala")
