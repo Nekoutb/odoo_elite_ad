@@ -15,7 +15,7 @@
   -->
 
   <template id="report_clearance_invoice_document">
-    <t t-set="o" t-value="o.with_context(lang='fr_FR')"/>
+    <t t-set="o" t-value="o.with_context(lang=o._clearance_report_lang())"/>
     <t t-set="file" t-value="o.logistics_file_id"/>
     <t t-set="company" t-value="o.company_id"/>
     <t t-set="partner" t-value="o.partner_id"/>

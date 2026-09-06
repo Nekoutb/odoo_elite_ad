@@ -116,6 +116,26 @@ class AccountMove(models.Model):
             return 'elite_clearance.report_clearance_invoice_document'
         return super()._get_name_invoice_report()
 
+    def _clearance_report_lang(self):
+        """French for formatting - but only if French is installed.
+
+        res.lang holds only the languages actually installed, and Odoo
+        raises "Invalid language code" the moment a t-field formats against
+        one that is missing. Forcing fr_FR therefore took the whole report
+        down on any database without it. The document's wording is
+        hardcoded French regardless; this decides number and date
+        formatting only, so falling back costs almost nothing and keeps
+        the invoice printable.
+        """
+        self.ensure_one()
+        codes = self.env['res.lang'].sudo().search([]).mapped('code')
+        if 'fr_FR' in codes:
+            return 'fr_FR'
+        for code in codes:
+            if code.startswith('fr'):
+                return code
+        return self.env.context.get('lang') or 'en_US'
+
     def _clearance_amount_in_words(self, amount):
         """`CINQ MILLIONS ... XAF`, the way the document reads.
 

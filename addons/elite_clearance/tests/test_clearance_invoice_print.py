@@ -47,6 +47,8 @@ class TestClearanceInvoicePrint(TransactionCase):
             'name': "Port", 'code': "P-PRT"})
         cls.service = env['logistics.service.type'].create({
             'name': "Print test", 'code': "P-PRN", 'commission_rate': 2.0})
+        cls.usd = env.ref('base.USD')
+        cls.usd.active = True
 
         # two bank accounts on the company, so the block has something to show
         bank_a = env['res.bank'].create({'name': "AFRILAND FIRST BANK"})
@@ -69,7 +71,12 @@ class TestClearanceInvoicePrint(TransactionCase):
             'supplier_name': "SHANDONG GHUNLONG",
             'goods_description': "LAMINATE,BOTTLE CAP,",
             'container_count': 1, 'container_type': "40",
-            'package_count': 865, 'weight_kg': 14367})
+            'package_count': 865, 'weight_kg': 14367,
+            # a declared value in a FOREIGN currency: this is the
+            # expression that took the report down, and leaving it unset
+            # is why the suite stayed green while printing failed
+            'cargo_value': 284517.68,
+            'cargo_value_currency_id': self.usd.id})
         file.state = 'in_progress'
         expense = self.env['logistics.expense'].create({
             'file_id': file.id, 'category_id': self.category.id,
@@ -306,3 +313,40 @@ class TestClearanceInvoicePrint(TransactionCase):
         self.assertEqual(
             file.invoice_id._get_name_invoice_report(),
             'elite_clearance.report_clearance_invoice_document')
+
+    # --- the language must exist before the report asks for it ---------
+    def test_19_the_report_never_asks_for_an_uninstalled_language(self):
+        """"Invalid language code: fr_FR" took the whole invoice down.
+
+        res.lang holds only INSTALLED languages. Forcing fr_FR made every
+        t-field that formats a value raise, and the page never rendered.
+        """
+        installed = self.env['res.lang'].sudo().search([]).mapped('code')
+        chosen = self._billed_file().invoice_id._clearance_report_lang()
+        self.assertIn(chosen, installed,
+                      "the report may only ask for a language that exists")
+
+    def test_20_it_prints_with_no_french_installed(self):
+        """The document's wording is hardcoded French either way."""
+        french = self.env['res.lang'].sudo().search(
+            [('code', '=like', 'fr%')])
+        self.assertFalse(french, "this database has no French; that is the case")
+        file = self._billed_file()
+        text = self._html(file.invoice_id)          # must not raise
+        self.assertIn("Facture doit", text)
+        self.assertIn("Désignation", text)
+        self.assertIn("284", text, "the foreign cargo value still prints")
+
+    def test_21_it_prints_when_french_is_installed(self):
+        lang = self.env['res.lang'].sudo().search(
+            [('code', '=', 'fr_FR')], limit=1)
+        if not lang:
+            self.env['res.lang']._activate_lang('fr_FR')
+            lang = self.env['res.lang'].sudo().search(
+                [('code', '=', 'fr_FR')], limit=1)
+        if not lang:
+            self.skipTest("fr_FR is not available in this build")
+        file = self._billed_file()
+        self.assertEqual(
+            file.invoice_id._clearance_report_lang(), 'fr_FR')
+        self.assertIn("Facture doit", self._html(file.invoice_id))
