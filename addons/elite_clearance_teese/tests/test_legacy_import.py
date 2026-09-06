@@ -279,7 +279,19 @@ class TestLegacyImport(TransactionCase):
             'street': "BP 1234 Douala", 'email': "client@test.cm",
             'vat': "M000000000003A",
             'company_registry': "RC/DLA/2026/B/0003"})
-        f.action_create_invoice()
+        # The shipment box is demanded the same way: Teese carried a cargo
+        # value for this file but no BL and no goods, and the invoice
+        # prints both. The billing screen completes them on the spot,
+        # saved to the file - the path the billing agent will take.
+        with self.assertRaises(UserError):
+            f.action_create_invoice()
+        wizard = self.env['logistics.billing.wizard'].with_context(
+            active_id=f.id).create({})
+        self.assertTrue(wizard.shipment_details_missing)
+        wizard.write({'shipment_bl_awb_ref': "MEDUW008001",
+                      'shipment_goods': "Marchandises diverses"})
+        wizard.action_create_invoice()
+        self.assertEqual(f.bl_awb_ref, "MEDUW008001")
         self.assertTrue(f.invoice_id)
         self.assertFalse(f.invoice_id.is_legacy)
         self.assertEqual(f.invoice_count, 3)
