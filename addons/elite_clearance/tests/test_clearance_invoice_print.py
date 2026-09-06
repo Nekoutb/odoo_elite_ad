@@ -353,3 +353,50 @@ class TestClearanceInvoicePrint(TransactionCase):
         self.assertEqual(
             file.invoice_id._clearance_report_lang(), 'fr_FR')
         self.assertIn("Facture doit", self._html(file.invoice_id))
+
+    # --- the client's details are billing's business -------------------
+    def test_22_billing_refuses_a_client_the_invoice_cannot_print(self):
+        """Moved here from file creation, owner 06/09/2026."""
+        from odoo.exceptions import UserError
+        bare = self.env['res.partner'].create({
+            'name': "Bare Client P", 'is_company': True})
+        file = self.env['logistics.file'].create({
+            'customs_regime': 'im4', 'partner_id': bare.id,
+            'service_type_id': self.service.id,
+            'bl_awb_ref': "MEDUW000009",
+            'goods_description': "Marchandises",
+            'cargo_value': 500000.0})
+        self.assertTrue(file.name, "opening the file is not blocked")
+        file.state = 'in_progress'
+        file.action_close_operations()
+        with self.assertRaises(UserError) as caught:
+            file.action_create_invoice()
+        for expected in ("postal address", "e-mail", "Tax ID", "Company ID"):
+            self.assertIn(expected, str(caught.exception), expected)
+
+    def test_23_the_billing_screen_writes_back_to_the_customer(self):
+        """The agent fixes the customer record, not just this invoice."""
+        bare = self.env['res.partner'].create({
+            'name': "Bare Client Q", 'is_company': True})
+        file = self.env['logistics.file'].create({
+            'customs_regime': 'im4', 'partner_id': bare.id,
+            'service_type_id': self.service.id,
+            'bl_awb_ref': "MEDUW000010",
+            'goods_description': "Marchandises",
+            'cargo_value': 500000.0})
+        file.state = 'in_progress'
+        file.action_close_operations()
+        wizard = self.env['logistics.billing.wizard'].with_context(
+            active_id=file.id).create({})
+        self.assertTrue(wizard.client_details_missing)
+        wizard.client_street = "BP 999 Douala"
+        wizard.client_email = "q@test.cm"
+        wizard.client_vat = "M000000000777A"
+        wizard.client_registry = "RC/DLA/2026/B/0777"
+        self.assertFalse(wizard.client_details_missing)
+        # written to the CUSTOMER, not held on the wizard
+        self.assertEqual(bare.street, "BP 999 Douala")
+        self.assertEqual(bare.vat, "M000000000777A")
+        self.assertEqual(bare.company_registry, "RC/DLA/2026/B/0777")
+        wizard.action_create_invoice()
+        self.assertTrue(file.invoice_id)

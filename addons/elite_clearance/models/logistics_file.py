@@ -836,14 +836,21 @@ class LogisticsFile(models.Model):
         ('company_registry', "Company ID (RC)"),
     ]
 
-    @api.constrains('bl_awb_ref', 'goods_description', 'cargo_value',
-                    'partner_id', 'state')
+    @api.constrains('bl_awb_ref', 'goods_description', 'cargo_value', 'state')
     def _check_invoice_essentials(self):
-        """Everything the invoice prints, present before work begins.
+        """What the SHIPMENT must carry before work begins.
+
+        The CLIENT's own details are checked at billing instead, not here:
+        Teese carried only a name for its 190 customers, so demanding an
+        address and a Tax ID up front would have blocked Operations from
+        opening a file for any existing client until somebody else
+        completed their record. Owner's decision 06/09/2026. The billing
+        agent is the one who needs those details and the one who can get
+        them, so that is where they are asked for.
 
         Reported as ONE list rather than one field at a time: being told
-        four times in a row that something else is missing is how people
-        learn to resent a form.
+        twice in a row that something else is missing is how people learn
+        to resent a form.
         """
         for file in self:
             if (file.legacy_id or file.state == 'imported'
@@ -851,11 +858,6 @@ class LogisticsFile(models.Model):
                 continue                    # Teese history, exempt
             missing = [label for name, label in self.INVOICE_ESSENTIALS
                        if not file[name]]
-            partner = file.partner_id
-            missing += ["%s: %s" % (partner.display_name or "the client",
-                                    label)
-                        for name, label in self.CLIENT_ESSENTIALS
-                        if partner and not partner[name]]
             if missing:
                 raise ValidationError(self.env._(
                     "%(name)s cannot be opened until these are recorded - "
@@ -1075,6 +1077,27 @@ class LogisticsFile(models.Model):
             'context': {'active_id': self.id, 'default_file_id': self.id},
         }
 
+    def _check_client_billable(self):
+        """The client block on the invoice cannot be printed blank.
+
+        Asked here rather than at file creation: this is the moment the
+        detail is genuinely needed, and the billing agent is the person
+        who can obtain it. The billing screen offers the same four fields
+        so they can be filled in without leaving the invoice.
+        """
+        self.ensure_one()
+        partner = self.partner_id
+        missing = [label for name, label in self.CLIENT_ESSENTIALS
+                   if not partner[name]]
+        if missing:
+            raise UserError(self.env._(
+                "%(client)s cannot be invoiced until these are on record - "
+                "the invoice prints every one of them:%(gap)s  - %(missing)s"
+                "%(gap)sYou can fill them in on the billing screen.",
+                client=partner.display_name,
+                gap=chr(10) * 2,
+                missing=(chr(10) + "  - ").join(missing)))
+
     def _create_client_invoice(self, debours, services):
         """Build the client invoice from explicit lines.
 
@@ -1084,6 +1107,7 @@ class LogisticsFile(models.Model):
         which unlike disbursements keep their default taxes.
         """
         self.ensure_one()
+        self._check_client_billable()
         self.company_id._clearance_check_approver('billing')
         if self.state != 'ops_closed':
             raise UserError(self.env._(

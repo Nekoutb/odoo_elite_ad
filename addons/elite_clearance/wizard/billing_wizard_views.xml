@@ -24,6 +24,26 @@
                     </group>
                 </group>
 
+                <div class="alert alert-warning" role="alert"
+                     invisible="not client_details_missing">
+                    This client's record is missing details the invoice
+                    prints. Fill them in below - they are saved to the
+                    customer, not just to this invoice.
+                </div>
+                <separator string="Client (printed on the invoice)"/>
+                <group>
+                    <group>
+                        <field name="partner_id" readonly="1"/>
+                        <field name="client_street"/>
+                        <field name="client_email"/>
+                    </group>
+                    <group>
+                        <field name="client_vat"/>
+                        <field name="client_registry"/>
+                        <field name="client_details_missing" invisible="1"/>
+                    </group>
+                </group>
+
                 <separator string="Billing parameters"/>
                 <group>
                     <group>

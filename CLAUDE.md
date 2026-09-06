@@ -238,6 +238,16 @@ Customs clearance job files for a logistics/clearance services provider.
   module install with "Element odoo has extra content: template" — naming the
   FIRST template in the file, not the offending one. An extension template
   omits the attribute. Guarded by `tools/check_view_pitfalls.py`.
+- **Teese holds NO contact detail for customers.** `wh_dim_partner.csv` is
+  `id,tenant_id,odoo_id,name,ref,is_company,write_date` — a name and a ref,
+  nothing else, for all 190. So the invoice's client block (address, e-mail,
+  NIU, RC) cannot come from the migration and must be entered. Those four are
+  therefore demanded at BILLING, not at file creation (owner 06/09/2026):
+  gating file creation on them would stop Operations opening a file for any
+  imported client. The billing screen offers the four fields as `related=…
+  readonly=False`, so the agent fixes the CUSTOMER record while billing.
+  Clearance → Configuration → Customers opens on the incomplete ones for
+  export/import in bulk.
 - **Odoo never passes `--encoding` to wkhtmltopdf.** It relies on the
   `<meta charset>` in `web.minimal_layout`, which sits AFTER two inlined
   asset bundles — far past the window a parser reads a charset hint in — so

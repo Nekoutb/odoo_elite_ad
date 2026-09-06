@@ -301,24 +301,30 @@ class TestInvoiceEssentials(TransactionCase):
                     self.env['logistics.file'].create(
                         self._vals(**{field: False}))
 
-    def test_03_the_client_must_carry_what_the_invoice_prints(self):
-        """No address, e-mail, NIU or RC on the client: no file."""
-        with self.assertRaises(ValidationError):
-            self.env['logistics.file'].create(self._vals(partner=self.bare))
+    def test_03_a_bare_client_does_not_block_opening_a_file(self):
+        """Owner 06/09/2026: the check moved to billing.
 
-    def test_04_everything_missing_is_named_at_once(self):
-        """One list, not four rounds of trial and error."""
+        Teese carried only a name for its 190 customers. Demanding an
+        address and a Tax ID here would have stopped Operations opening a
+        file for any of them until somebody else completed the record.
+        """
+        file = self.env['logistics.file'].create(
+            self._vals(partner=self.bare))
+        self.assertTrue(file.name)
+
+    def test_04_the_shipment_gaps_are_named_at_once(self):
+        """One list, not three rounds of trial and error."""
         try:
             self.env['logistics.file'].create(self._vals(
-                partner=self.bare, bl_awb_ref=False,
-                goods_description=False, cargo_value=0.0))
+                bl_awb_ref=False, goods_description=False, cargo_value=0.0))
         except ValidationError as error:
             message = str(error)
         else:
             self.fail("an empty file must be refused")
-        for expected in ("BL", "Produits", "Valeur RVC",
-                         "postal address", "e-mail", "Tax ID", "Company ID"):
+        for expected in ("BL", "Produits", "Valeur RVC"):
             self.assertIn(expected, message, expected)
+        self.assertNotIn("Tax ID", message,
+                         "the client's details are billing's business")
 
     def test_05_imported_history_is_exempt(self):
         """Teese files predate the rule and must not be blocked by it."""

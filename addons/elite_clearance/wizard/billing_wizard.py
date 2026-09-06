@@ -73,6 +73,23 @@ class LogisticsBillingWizard(models.TransientModel):
         help="True while the recharge differs from what was disbursed and "
              "that difference has not been approved. No invoice can be "
              "raised until it is.")
+    # The client's own details, editable here and written straight to the
+    # customer record. Teese carried only a name for its 190 customers, so
+    # for most files this is the first moment anybody needs the address and
+    # the Tax ID - and the billing agent is the person who can get them.
+    client_street = fields.Char(
+        related='partner_id.street', readonly=False, string="Address")
+    client_email = fields.Char(
+        related='partner_id.email', readonly=False, string="E-mail")
+    client_vat = fields.Char(
+        related='partner_id.vat', readonly=False, string="Tax ID (NIU)")
+    client_registry = fields.Char(
+        related='partner_id.company_registry', readonly=False,
+        string="Company ID (RC)")
+    client_details_missing = fields.Boolean(
+        compute='_compute_client_details_missing',
+        help="True while the invoice would print a blank client block.")
+
     advance_had_amount = fields.Monetary(
         string="Advance HAD/DAU", currency_field='currency_id',
         help="Already advanced by the client against the customs fee. "
@@ -156,6 +173,14 @@ class LogisticsBillingWizard(models.TransientModel):
                 'account_id': (line.account_id or fallback).id,
             })
         return services
+
+    @api.depends('client_street', 'client_email', 'client_vat',
+                 'client_registry')
+    def _compute_client_details_missing(self):
+        for wizard in self:
+            wizard.client_details_missing = not all(
+                (wizard.client_street, wizard.client_email,
+                 wizard.client_vat, wizard.client_registry))
 
     @api.depends('debours_line_ids.amount_engaged',
                  'debours_line_ids.amount_recharged',

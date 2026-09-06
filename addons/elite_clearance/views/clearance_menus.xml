@@ -57,6 +57,10 @@
     <menuitem id="menu_clearance_port" name="Ports"
               parent="menu_clearance_config" action="action_logistics_port" sequence="40"/>
 
+    <menuitem id="menu_clearance_customers" name="Customers"
+              parent="menu_clearance_config"
+              action="action_clearance_customers" sequence="5"/>
+
     <menuitem id="menu_clearance_turnaround_targets" name="Turnaround Targets"
               parent="menu_clearance_config"
               action="action_clearance_turnaround_target" sequence="50"/>

@@ -23,4 +23,59 @@
         </field>
     </record>
 
+    <!--
+        Everything the clearance invoice prints about a client, in one list
+        that exports and re-imports cleanly. Teese carried only a name for
+        its 190 customers, so these have to be filled in from elsewhere:
+        filter to what is missing, Export, complete the spreadsheet, and
+        Import back matching on the External ID or the Legacy ID.
+    -->
+    <record id="res_partner_view_list_clearance" model="ir.ui.view">
+        <field name="name">res.partner.list.clearance</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_tree"/>
+        <field name="arch" type="xml">
+            <field name="email" position="after">
+                <field name="street" optional="show"/>
+                <field name="vat" string="Tax ID (NIU)" optional="show"/>
+                <field name="company_registry" string="Company ID (RC)"
+                       optional="show"/>
+                <field name="clearance_slug" optional="hide"/>
+                <field name="legacy_id" optional="hide"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="res_partner_view_search_clearance" model="ir.ui.view">
+        <field name="name">res.partner.search.clearance</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_res_partner_filter"/>
+        <field name="arch" type="xml">
+            <filter name="type_company" position="after">
+                <separator/>
+                <filter name="clearance_incomplete"
+                        string="Missing invoice details"
+                        domain="['|', '|', '|', ('street', '=', False),
+                                 ('email', '=', False), ('vat', '=', False),
+                                 ('company_registry', '=', False)]"/>
+                <filter name="clearance_from_teese" string="Imported from Teese"
+                        domain="[('legacy_id', '!=', 0)]"/>
+            </filter>
+        </field>
+    </record>
+
+    <record id="action_clearance_customers" model="ir.actions.act_window">
+        <field name="name">Customers</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('is_company', '=', True)]</field>
+        <field name="context">{'search_default_clearance_incomplete': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Every customer is complete</p>
+            <p>This list opens on the customers missing something the
+            invoice prints. Export it, fill the spreadsheet in, and import
+            it back to update them all at once.</p>
+        </field>
+    </record>
+
 </odoo>
