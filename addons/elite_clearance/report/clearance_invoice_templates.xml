@@ -15,11 +15,11 @@
   -->
 
   <template id="report_clearance_invoice_document">
-    <t t-set="doc" t-value="doc.with_context(lang='fr_FR')"/>
-    <t t-set="file" t-value="doc.logistics_file_id"/>
-    <t t-set="company" t-value="doc.company_id"/>
-    <t t-set="partner" t-value="doc.partner_id"/>
-    <t t-set="cur" t-value="doc.currency_id"/>
+    <t t-set="o" t-value="o.with_context(lang='fr_FR')"/>
+    <t t-set="file" t-value="o.logistics_file_id"/>
+    <t t-set="company" t-value="o.company_id"/>
+    <t t-set="partner" t-value="o.partner_id"/>
+    <t t-set="cur" t-value="o.currency_id"/>
     <div class="page o_clearance_invoice">
 
       <style>
@@ -70,8 +70,8 @@
           </td>
           <td style="text-align:right; vertical-align:top;">
             <div><span t-esc="company.clearance_invoice_title or 'Facture doit N°'"/></div>
-            <h2><span t-field="doc.name"/></h2>
-            <div><span t-field="doc.invoice_date"/></div>
+            <h2><span t-field="o.name"/></h2>
+            <div><span t-field="o.invoice_date"/></div>
           </td>
         </tr>
       </table>
@@ -113,7 +113,7 @@
               </table>
               <table t-else="">
                 <tr><td class="lbl">Référence</td></tr>
-                <tr><td><span t-field="doc.invoice_origin"/></td></tr>
+                <tr><td><span t-field="o.invoice_origin"/></td></tr>
               </table>
             </div>
           </td>
@@ -149,14 +149,14 @@
           <tr>
             <td><span t-field="file.container_count"/></td>
             <td><span t-field="file.container_type"/></td>
-            <td><span t-esc="doc._clearance_money(file.weight_kg)"/></td>
+            <td><span t-esc="o._clearance_money(file.weight_kg)"/></td>
             <td><span t-field="file.package_count"/></td>
           </tr>
         </table>
       </div>
 
       <!-- what is charged -->
-      <t t-set="products" t-value="doc.invoice_line_ids.filtered(lambda l: l.display_type == 'product')"/>
+      <t t-set="products" t-value="o.invoice_line_ids.filtered(lambda l: l.display_type == 'product')"/>
       <t t-set="debours" t-value="products.filtered(lambda l: l.clearance_category == 'debours')"/>
       <t t-set="prestations" t-value="products.filtered(lambda l: l.clearance_category == 'prestation')"/>
       <t t-set="other" t-value="products.filtered(lambda l: not l.clearance_category)"/>
@@ -178,8 +178,8 @@
             <td><span t-field="line.name"/></td>
             <td><span t-field="line.clearance_unit"/></td>
             <td class="ctr"><span t-esc="'{:,.2f}'.format(line.quantity).rstrip('0').rstrip('.').replace(',', ' ')"/></td>
-            <td class="num"><span t-esc="doc._clearance_money(line.price_unit)"/></td>
-            <td class="num"><span t-esc="doc._clearance_money(line.price_subtotal)"/></td>
+            <td class="num"><span t-esc="o._clearance_money(line.price_unit)"/></td>
+            <td class="num"><span t-esc="o._clearance_money(line.price_subtotal)"/></td>
           </tr>
           <tr class="sub" t-if="debours">
             <td>Sous total</td>
@@ -187,7 +187,7 @@
             <td></td>
             <td class="ctr"><span t-esc="len(debours)"/></td>
             <td></td>
-            <td class="num"><span t-esc="doc._clearance_money(sum(debours.mapped('price_subtotal')))"/></td>
+            <td class="num"><span t-esc="o._clearance_money(sum(debours.mapped('price_subtotal')))"/></td>
           </tr>
 
           <tr t-foreach="prestations" t-as="line">
@@ -195,8 +195,8 @@
             <td><span t-field="line.name"/></td>
             <td><span t-field="line.clearance_unit"/></td>
             <td class="ctr"><span t-esc="'{:,.2f}'.format(line.quantity).rstrip('0').rstrip('.').replace(',', ' ')"/></td>
-            <td class="num"><span t-esc="doc._clearance_money(line.price_unit)"/></td>
-            <td class="num"><span t-esc="doc._clearance_money(line.price_subtotal)"/></td>
+            <td class="num"><span t-esc="o._clearance_money(line.price_unit)"/></td>
+            <td class="num"><span t-esc="o._clearance_money(line.price_subtotal)"/></td>
           </tr>
           <tr class="sub" t-if="prestations">
             <td>Sous total</td>
@@ -204,7 +204,7 @@
             <td></td>
             <td></td>
             <td></td>
-            <td class="num"><span t-esc="doc._clearance_money(sum(prestations.mapped('price_subtotal')))"/></td>
+            <td class="num"><span t-esc="o._clearance_money(sum(prestations.mapped('price_subtotal')))"/></td>
           </tr>
 
           <tr t-foreach="other" t-as="line">
@@ -212,15 +212,15 @@
             <td><span t-field="line.name"/></td>
             <td><span t-field="line.clearance_unit"/></td>
             <td class="ctr"><span t-esc="'{:,.2f}'.format(line.quantity).rstrip('0').rstrip('.').replace(',', ' ')"/></td>
-            <td class="num"><span t-esc="doc._clearance_money(line.price_unit)"/></td>
-            <td class="num"><span t-esc="doc._clearance_money(line.price_subtotal)"/></td>
+            <td class="num"><span t-esc="o._clearance_money(line.price_unit)"/></td>
+            <td class="num"><span t-esc="o._clearance_money(line.price_subtotal)"/></td>
           </tr>
         </tbody>
       </table>
 
       <!-- totals, and what the client has already advanced -->
       <t t-set="advances" t-value="(file.advance_had_amount + file.advance_had_vat_amount + file.advance_other_amount) if file else 0.0"/>
-      <t t-set="due" t-value="doc.amount_total - advances"/>
+      <t t-set="due" t-value="o.amount_total - advances"/>
       <table style="margin-bottom:8px;">
         <tr>
           <td style="width:48%;"></td>
@@ -228,31 +228,31 @@
             <table class="totals">
               <tr>
                 <td>TOTAL HT</td>
-                <td class="num"><span t-esc="doc._clearance_money(doc.amount_untaxed)"/> <span t-field="cur.name"/></td>
+                <td class="num"><span t-esc="o._clearance_money(o.amount_untaxed)"/> <span t-field="cur.name"/></td>
               </tr>
               <tr>
-                <td><span t-esc="doc._clearance_service_tax_label()"/></td>
-                <td class="num"><span t-esc="doc._clearance_money(doc.amount_tax)"/> <span t-field="cur.name"/></td>
+                <td><span t-esc="o._clearance_service_tax_label()"/></td>
+                <td class="num"><span t-esc="o._clearance_money(o.amount_tax)"/> <span t-field="cur.name"/></td>
               </tr>
               <tr>
                 <td>TOTAL TTC</td>
-                <td class="num"><span t-esc="doc._clearance_money(doc.amount_total)"/> <span t-field="cur.name"/></td>
+                <td class="num"><span t-esc="o._clearance_money(o.amount_total)"/> <span t-field="cur.name"/></td>
               </tr>
               <tr t-if="file">
                 <td>AVANCE HAD/DAU</td>
-                <td class="num"><span t-esc="doc._clearance_money(file.advance_had_amount)"/> <span t-field="cur.name"/></td>
+                <td class="num"><span t-esc="o._clearance_money(file.advance_had_amount)"/> <span t-field="cur.name"/></td>
               </tr>
               <tr t-if="file">
                 <td>AVANCE TVA/HAD DAU</td>
-                <td class="num"><span t-esc="doc._clearance_money(file.advance_had_vat_amount)"/> <span t-field="cur.name"/></td>
+                <td class="num"><span t-esc="o._clearance_money(file.advance_had_vat_amount)"/> <span t-field="cur.name"/></td>
               </tr>
               <tr t-if="file">
                 <td>AUTRES AVANCES</td>
-                <td class="num"><span t-esc="doc._clearance_money(file.advance_other_amount)"/> <span t-field="cur.name"/></td>
+                <td class="num"><span t-esc="o._clearance_money(file.advance_other_amount)"/> <span t-field="cur.name"/></td>
               </tr>
               <tr t-if="file">
                 <td>RESTE</td>
-                <td class="num"><span t-esc="doc._clearance_money(due)"/> <span t-field="cur.name"/></td>
+                <td class="num"><span t-esc="o._clearance_money(due)"/> <span t-field="cur.name"/></td>
               </tr>
             </table>
           </td>
@@ -263,11 +263,11 @@
         Arrêté la présente facture au montant de :
       </p>
       <p style="margin-bottom:14px;">
-        <span t-esc="doc._clearance_amount_in_words(due if file else doc.amount_total)"/>
+        <span t-esc="o._clearance_amount_in_words(due if file else o.amount_total)"/>
       </p>
 
       <!-- the company's own bank accounts, in the configured order -->
-      <t t-set="banks" t-value="doc._clearance_invoice_banks()"/>
+      <t t-set="banks" t-value="o._clearance_invoice_banks()"/>
       <div class="bankbox" style="margin-top:14px;" t-if="banks">
         <table class="bank">
           <tr>
@@ -291,8 +291,8 @@
           <tr>
             <td>PAYMENT CONDITIONS :</td>
             <td>
-              <span t-if="doc.invoice_payment_term_id"
-                    t-field="doc.invoice_payment_term_id.name"/>
+              <span t-if="o.invoice_payment_term_id"
+                    t-field="o.invoice_payment_term_id.name"/>
               <span t-else="" t-esc="company.clearance_invoice_payment_terms or 'As per agreement with customer'"/>
             </td>
             <td>
@@ -319,9 +319,25 @@
     </div>
   </template>
 
+  <!--
+    Odoo 19 does not DISPATCH on _get_name_invoice_report(); it GUARDS on
+    it. account.report_invoice renders account.report_invoice_document
+    only when the name matches, so an override that returns another name
+    makes Send & Print produce a BLANK page unless the module adds its own
+    branch here. This is that branch.
+  -->
+  <template id="report_invoice_clearance_branch"
+            inherit_id="account.report_invoice" primary="False">
+    <xpath expr="//t[@t-call='account.report_invoice_document']"
+           position="after">
+      <t t-if="o._get_name_invoice_report() == 'elite_clearance.report_clearance_invoice_document'"
+         t-call="elite_clearance.report_clearance_invoice_document"/>
+    </xpath>
+  </template>
+
   <template id="report_clearance_invoice">
     <t t-call="web.html_container">
-      <t t-foreach="docs" t-as="doc">
+      <t t-foreach="docs" t-as="o">
         <t t-call="elite_clearance.report_clearance_invoice_document"/>
       </t>
     </t>

@@ -262,3 +262,47 @@ class TestClearanceInvoicePrint(TransactionCase):
             'service_type_id': self.service.id})
         with self.assertRaises(UserError):
             file.action_preview_invoice()
+
+    # --- Send & Print goes through Odoo's own report, not ours ---------
+    def test_16_odoos_invoice_report_renders_our_document(self):
+        """The one that was broken.
+
+        Odoo 19 does not dispatch on _get_name_invoice_report(); it GUARDS
+        on it, rendering account.report_invoice_document only when the name
+        matches. Overriding the name without adding a branch made Send &
+        Print produce a blank page. This proves the branch fires.
+        """
+        file = self._billed_file()
+        rendered = self.env['ir.actions.report']._render_qweb_html(
+            'account.report_invoice', file.invoice_id.ids)[0]
+        text = rendered.decode() if isinstance(rendered, bytes) else rendered
+        for label in ("Facture doit", "N° BL/N° LTA", "NBRE TC",
+                      "Catégorie", "Sous total", "RESTE",
+                      "MEDUWA265794"):
+            self.assertIn(label, text, label)
+
+    def test_17_an_ordinary_invoice_keeps_odoos_own_document(self):
+        """Nothing outside clearance may change shape."""
+        invoice = self.env['account.move'].create({
+            'move_type': 'out_invoice',
+            'partner_id': self.client.id,
+            'journal_id': self.sale_journal.id,
+            'invoice_line_ids': [(0, 0, {
+                'name': "Consulting", 'quantity': 1, 'price_unit': 1000,
+                'account_id': self.income.id})],
+        })
+        self.assertFalse(invoice.logistics_file_id)
+        self.assertEqual(invoice._get_name_invoice_report(),
+                         'account.report_invoice_document')
+        rendered = self.env['ir.actions.report']._render_qweb_html(
+            'account.report_invoice', invoice.ids)[0]
+        text = rendered.decode() if isinstance(rendered, bytes) else rendered
+        self.assertNotIn("N° BL/N° LTA", text,
+                         "an ordinary invoice carries no shipment box")
+        self.assertIn("Consulting", text, "and still prints its own lines")
+
+    def test_18_a_clearance_invoice_asks_for_our_document(self):
+        file = self._billed_file()
+        self.assertEqual(
+            file.invoice_id._get_name_invoice_report(),
+            'elite_clearance.report_clearance_invoice_document')
