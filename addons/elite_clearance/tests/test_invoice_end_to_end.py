@@ -68,7 +68,7 @@ class TestInvoiceEndToEnd(TransactionCase):
             'vat': "M071300046804A",
             'company_registry': "RC/LBE/2013/B/0560"})
         cls.vendor = env['res.partner'].create({
-            'name': "Terminal", 'is_company': True, 'supplier_rank': 1})
+            'name': "Terminal", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'supplier_rank': 1})
         cls.category = env['logistics.expense.category'].create({
             'name': "Douane", 'code': "E-DOU"})
         # commission at zero: this file is billed with an opening fee and
@@ -223,13 +223,16 @@ class TestExpenseCapture(TransactionCase):
         super().setUpClass()
         env = cls.env
         cls.client = env['res.partner'].create({
-            'name': "Capture Client", 'is_company': True})
+            'name': "Capture Client", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001"})
         cls.category = env['logistics.expense.category'].create({
             'name': "Douane", 'code': "C-DOU"})
         cls.service = env['logistics.service.type'].create({
             'name': "Capture", 'code': "C-CAP", 'commission_rate': 2.0})
         cls.file = env['logistics.file'].create({
             'customs_regime': 'im4',
+            'bl_awb_ref': "MEDUW000001",
+            'goods_description': "Marchandises diverses",
+            'cargo_value': 1000000.0,
             'partner_id': cls.client.id,
             'service_type_id': cls.service.id})
         cls.file.state = 'in_progress'

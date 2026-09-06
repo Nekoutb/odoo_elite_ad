@@ -50,9 +50,9 @@ class TestVendorPayableAndRecharge(TransactionCase):
         cls.bank = env['account.journal'].create({
             'name': "Bank", 'type': 'bank', 'code': 'XBNK5'})
         cls.client = env['res.partner'].create({
-            'name': "Recharge Client SA", 'is_company': True})
+            'name': "Recharge Client SA", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001"})
         cls.vendor = env['res.partner'].create({
-            'name': "Maersk Cameroun", 'is_company': True, 'supplier_rank': 1})
+            'name': "Maersk Cameroun", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'supplier_rank': 1})
         cls.vendor.property_account_payable_id = cls.payable
         cls.employee = env['hr.employee'].create({'name': "Field Agent R"})
         cls.category = env['logistics.expense.category'].create({
@@ -61,6 +61,9 @@ class TestVendorPayableAndRecharge(TransactionCase):
             'name': "Recharge test", 'code': "T-RCH", 'commission_rate': 2.0})
         cls.file = env['logistics.file'].create({
             'customs_regime': 'im4',
+            'bl_awb_ref': "MEDUW000001",
+            'goods_description': "Marchandises diverses",
+            'cargo_value': 1000000.0,
             'partner_id': cls.client.id, 'service_type_id': cls.service.id})
         cls.file.state = 'in_progress'
         cls.file.customs_fee_amount = 30000

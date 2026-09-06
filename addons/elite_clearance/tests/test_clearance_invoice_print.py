@@ -42,7 +42,7 @@ class TestClearanceInvoicePrint(TransactionCase):
             'vat': "M071300046804A",
             'company_registry': "RC/LBE/2013/B/0560"})
         cls.vendor = env['res.partner'].create({
-            'name': "Terminal P", 'is_company': True, 'supplier_rank': 1})
+            'name': "Terminal P", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'supplier_rank': 1})
         cls.category = env['logistics.expense.category'].create({
             'name': "Port", 'code': "P-PRT"})
         cls.service = env['logistics.service.type'].create({
@@ -266,6 +266,9 @@ class TestClearanceInvoicePrint(TransactionCase):
         from odoo.exceptions import UserError
         file = self.env['logistics.file'].create({
             'customs_regime': 'im4', 'partner_id': self.client.id,
+            'bl_awb_ref': "MEDUW000001",
+            'goods_description': "Marchandises diverses",
+            'cargo_value': 1000000.0,
             'service_type_id': self.service.id})
         with self.assertRaises(UserError):
             file.action_preview_invoice()

@@ -268,21 +268,25 @@
 
       <!-- the company's own bank accounts, in the configured order -->
       <t t-set="banks" t-value="o._clearance_invoice_banks()"/>
-      <div class="bankbox" style="margin-top:14px;" t-if="banks">
+      <!-- The box no longer disappears wholesale when no bank account is
+           configured: the payment conditions belong on the invoice either
+           way, and a silently absent block is how the owner ended up with
+           an invoice missing its bank details entirely. -->
+      <div class="bankbox" style="margin-top:14px;">
         <table class="bank">
-          <tr>
+          <tr t-if="banks">
             <td style="width:20%;">BANK :</td>
             <td t-foreach="banks" t-as="bank">
               <span t-field="bank.bank_id.name"/>
             </td>
           </tr>
-          <tr>
+          <tr t-if="banks">
             <td>ACCOUNT NAME :</td>
             <td t-foreach="banks" t-as="bank">
               <span t-esc="bank.acc_holder_name or bank.partner_id.name"/>
             </td>
           </tr>
-          <tr>
+          <tr t-if="banks">
             <td>ACCOUNT N° :</td>
             <td t-foreach="banks" t-as="bank">
               <span t-field="bank.acc_number"/>

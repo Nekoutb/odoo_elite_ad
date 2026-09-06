@@ -37,15 +37,18 @@ class TestTasksAndVat(TransactionCase):
         cls.cash = env['account.journal'].create({
             'name': "Cash", 'type': 'cash', 'code': 'ZCSH'})
         cls.client = env['res.partner'].create({
-            'name': "VAT Client", 'is_company': True})
+            'name': "VAT Client", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001"})
         cls.vendor = env['res.partner'].create({
-            'name': "Terminal", 'is_company': True, 'supplier_rank': 1})
+            'name': "Terminal", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'supplier_rank': 1})
         cls.category = env['logistics.expense.category'].create({
             'name': "Port", 'code': "Z-PRT"})
         cls.service = env['logistics.service.type'].create({
             'name': "VAT test", 'code': "Z-VAT", 'commission_rate': 2.0})
         cls.file = env['logistics.file'].create({
             'customs_regime': 'im4',
+            'bl_awb_ref': "MEDUW000001",
+            'goods_description': "Marchandises diverses",
+            'cargo_value': 1000000.0,
             'partner_id': cls.client.id, 'service_type_id': cls.service.id})
         cls.file.state = 'in_progress'
         cls.file.customs_fee_amount = 30000

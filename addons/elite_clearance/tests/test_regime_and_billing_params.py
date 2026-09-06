@@ -32,9 +32,9 @@ class TestRegimeAndBillingParams(TransactionCase):
         cls.cash = env['account.journal'].create({
             'name': "Cash", 'type': 'cash', 'code': 'WCSH'})
         cls.client = env['res.partner'].create({
-            'name': "Regime Client", 'is_company': True})
+            'name': "Regime Client", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001"})
         cls.vendor = env['res.partner'].create({
-            'name': "Terminal W", 'is_company': True, 'supplier_rank': 1})
+            'name': "Terminal W", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'supplier_rank': 1})
         cls.category = env['logistics.expense.category'].create({
             'name': "Port", 'code': "W-PRT"})
         cls.service = env['logistics.service.type'].create({
@@ -43,7 +43,10 @@ class TestRegimeAndBillingParams(TransactionCase):
     def _file(self, **extra):
         vals = {'partner_id': self.client.id,
                 'service_type_id': self.service.id,
-                'customs_regime': 'im4'}
+                'customs_regime': 'im4',
+                'bl_awb_ref': "MEDUW000001",
+                'goods_description': "Marchandises diverses",
+                'cargo_value': 1000000.0}
         vals.update(extra)
         return self.env['logistics.file'].create(vals)
 
@@ -70,10 +73,14 @@ class TestRegimeAndBillingParams(TransactionCase):
 
     # --- the customs regime --------------------------------------------
     def test_01_a_file_cannot_be_opened_without_a_regime(self):
+        """Everything else supplied, so the regime is the only thing left."""
         with self.assertRaises(ValidationError):
             self.env['logistics.file'].create({
                 'partner_id': self.client.id,
-                'service_type_id': self.service.id})
+                'service_type_id': self.service.id,
+                'bl_awb_ref': "MEDUW000001",
+                'goods_description': "Marchandises diverses",
+                'cargo_value': 1000000.0})
 
     def test_02_the_four_regimes_are_the_only_choices(self):
         keys = dict(self.env['logistics.file']._fields['customs_regime']
@@ -254,3 +261,69 @@ class TestRegimeAndBillingParams(TransactionCase):
         self.assertFalse(self.env['clearance.task'].with_user(ops).search(
             [('kind', '=', 'billing_service'), ('res_id', '=', service.id)]),
             "and it leaves the queue once approved")
+
+
+@tagged('post_install', '-at_install')
+class TestInvoiceEssentials(TransactionCase):
+    """What the printed invoice needs, demanded when the file is opened."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        env = cls.env
+        cls.complete = env['res.partner'].create({
+            'name': "Complete Client", 'is_company': True,
+            'street': "BP 18302 Douala", 'email': "c@test.cm",
+            'vat': "M000000000009A", 'company_registry': "RC/DLA/2026/B/9"})
+        cls.bare = env['res.partner'].create({
+            'name': "Bare Client", 'is_company': True})
+        cls.service = env['logistics.service.type'].create({
+            'name': "Essentials", 'code': "X-ESS"})
+
+    def _vals(self, partner=None, **extra):
+        vals = {'partner_id': (partner or self.complete).id,
+                'service_type_id': self.service.id,
+                'customs_regime': 'im4',
+                'bl_awb_ref': "MEDUW000001",
+                'goods_description': "Marchandises diverses",
+                'cargo_value': 1000000.0}
+        vals.update(extra)
+        return vals
+
+    def test_01_a_complete_file_opens(self):
+        file = self.env['logistics.file'].create(self._vals())
+        self.assertTrue(file.name)
+
+    def test_02_each_missing_field_is_refused(self):
+        for field in ('bl_awb_ref', 'goods_description', 'cargo_value'):
+            with self.subTest(field=field):
+                with self.assertRaises(ValidationError):
+                    self.env['logistics.file'].create(
+                        self._vals(**{field: False}))
+
+    def test_03_the_client_must_carry_what_the_invoice_prints(self):
+        """No address, e-mail, NIU or RC on the client: no file."""
+        with self.assertRaises(ValidationError):
+            self.env['logistics.file'].create(self._vals(partner=self.bare))
+
+    def test_04_everything_missing_is_named_at_once(self):
+        """One list, not four rounds of trial and error."""
+        try:
+            self.env['logistics.file'].create(self._vals(
+                partner=self.bare, bl_awb_ref=False,
+                goods_description=False, cargo_value=0.0))
+        except ValidationError as error:
+            message = str(error)
+        else:
+            self.fail("an empty file must be refused")
+        for expected in ("BL", "Produits", "Valeur RVC",
+                         "postal address", "e-mail", "Tax ID", "Company ID"):
+            self.assertIn(expected, message, expected)
+
+    def test_05_imported_history_is_exempt(self):
+        """Teese files predate the rule and must not be blocked by it."""
+        file = self.env['logistics.file'].with_context(
+            legacy_import=True).create({
+                'partner_id': self.bare.id,
+                'service_type_id': self.service.id})
+        self.assertTrue(file.name)

@@ -35,15 +35,18 @@ class TestSegregationOfDuties(TransactionCase):
         cls.journal = env['account.journal'].create({
             'name': "Cash desk", 'type': 'cash', 'code': 'XCSH3'})
         cls.client = env['res.partner'].create({
-            'name': "Segregation Client", 'is_company': True})
+            'name': "Segregation Client", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001"})
         cls.vendor = env['res.partner'].create({
-            'name': "Port authority", 'is_company': True})
+            'name': "Port authority", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001"})
         cls.category = env['logistics.expense.category'].create({
             'name': "Handling", 'code': "T-HDL3"})
         cls.service = env['logistics.service.type'].create({
             'name': "Segregation test", 'code': "T-SEG"})
         cls.file = env['logistics.file'].create({
             'customs_regime': 'im4',
+            'bl_awb_ref': "MEDUW000001",
+            'goods_description': "Marchandises diverses",
+            'cargo_value': 1000000.0,
             'partner_id': cls.client.id, 'service_type_id': cls.service.id})
         cls.file.state = 'in_progress'
 

@@ -238,6 +238,13 @@ Customs clearance job files for a logistics/clearance services provider.
   module install with "Element odoo has extra content: template" — naming the
   FIRST template in the file, not the offending one. An extension template
   omits the attribute. Guarded by `tools/check_view_pitfalls.py`.
+- **Odoo never passes `--encoding` to wkhtmltopdf.** It relies on the
+  `<meta charset>` in `web.minimal_layout`, which sits AFTER two inlined
+  asset bundles — far past the window a parser reads a charset hint in — so
+  wkhtmltopdf falls back to Latin-1 and every accent in the PDF becomes
+  mojibake (`N°`→`NÂ°`, `Catégorie`→`CatÃ©gorie`, nbsp→`Â`). The source
+  files are fine; only the PDF is wrong. `models/ir_actions_report.py`
+  appends `--encoding utf-8`. Cost a live report 06/09/2026.
 - **CI installs; production UPGRADES. They are different code paths.** A
   `translate=True` Char is stored as jsonb, and REMOVING `translate=True`
   does not convert an existing column - Odoo leaves it. A fresh install had

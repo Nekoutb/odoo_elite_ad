@@ -121,10 +121,10 @@
                         <group name="refs">
                             <field name="transit_authorisation_ref"/>
                             <field name="customs_declaration_ref"/>
-                            <field name="bl_awb_ref"/>
+                            <field name="bl_awb_ref" required="state not in ('imported', 'cancel')"/>
                             <field name="client_reference"/>
                             <field name="supplier_name"/>
-                            <field name="goods_description"/>
+                            <field name="goods_description" required="state not in ('imported', 'cancel')"/>
                             <field name="date_opened"/>
                             <field name="date_target"/>
                             <field name="date_closed" invisible="not date_closed"/>
@@ -146,7 +146,7 @@
                             <field name="container_type"/>
                             <field name="package_count"/>
                             <field name="weight_kg"/>
-                            <field name="cargo_value"/>
+                            <field name="cargo_value" required="state not in ('imported', 'cancel')"/>
                             <field name="cargo_value_currency_id"/>
                             <field name="importer_name"/>
                         </group>

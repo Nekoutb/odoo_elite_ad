@@ -59,7 +59,11 @@ class LogisticsFile(models.Model):
              "for, so it is chosen when the file is opened and cannot be "
              "left blank once work starts.")
     customs_declaration_ref = fields.Char(string="Customs Declaration", tracking=True)
-    bl_awb_ref = fields.Char(string="BL / AWB")
+    bl_awb_ref = fields.Char(
+        string="BL / AWB", tracking=True,
+        help="Printed on the invoice as N° BL/N° LTA. Required to "
+             "open a file: the client's invoice cannot be issued "
+             "without it.")
     date_opened = fields.Date(
         string="Opened On", default=fields.Date.context_today, required=True,
     )
@@ -815,6 +819,51 @@ class LogisticsFile(models.Model):
             file.message_post(body=self.env._(
                 "Reopening refused: the file stays an imported record."))
         return True
+
+    # What the printed invoice cannot do without. Checked when the file is
+    # OPENED rather than discovered when it is billed, which is the owner's
+    # instruction of 06/09/2026: a bill that cannot render is found too
+    # late. Everything here appears on the face of the document.
+    INVOICE_ESSENTIALS = [
+        ('bl_awb_ref', "N° BL / N° LTA"),
+        ('goods_description', "Produits (the goods being cleared)"),
+        ('cargo_value', "Valeur RVC"),
+    ]
+    CLIENT_ESSENTIALS = [
+        ('street', "postal address"),
+        ('email', "e-mail address"),
+        ('vat', "Tax ID (NIU)"),
+        ('company_registry', "Company ID (RC)"),
+    ]
+
+    @api.constrains('bl_awb_ref', 'goods_description', 'cargo_value',
+                    'partner_id', 'state')
+    def _check_invoice_essentials(self):
+        """Everything the invoice prints, present before work begins.
+
+        Reported as ONE list rather than one field at a time: being told
+        four times in a row that something else is missing is how people
+        learn to resent a form.
+        """
+        for file in self:
+            if (file.legacy_id or file.state == 'imported'
+                    or self.env.context.get('legacy_import')):
+                continue                    # Teese history, exempt
+            missing = [label for name, label in self.INVOICE_ESSENTIALS
+                       if not file[name]]
+            partner = file.partner_id
+            missing += ["%s: %s" % (partner.display_name or "the client",
+                                    label)
+                        for name, label in self.CLIENT_ESSENTIALS
+                        if partner and not partner[name]]
+            if missing:
+                raise ValidationError(self.env._(
+                    "%(name)s cannot be opened until these are recorded - "
+                    "the client's invoice prints every one "
+                    "of them:%(gap)s  - %(missing)s",
+                    gap=chr(10) * 2,
+                    name=file.name or "The file",
+                    missing=(chr(10) + "  - ").join(missing)))
 
     @api.constrains('customs_regime', 'state')
     def _check_customs_regime(self):
