@@ -120,7 +120,7 @@
                             <field name="clearance_finance_approver_ids" widget="many2many_tags"/>
                         </setting>
                         <setting string="Billing Approvers"
-                                 help="Who may raise client invoices and mark files complete. Empty = any Clearance Finance user.">
+                                 help="Who may raise client invoices and mark files complete. Empty = any Billing Agent. A name here replaces the group.">
                             <field name="clearance_billing_approver_ids" widget="many2many_tags"/>
                         </setting>
                         <setting string="Operations Close Approvers"

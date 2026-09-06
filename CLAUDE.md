@@ -20,8 +20,8 @@ Customs clearance job files for a logistics/clearance services provider.
 - `logistics.file` — one file = one clearance job. States:
   draft → in_progress → ops_closed → done (+cancel, +imported). `imported`
   = brought over from Teese as a record: no work, no new expense, no
-  billing, no cancelling. Billing one is an exception — the billing agent
-  (Finance) requests reopening with a reason, an Operations Manager approves
+  billing, no cancelling. Billing one is an exception — the Billing Agent
+  (`group_clearance_billing`) requests reopening with a reason, an Operations Manager approves
   (`reopen_request_*`, approval kind `reopen_imported`) → in_progress.
   Owner spec 03/09/2026. Gate: cannot start work
   with mandatory documents missing unless an approver signs a waiver
@@ -184,6 +184,19 @@ Customs clearance job files for a logistics/clearance services provider.
    wizard share `_create_client_invoice(debours, services)`; the debours
    lines always post AT COST so 47xx clears, and the variance is one further
    line to the under/overcharge account.
+   **Four gates, ONE group (06/09/2026):** the Billing / Resume Billing /
+   Request Reopening / Mark Complete buttons, `APPROVAL_KINDS['billing']`,
+   the wizard's ACL rows and `clearance.task.KIND_GROUPS['billing']` all
+   name `group_clearance_billing`. When the department was created the
+   buttons were left on Finance: Billing saw no button, Finance saw one
+   that was refused, and the owner reported the dialog gone. The group
+   implies `account.group_account_invoice` (the invoice is an
+   `account.move`) and `base.group_partner_manager` (internal users can
+   only READ `res.partner`, and the screen writes the client's details).
+   `test_billing_wizard.test_20/21` open the file form with `get_view()`
+   as a Billing-only and a Finance-only user and assert on the arch —
+   Odoo strips `groups=`-gated nodes server-side, so that is the one
+   ORM-level test that sees what the browser shows.
 - **My Tasks (owner spec, 03/09/2026).** `views/clearance_tasks_views.xml`:
    ten group-restricted actions under a "My Tasks" menu, so each role sees
    only the queue it can act on. No new model — domains over the existing
@@ -246,6 +259,15 @@ Customs clearance job files for a logistics/clearance services provider.
   gating file creation on them would stop Operations opening a file for any
   imported client. The billing screen offers the four fields as `related=…
   readonly=False`, so the agent fixes the CUSTOMER record while billing.
+  The three SHIPMENT essentials (BL, goods, RVC) are offered on the same
+  screen for files opened before they became mandatory — as PLAIN wizard
+  fields written back in `_persist()`, NOT related ones: Odoo inverses
+  related fields one at a time, and the file's constraint wants all three
+  at once, so the first write-through would be refused for the two not yet
+  written. The file form's `required=` on those fields applies in
+  draft/in_progress only: the web client SAVES before it calls a button,
+  and a required-but-blank field on an older ops_closed file stopped the
+  Billing button from ever firing.
   Clearance → Configuration → Customers opens on the incomplete ones for
   export/import in bulk.
 - **Odoo never passes `--encoding` to wkhtmltopdf.** It relies on the

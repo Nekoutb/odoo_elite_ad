@@ -24,23 +24,31 @@
                     </group>
                 </group>
 
+                <field name="client_details_missing" invisible="1"/>
+                <field name="shipment_details_missing" invisible="1"/>
                 <div class="alert alert-warning" role="alert"
                      invisible="not client_details_missing">
                     This client's record is missing details the invoice
                     prints. Fill them in below - they are saved to the
                     customer, not just to this invoice.
                 </div>
-                <separator string="Client (printed on the invoice)"/>
+                <div class="alert alert-warning" role="alert"
+                     invisible="not shipment_details_missing">
+                    This file was opened without shipment details the invoice
+                    prints. Fill them in below - they are saved to the file.
+                </div>
+                <separator string="Printed on the invoice"/>
                 <group>
-                    <group>
-                        <field name="partner_id" readonly="1"/>
+                    <group string="Client">
                         <field name="client_street"/>
                         <field name="client_email"/>
-                    </group>
-                    <group>
                         <field name="client_vat"/>
                         <field name="client_registry"/>
-                        <field name="client_details_missing" invisible="1"/>
+                    </group>
+                    <group string="Shipment">
+                        <field name="shipment_bl_awb_ref"/>
+                        <field name="shipment_goods"/>
+                        <field name="shipment_cargo_value"/>
                     </group>
                 </group>
 

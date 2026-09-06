@@ -53,11 +53,11 @@ Each step is a different pair of hands:
 | Disburse cash / pay from the bank | **Cashier** (tills) / **Treasury** (bank, mobile money) |
 | Submit an advance's justification | Finance |
 | Approve the justification | Operations **Manager** |
-| Raise the invoice | Finance |
+| Raise the invoice | **Billing Agent** |
 | Recharge above cost | Operations **Manager** |
 | Recharge **below** cost | Operations **Manager** and the **General Manager**, with a written reason and a supporting document |
 | Close the file for operations | Operations **Manager**, and only once the customs fee is keyed |
-| Reopen an imported file | Finance requests with a reason; Operations **Manager** approves after review |
+| Reopen an imported file | **Billing Agent** requests with a reason; Operations **Manager** approves after review |
 
 | Step | Debit | Credit |
 |---|---|---|

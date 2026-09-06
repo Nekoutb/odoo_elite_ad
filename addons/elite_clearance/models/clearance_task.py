@@ -177,7 +177,10 @@ class ClearanceTask(models.Model):
             file_task % dict(
                 offset=13, kind='billing',
                 detail="'OK for billing'", amount='f.oop_total',
-                where="f.state = 'ops_closed' AND f.invoice_id IS NULL"),
+                # a cancelled invoice is no invoice: the file is billed again
+                where="f.state = 'ops_closed' AND NOT EXISTS ("
+                      "SELECT 1 FROM account_move m WHERE m.id = f.invoice_id "
+                      "AND m.state <> 'cancel')"),
             # a proposed revenue line, waiting for Operations to allow it
             """
             SELECT (14 * 10000000 + s.id) AS id,
@@ -219,6 +222,7 @@ class ClearanceTask(models.Model):
         self.env['logistics.expense'].flush_model()
         self.env['account.journal'].flush_model()
         self.env['logistics.billing.service'].flush_model()
+        self.env['account.move'].flush_model(['state'])
         # Narrow every read, so the one screen is a different list for each
         # role and nobody sees a queue they cannot act on.
         domain = [('kind', 'in', self._allowed_kinds())] + list(domain or [])

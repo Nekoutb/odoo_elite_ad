@@ -1,4 +1,4 @@
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -204,3 +204,101 @@ class TestBillingWizard(TransactionCase):
         over = self.file.invoice_id.invoice_line_ids.filtered(
             lambda l: l.account_id == self.overcharge)
         self.assertEqual(over.price_subtotal, 10000)
+
+    # ------------------------------------------------------------------
+    # Who is offered the screen, and who can use it. The button, the
+    # action, the wizard's access rule and the task queue must all name
+    # the same department. On 06/09/2026 the buttons still said Finance
+    # while everything else said Billing: the dialog was gone for the
+    # people meant to use it and refused the people who could see it.
+    # Unit tests run as admin, who is in every group, so only a look at
+    # the form as the restricted user catches that.
+    def _form_arch(self, user):
+        view = self.env.ref('elite_clearance.logistics_file_view_form')
+        return self.env['logistics.file'].with_user(user).get_view(
+            view.id)['arch']
+
+    def _user(self, name, group):
+        return self.env['res.users'].create({
+            'name': name, 'login': name.lower().replace(' ', '.') + "@wiz.test",
+            'group_ids': [(6, 0, [self.env.ref(
+                'elite_clearance.group_clearance_' + group).id])]})
+
+    def test_20_a_billing_agent_is_offered_the_screen_and_can_bill(self):
+        biller = self._user("Bill Agent W", 'billing')
+        arch = self._form_arch(biller)
+        self.assertIn('action_open_billing', arch,
+                      "the Billing button is stripped from the form")
+        self.assertIn('action_request_reopen_imported', arch)
+        self.assertIn('action_mark_complete', arch)
+        action = self.file.with_user(biller).action_open_billing()
+        self.assertEqual(action['res_model'], 'logistics.billing.wizard')
+        # and the screen works end to end AS THAT USER: the write-through
+        # to the customer record and the invoice itself both need rights
+        # the group must carry
+        wizard = self.env['logistics.billing.wizard'].with_user(biller) \
+            .with_context(active_id=self.file.id).create({
+                'client_email': "billing@wizard-client.cm"})
+        wizard.action_create_invoice()
+        self.assertTrue(self.file.invoice_id)
+        self.assertEqual(self.file.invoice_id.create_uid, biller)
+        self.assertEqual(self.client.email, "billing@wizard-client.cm")
+
+    def test_21_a_finance_agent_is_not_offered_what_would_be_refused(self):
+        finance = self._user("Fin Agent W", 'finance')
+        arch = self._form_arch(finance)
+        self.assertNotIn('action_open_billing', arch,
+                         "Finance is shown a button the action refuses")
+        self.assertNotIn('action_request_reopen_imported', arch)
+        self.assertNotIn('action_mark_complete', arch)
+        with self.assertRaises(UserError):
+            self.file.with_user(finance).action_open_billing()
+        with self.assertRaises(AccessError):
+            self.env['logistics.billing.wizard'].with_user(finance) \
+                .with_context(active_id=self.file.id).create({})
+
+    def test_22_a_cancelled_invoice_hands_the_file_back_to_billing(self):
+        self._wizard().action_create_invoice()
+        first = self.file.invoice_id
+        Task = self.env['clearance.task']
+        queue = [('kind', '=', 'billing'), ('file_id', '=', self.file.id)]
+        self.assertFalse(Task.search(queue), "billed: out of the queue")
+        first.button_cancel()
+        self.assertEqual(self.file.invoice_state, 'cancel')
+        self.assertTrue(Task.search(queue),
+                        "a cancelled invoice puts the file back in the queue")
+        self._wizard().action_create_invoice()
+        self.assertNotEqual(self.file.invoice_id, first)
+        self.assertEqual(self.file.invoice_id.state, 'draft')
+
+    def test_23_a_file_opened_before_the_rule_completes_its_shipment_at_billing(self):
+        """The shipment essentials became mandatory on 06/09/2026. A file
+        opened before that, or reopened from Teese, reaches billing with
+        them blank - and must be able to complete them there rather than
+        being stuck behind a form that will not save."""
+        old = self.env['logistics.file'].with_context(legacy_import=True).create({
+            'customs_regime': 'im4', 'customs_fee_amount': 30000,
+            'partner_id': self.client.id, 'service_type_id': self.service.id})
+        old.with_context(legacy_import=True).write({'state': 'ops_closed'})
+        self.assertFalse(old.bl_awb_ref)
+        wizard = self.env['logistics.billing.wizard'].with_context(
+            active_id=old.id).create({})
+        self.assertTrue(wizard.shipment_details_missing)
+        with self.assertRaises(UserError) as caught:
+            wizard.action_create_invoice()
+        self.assertIn("N° BL / N° LTA", str(caught.exception))
+        self.assertIn("Valeur RVC", str(caught.exception))
+        # half an answer is refused in billing words, not opening words
+        wizard.shipment_bl_awb_ref = "MEDUW000002"
+        with self.assertRaises(ValidationError) as caught:
+            wizard.action_create_invoice()
+        self.assertIn("cannot be invoiced", str(caught.exception))
+        wizard.write({'shipment_bl_awb_ref': "MEDUW000002",
+                      'shipment_goods': "Carreaux",
+                      'shipment_cargo_value': 500000})
+        self.assertFalse(wizard.shipment_details_missing)
+        wizard.action_create_invoice()
+        self.assertEqual(old.bl_awb_ref, "MEDUW000002")
+        self.assertEqual(old.goods_description, "Carreaux")
+        self.assertEqual(old.cargo_value, 500000)
+        self.assertTrue(old.invoice_id)

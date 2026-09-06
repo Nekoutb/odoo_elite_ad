@@ -858,14 +858,25 @@ class LogisticsFile(models.Model):
                 continue                    # Teese history, exempt
             missing = [label for name, label in self.INVOICE_ESSENTIALS
                        if not file[name]]
-            if missing:
-                raise ValidationError(self.env._(
+            if not missing:
+                continue
+            # Worded for the moment it fires: opening the file, or - for
+            # one opened before the rule - completing it on the billing
+            # screen.
+            if file.state == 'ops_closed':
+                message = self.env._(
+                    "%(name)s cannot be invoiced until these are recorded "
+                    "- the client's invoice prints every one "
+                    "of them:%(gap)s  - %(missing)s")
+            else:
+                message = self.env._(
                     "%(name)s cannot be opened until these are recorded - "
                     "the client's invoice prints every one "
-                    "of them:%(gap)s  - %(missing)s",
-                    gap=chr(10) * 2,
-                    name=file.name or "The file",
-                    missing=(chr(10) + "  - ").join(missing)))
+                    "of them:%(gap)s  - %(missing)s")
+            raise ValidationError(message % {
+                'gap': chr(10) * 2,
+                'name': file.name or "The file",
+                'missing': (chr(10) + "  - ").join(missing)})
 
     @api.constrains('customs_regime', 'state')
     def _check_customs_regime(self):
@@ -1098,6 +1109,25 @@ class LogisticsFile(models.Model):
                 gap=chr(10) * 2,
                 missing=(chr(10) + "  - ").join(missing)))
 
+    def _check_shipment_billable(self):
+        """The shipment box on the invoice cannot be printed blank either.
+
+        Every file opened since the rule exists carries these; one opened
+        before it, or reopened from Teese, may not. The billing screen
+        offers the three fields so they can be completed on the spot.
+        """
+        self.ensure_one()
+        missing = [label for name, label in self.INVOICE_ESSENTIALS
+                   if not self[name]]
+        if missing:
+            raise UserError(self.env._(
+                "%(name)s cannot be invoiced until these are on record - "
+                "the invoice prints every one of them:%(gap)s  - %(missing)s"
+                "%(gap)sYou can fill them in on the billing screen.",
+                name=self.name,
+                gap=chr(10) * 2,
+                missing=(chr(10) + "  - ").join(missing)))
+
     def _create_client_invoice(self, debours, services):
         """Build the client invoice from explicit lines.
 
@@ -1108,6 +1138,7 @@ class LogisticsFile(models.Model):
         """
         self.ensure_one()
         self._check_client_billable()
+        self._check_shipment_billable()
         self.company_id._clearance_check_approver('billing')
         if self.state != 'ops_closed':
             raise UserError(self.env._(

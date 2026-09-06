@@ -89,6 +89,20 @@ class LogisticsBillingWizard(models.TransientModel):
     client_details_missing = fields.Boolean(
         compute='_compute_client_details_missing',
         help="True while the invoice would print a blank client block.")
+    # The shipment details the invoice prints. A file opened since
+    # 06/09/2026 cannot exist without them; one opened earlier, or reopened
+    # from Teese, may reach billing blank, and this is the last moment to
+    # complete it. Plain fields written back in _persist(), NOT related
+    # ones: a related field is inversed one at a time, and the file's
+    # constraint wants all three together - the first write would be
+    # refused for the two not yet written.
+    shipment_bl_awb_ref = fields.Char(string="N° BL / N° LTA")
+    shipment_goods = fields.Char(string="Produits")
+    shipment_cargo_value = fields.Monetary(
+        string="Valeur RVC", currency_field='currency_id')
+    shipment_details_missing = fields.Boolean(
+        compute='_compute_shipment_details_missing',
+        help="True while the invoice would print a blank shipment box.")
 
     advance_had_amount = fields.Monetary(
         string="Advance HAD/DAU", currency_field='currency_id',
@@ -134,6 +148,9 @@ class LogisticsBillingWizard(models.TransientModel):
         vals['advance_had_amount'] = file.advance_had_amount
         vals['advance_had_vat_amount'] = file.advance_had_vat_amount
         vals['advance_other_amount'] = file.advance_other_amount
+        vals['shipment_bl_awb_ref'] = file.bl_awb_ref
+        vals['shipment_goods'] = file.goods_description
+        vals['shipment_cargo_value'] = file.cargo_value
         vals['service_line_ids'] = []
         return vals
 
@@ -181,6 +198,14 @@ class LogisticsBillingWizard(models.TransientModel):
             wizard.client_details_missing = not all(
                 (wizard.client_street, wizard.client_email,
                  wizard.client_vat, wizard.client_registry))
+
+    @api.depends('shipment_bl_awb_ref', 'shipment_goods',
+                 'shipment_cargo_value')
+    def _compute_shipment_details_missing(self):
+        for wizard in self:
+            wizard.shipment_details_missing = not all(
+                (wizard.shipment_bl_awb_ref, wizard.shipment_goods,
+                 wizard.shipment_cargo_value))
 
     @api.depends('debours_line_ids.amount_engaged',
                  'debours_line_ids.amount_recharged',
@@ -236,7 +261,7 @@ class LogisticsBillingWizard(models.TransientModel):
         recharged = self.debours_recharged_total
         at_cost = not self.file_id.currency_id.compare_amounts(
             recharged, self.debours_engaged_total)
-        self.file_id.write({
+        vals = {
             'recharge_amount': 0.0 if at_cost else recharged,
             'recharge_reason': self.review_reason or False,
             'billing_commission_rate': self.commission_rate,
@@ -244,7 +269,19 @@ class LogisticsBillingWizard(models.TransientModel):
             'advance_had_amount': self.advance_had_amount,
             'advance_had_vat_amount': self.advance_had_vat_amount,
             'advance_other_amount': self.advance_other_amount,
-        })
+        }
+        # The shipment details go back in the same write, and only those
+        # that changed: the file's constraint wants all three together,
+        # and a set left blank must not stop a review from being sent -
+        # _check_shipment_billable refuses the invoice for that, in words.
+        shipment = {
+            'bl_awb_ref': self.shipment_bl_awb_ref,
+            'goods_description': self.shipment_goods,
+            'cargo_value': self.shipment_cargo_value,
+        }
+        vals.update({name: value for name, value in shipment.items()
+                     if (value or False) != (self.file_id[name] or False)})
+        self.file_id.write(vals)
 
     def action_submit_for_review(self):
         self.ensure_one()

@@ -181,7 +181,8 @@ class ResCompany(models.Model):
     clearance_billing_approver_ids = fields.Many2many(
         'res.users', 'clearance_billing_approver_rel', string="Billing Approvers",
         help="Who may raise the client invoice and mark files complete. "
-             "Empty = any Clearance Finance user.")
+             "Empty = any Billing Agent. A name here REPLACES the group: "
+             "list nobody unless you mean to exclude everyone else.")
     clearance_settlement_approver_ids = fields.Many2many(
         'res.users', 'clearance_settlement_approver_rel',
         string="Settlement Approvers",
