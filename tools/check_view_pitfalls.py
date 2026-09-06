@@ -90,8 +90,30 @@ def check_search_group_string(path, text, problems):
                 "refuses it at install; use a bare <group>" % (path, line))
 
 
+def check_template_primary(path, text, problems):
+    """`primary` on a <template> may only ever be "True".
+
+    Odoo validates every data file against import_xml.rng, where the
+    attribute is declared with a single permitted value. primary="False"
+    is well-formed XML and a valid-looking Odoo idiom, and it fails the
+    whole module install with "Element odoo has extra content: template" -
+    which names the FIRST template in the file, not the offending one.
+    An extension template simply omits the attribute. Cost one CI cycle
+    on 06/09/2026.
+    """
+    for match in re.finditer(r"<template[^>]*>", text, re.S):
+        tag = match.group(0)
+        found = re.search(r'primary="([^"]*)"', tag)
+        if found and found.group(1) != "True":
+            line = len(text[:match.start()].splitlines()) + 1
+            problems.append(
+                '%s:%d: template primary="%s" - the schema allows only '
+                '"True"; omit the attribute for an extension template'
+                % (path, line, found.group(1)))
+
+
 CHECKS = (check_renamed, check_inherited_view_groups, check_action_targets,
-          check_search_group_string)
+          check_search_group_string, check_template_primary)
 
 
 def main(argv):

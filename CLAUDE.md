@@ -221,6 +221,18 @@ Customs clearance job files for a logistics/clearance services provider.
   hard install failure, not a warning. A `res.config.settings` action sets no
   target at all and adds `'bin_size': False` to its context — copy
   `base_setup.action_general_configuration`, not a pre-19 module.
+- **`_get_name_invoice_report()` is a GUARD in Odoo 19, not a dispatch.**
+  `account.report_invoice` renders `account.report_invoice_document` only
+  `t-if` the method returns that exact name, so overriding it to return your
+  own template makes Send & Print produce a BLANK page. You must ALSO inherit
+  `account.report_invoice` and add your own `t-if`/`t-call` branch. Odoo names
+  the record `o`; a template that only knows `doc` dies on its path. Cost a
+  live report outage 06/09/2026.
+- **`primary` on a `<template>` may only ever be `"True"`.** `import_xml.rng`
+  declares a single permitted value, so `primary="False"` fails the whole
+  module install with "Element odoo has extra content: template" — naming the
+  FIRST template in the file, not the offending one. An extension template
+  omits the attribute. Guarded by `tools/check_view_pitfalls.py`.
 - **CI installs; production UPGRADES. They are different code paths.** A
   `translate=True` Char is stored as jsonb, and REMOVING `translate=True`
   does not convert an existing column - Odoo leaves it. A fresh install had

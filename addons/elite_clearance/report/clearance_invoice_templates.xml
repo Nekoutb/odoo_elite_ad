@@ -327,7 +327,7 @@
     branch here. This is that branch.
   -->
   <template id="report_invoice_clearance_branch"
-            inherit_id="account.report_invoice" primary="False">
+            inherit_id="account.report_invoice">
     <xpath expr="//t[@t-call='account.report_invoice_document']"
            position="after">
       <t t-if="o._get_name_invoice_report() == 'elite_clearance.report_clearance_invoice_document'"
