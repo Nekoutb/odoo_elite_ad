@@ -118,6 +118,10 @@ jobs:
 
       - name: Install both modules and run their tests
         shell: bash
+        env:
+          # the end-to-end test writes the rendered invoice here so
+          # the document itself can be looked at, not just described
+          CLEARANCE_INVOICE_DUMP: ${{ github.workspace }}/invoice_preview.html
         run: |
           set -euo pipefail
           odoo \
@@ -130,6 +134,14 @@ jobs:
             --log-level=test \
             --stop-after-init \
             2>&1 | tee odoo.log
+
+      - name: Keep the rendered invoice
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: invoice-preview
+          path: invoice_preview.html
+          if-no-files-found: warn
 
       - name: Fail on any test error in the log
         shell: bash
