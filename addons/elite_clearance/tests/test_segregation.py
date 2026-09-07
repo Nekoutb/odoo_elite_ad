@@ -107,7 +107,46 @@ class TestSegregationOfDuties(TransactionCase):
         with self.assertRaises(UserError):
             exp.with_user(self.ops).write({'journal_id': self.journal.id})
         with self.assertRaises(UserError):
-            exp.with_user(self.ops).write({'vendor_id': self.vendor.id})
+            exp.with_user(self.ops).write({'employee_id': False,
+                                           'payment_mode': 'cash'})
+
+    def test_04b_the_originator_names_who_is_paid(self):
+        """Who is paid is the spending team's knowledge; only HOW is
+        Finance's. Owner 06/09/2026: the vendor is picked in the capture
+        dialog."""
+        vals = self._vals()
+        vals['vendor_id'] = self.vendor.id
+        exp = self.env['logistics.expense'].with_user(self.ops).create(vals)
+        self.assertEqual(exp.vendor_id, self.vendor)
+        exp.with_user(self.ops).write({'vendor_id': False})
+        self.assertFalse(exp.vendor_id)
+
+    def test_04c_finance_may_turn_a_vendor_expense_into_an_advance(self):
+        """The originator named a vendor; Finance decides the money goes
+        out as a staff advance after all. The vendor and the holder grey
+        each other out on the form, so choosing 'advance' must clear the
+        vendor by itself - or Finance is locked between the two."""
+        from odoo.tests import Form
+        vals = self._vals()
+        vals['vendor_id'] = self.vendor.id
+        exp = self.env['logistics.expense'].with_user(self.ops).create(vals)
+        exp.with_user(self.ops).action_submit()
+        exp.with_user(self.cs_manager).action_approve()
+        holder = self.env['hr.employee'].create({'name': "Advance Holder S"})
+        with Form(exp.with_user(self.finance)) as form:
+            form.payment_mode = 'advance'
+            self.assertFalse(form.vendor_id, "choosing an advance drops the vendor")
+            form.employee_id = holder          # no longer greyed out
+        self.assertEqual(exp.payment_mode, 'advance')
+        self.assertEqual(exp.employee_id, holder)
+        self.assertFalse(exp.vendor_id)
+        # and back: a cash payment has a vendor, not a holder
+        with Form(exp.with_user(self.finance)) as form:
+            form.payment_mode = 'cash'
+            self.assertFalse(form.employee_id)
+            form.vendor_id = self.vendor
+        self.assertEqual(exp.vendor_id, self.vendor)
+        self.assertFalse(exp.employee_id)
 
     # -- who approves -----------------------------------------------------
     def test_05_a_team_manager_approves_not_the_general_manager(self):

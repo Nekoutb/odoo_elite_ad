@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- web.Many2ManyBinaryField with a ref on its root (the drop zone
+         hangs off it) and a hint beside the Upload button. The attachment
+         cards are the standard sub-template, unchanged. -->
+    <t t-name="elite_clearance.ExpenseDocumentsField">
+        <div t-ref="root" t-attf-class="oe_fileupload o_clearance_documents {{props.className ? props.className : ''}}" aria-atomic="true">
+            <div class="o_attachments">
+                <t t-foreach="files" t-as="file" t-key="file_index">
+                    <t t-call="web.Many2ManyBinaryField.attachment_preview"/>
+                </t>
+            </div>
+            <div t-if="!props.readonly &amp;&amp; (!props.numberOfFiles or files.length &lt; props.numberOfFiles)"
+                 class="oe_add d-flex align-items-center gap-2">
+                <FileInput
+                    acceptedFileExtensions="props.acceptedFileExtensions"
+                    multiUpload="true"
+                    onUpload.bind="onFileUploaded"
+                    resModel="props.record.resModel"
+                    resId="props.record.resId or 0"
+                >
+                    <button class="btn btn-secondary o_attach" data-tooltip="Attach">
+                        <span class="fa fa-paperclip" aria-label="Attach"/> <t t-esc="uploadText"/>
+                    </button>
+                </FileInput>
+                <span class="text-muted small o_clearance_documents_hint">or drop files anywhere on this dialog</span>
+            </div>
+        </div>
+    </t>
+
+</templates>

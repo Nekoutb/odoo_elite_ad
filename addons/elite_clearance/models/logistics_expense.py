@@ -12,8 +12,11 @@ FINANCE_GROUP = 'elite_clearance.group_clearance_finance'
 
 # How an expense is paid is Finance's decision alone. An originating team
 # submits WITHOUT these; Finance fills them in once the expense is approved,
-# and the Finance Manager signs them before any money moves.
-SETTLEMENT_FIELDS = ('payment_mode', 'journal_id', 'vendor_id', 'employee_id')
+# and the Finance Manager signs them before any money moves. WHO is paid is
+# not in the list: the team that incurred the cost knows the terminal, the
+# shipping line or the transporter it dealt with, and names it when keying
+# (owner, 06/09/2026). Finance may still correct it at settlement.
+SETTLEMENT_FIELDS = ('payment_mode', 'journal_id', 'employee_id')
 
 
 class LogisticsExpenseCategory(models.Model):
@@ -39,9 +42,10 @@ class LogisticsExpense(models.Model):
     Lifecycle:
         draft -> submitted             an originating team (never Finance)
               -> approved              a team manager; lands with Finance
-              -> settlement_submitted  Finance keyed mode, vendor/holder and
-                                       journal and sent it to the Finance
-                                       Manager
+              -> settlement_submitted  Finance keyed mode and journal,
+                                       the holder for an advance, confirmed
+                                       the vendor the originator named, and
+                                       sent it to the Finance Manager
               -> settlement_approved   the Finance Manager signed it
               -> settled               the Cashier (till) or Treasury (bank)
                                        paid it out
@@ -86,7 +90,8 @@ class LogisticsExpense(models.Model):
     vendor_id = fields.Many2one(
         'res.partner', string="Paid To (Vendor)", tracking=True,
         help="The third party ultimately receiving the money — customs, "
-             "terminal, shipping line, transporter.")
+             "terminal, shipping line, transporter. Named by the team that "
+             "keys the expense; Finance may correct it at settlement.")
     payment_mode = fields.Selection(
         [('cash', "Cash"),
          ('electronic', "Electronic (bank / mobile money)"),
@@ -103,6 +108,16 @@ class LogisticsExpense(models.Model):
     employee_id = fields.Many2one(
         'hr.employee', string="Advance Holder", tracking=True,
         help="Employee who receives the cash advance and must justify it.")
+    # The receipts and invoices behind the expense, as a field so the
+    # capture dialog can take them - dropped on the dialog or picked with
+    # Upload. Computed from the attachments that already point at the
+    # expense (the chatter's included) and inversed by pointing new ones
+    # at it, so there is ONE set of documents whichever way they arrived.
+    attachment_ids = fields.Many2many(
+        'ir.attachment', string="Documents",
+        compute='_compute_attachment_ids', inverse='_inverse_attachment_ids',
+        help="Receipts, invoices, tickets. Drop files anywhere on the "
+             "expense dialog, or use Upload.")
     state = fields.Selection(
         [('draft', "Draft"),
          ('submitted', "Submitted"),
@@ -135,8 +150,8 @@ class LogisticsExpense(models.Model):
         help="When the team manager approved it.")
     date_settlement_submitted = fields.Datetime(
         string="Sent to Finance Manager On", readonly=True, copy=False,
-        help="When Finance had keyed the payment mode, the counterparty and "
-             "the journal, and sent it for approval.")
+        help="When Finance had keyed the payment mode and the journal, "
+             "confirmed the counterparty, and sent it for approval.")
     date_settlement_approved = fields.Datetime(
         string="Settlement Approved On", readonly=True, copy=False,
         help="When the Finance Manager approved how it would be paid.")
@@ -194,6 +209,53 @@ class LogisticsExpense(models.Model):
                 or (exp.state == 'settled' and exp.payment_mode != 'advance')
                 or exp.state == 'cancel')
 
+    def _compute_attachment_ids(self):
+        Attachment = self.env['ir.attachment']
+        by_expense = {}
+        real = self.filtered(lambda e: isinstance(e.id, int))
+        if real:
+            for att in Attachment.search([
+                    ('res_model', '=', self._name),
+                    ('res_id', 'in', real.ids),
+                    ('res_field', '=', False)]):
+                by_expense.setdefault(att.res_id, []).append(att.id)
+        for exp in self:
+            exp.attachment_ids = Attachment.browse(
+                by_expense.get(exp.id, []) if isinstance(exp.id, int) else [])
+
+    def _inverse_attachment_ids(self):
+        """Adopt what was added; delete what was taken away.
+
+        A file dropped on the dialog is uploaded against the model with no
+        record yet (res_id 0) and then linked here. Pointing it at the
+        expense is what puts it in the chatter, in the justification
+        count and on the documents-received stamp. One removed with the
+        widget's cross is deleted: the person who dropped the wrong file
+        meant it gone, not orphaned.
+        """
+        Attachment = self.env['ir.attachment']
+        for exp in self:
+            current = Attachment.search([
+                ('res_model', '=', self._name), ('res_id', '=', exp.id),
+                ('res_field', '=', False)])
+            wanted = exp.attachment_ids
+            added = wanted - current
+            if added:
+                added.write({'res_model': self._name, 'res_id': exp.id})
+                exp._stamp_documents_received()
+            removed = current - wanted
+            if removed:
+                removed.unlink()
+
+    def _stamp_documents_received(self):
+        """The first document's arrival dates itself, once."""
+        now = fields.Datetime.now()
+        # sudo(): the stamp is the system recording a fact, not the
+        # uploader choosing to write on the expense.
+        for exp in self.sudo().exists():
+            if not exp.date_documents_submitted:
+                exp.date_documents_submitted = now
+
     @api.constrains('vendor_id', 'employee_id', 'payment_mode')
     def _check_one_counterparty(self):
         """Money goes to a vendor or to a staff member, never to both.
@@ -227,6 +289,37 @@ class LogisticsExpense(models.Model):
                     "(%s). Create the employee first, then hand over the "
                     "money.", exp.name))
 
+    @api.onchange('payment_mode')
+    def _onchange_payment_mode(self):
+        """One counterparty per mode: an advance has a holder, a cash or
+        electronic payment has a vendor.
+
+        The originator names the vendor when keying; Finance may then
+        decide the money goes out as a staff advance. The two fields grey
+        each other out, so without this the form would lock Finance
+        between a vendor it cannot clear and a holder it cannot set.
+        Switching mode drops the other counterparty - visibly, with a
+        warning, never silently.
+        """
+        if self.payment_mode == 'advance' and self.vendor_id:
+            dropped = self.vendor_id.display_name
+            self.vendor_id = False
+            return {'warning': {
+                'title': self.env._("Vendor cleared"),
+                'message': self.env._(
+                    "%s was named as the vendor. A staff advance has a "
+                    "holder instead, so the vendor has been cleared - pick "
+                    "the employee who receives the money.", dropped)}}
+        if self.payment_mode in ('cash', 'electronic') and self.employee_id:
+            dropped = self.employee_id.display_name
+            self.employee_id = False
+            return {'warning': {
+                'title': self.env._("Advance holder cleared"),
+                'message': self.env._(
+                    "%s was named as the advance holder. A cash or "
+                    "electronic payment goes to a vendor instead, so the "
+                    "holder has been cleared.", dropped)}}
+
     def _check_originating_team(self):
         """Only a spending team keys an expense, and Finance never does.
 
@@ -250,11 +343,27 @@ class LogisticsExpense(models.Model):
                 "Only the Operations, Customer Service or Transit team may "
                 "enter an expense."))
 
+    def _settlement_value_changes(self, field, value):
+        """A blank sent for a blank, or a value equal to what is stored, is
+        not the originator deciding how the money leaves - it is the web
+        client serialising every field it shows. Only a real change is
+        Finance's to make."""
+        if not self:                          # create
+            return bool(value)
+        for rec in self:
+            current = rec[field]
+            if isinstance(current, models.BaseModel):
+                current = current.id
+            if (current or False) != (value or False):
+                return True
+        return False
+
     def _check_settlement_fields(self, vals):
-        """The payment mode, vendor, holder and journal are Finance's."""
+        """The payment mode, holder and journal are Finance's."""
         if self.env.su:
             return
-        touched = [f for f in SETTLEMENT_FIELDS if f in vals]
+        touched = [f for f in SETTLEMENT_FIELDS
+                   if f in vals and self._settlement_value_changes(f, vals[f])]
         if touched and not self.env.user.has_group(FINANCE_GROUP):
             raise UserError(self.env._(
                 "How an expense is paid is decided by Finance, not by the "

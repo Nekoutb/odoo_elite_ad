@@ -48,7 +48,8 @@ Each step is a different pair of hands:
 |---|---|
 | Key and submit | Operations, Customer Service or Transit team — **never Finance** |
 | Approve | Operations, Customer Service or Transit **Manager** |
-| Set how it is paid (cash / electronic / advance, vendor **or** holder, journal) and send it on | Finance — the originator cannot even see these fields |
+| Name who is paid (the vendor) | The team that keyed it, when keying; Finance may correct it at settlement |
+| Set how it is paid (cash / electronic / advance, holder for an advance, journal) and send it on | Finance — the originator cannot even see these fields |
 | Sign the settlement, or return it to Finance | Finance **Manager** |
 | Disburse cash / pay from the bank | **Cashier** (tills) / **Treasury** (bank, mobile money) |
 | Submit an advance's justification | Finance |

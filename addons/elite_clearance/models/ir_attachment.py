@@ -1,4 +1,4 @@
-from odoo import api, fields, models
+from odoo import api, models
 
 
 class IrAttachment(models.Model):
@@ -20,11 +20,6 @@ class IrAttachment(models.Model):
             if att.res_model == 'logistics.expense' and att.res_id
         }
         if ids:
-            # sudo(): the stamp is the system recording a fact, not the
-            # uploader choosing to write on the expense.
-            expenses = self.env['logistics.expense'].sudo().browse(sorted(ids))
-            now = fields.Datetime.now()
-            for expense in expenses.exists():
-                if not expense.date_documents_submitted:
-                    expense.date_documents_submitted = now
+            self.env['logistics.expense'].browse(
+                sorted(ids))._stamp_documents_received()
         return attachments

@@ -254,13 +254,29 @@ class TestExpenseCapture(TransactionCase):
                          "no workflow button belongs in a dialog")
 
     def test_02_the_capture_form_asks_only_what_an_originator_keys(self):
-        """Payment mode, journal, vendor and holder are Finance's."""
+        """What was spent, to whom, and the receipt. How it is paid -
+        payment mode, journal, holder - is Finance's. The unit is not
+        asked for at all: it is "Par dossier" for every disbursement.
+        Owner spec 06/09/2026."""
+        from lxml import etree
         arch = self._capture_view().arch
-        for wanted in ("category_id", "description", "amount"):
+        for wanted in ('name="category_id"', 'name="description"',
+                       'name="amount"', 'name="vendor_id"',
+                       'name="attachment_ids"'):
             self.assertIn(wanted, arch, wanted)
-        for finance_only in ('name="payment_mode"', 'name="journal_id"',
-                             'name="vendor_id"', 'name="employee_id"'):
-            self.assertNotIn(finance_only, arch, finance_only)
+        self.assertNotIn('name="unit_label"', arch, "the unit is fixed")
+        self.assertNotIn('name="journal_id"', arch)
+        self.assertIn('widget="clearance_expense_documents"', arch,
+                      "the documents field is the drop-zone widget")
+        # payment mode and holder appear only to feed the vendor's readonly
+        # rule: invisible AND readonly, so the web client never sends them
+        tree = etree.fromstring(arch)
+        for helper in ('payment_mode', 'employee_id'):
+            nodes = tree.xpath("//field[@name='%s']" % helper)
+            self.assertTrue(nodes, helper)
+            for node in nodes:
+                self.assertEqual(node.get('invisible'), "1", helper)
+                self.assertEqual(node.get('readonly'), "1", helper)
 
     def test_03_the_file_list_opens_the_capture_form_not_the_workflow_one(self):
         form = self.env.ref('elite_clearance.logistics_file_view_form')

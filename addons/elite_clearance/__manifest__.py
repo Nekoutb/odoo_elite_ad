@@ -39,7 +39,7 @@ where no explicit approver list is set, the security groups apply.
     'author': "Elite Advisors",
     'website': "https://eliteadvisors.cm-ea.com",
     'category': 'Services/Clearance',
-    'version': '19.0.24.0.0',
+    'version': '19.0.25.0.0',
     'license': 'LGPL-3',
     'depends': ['base', 'mail', 'analytic', 'account', 'hr'],
     'data': [
@@ -79,6 +79,17 @@ where no explicit approver list is set, the security groups apply.
     'demo': [
         'demo/clearance_demo.xml',
     ],
+    'assets': {
+        # the expense dialog's documents field: many2many_binary plus a
+        # drop zone over the whole dialog
+        'web.assets_backend': [
+            'elite_clearance/static/src/expense_documents/**/*',
+        ],
+        # browser tests, loaded only when the server runs with --test-enable
+        'web.assets_tests': [
+            'elite_clearance/static/tests/tours/**/*',
+        ],
+    },
     'post_init_hook': 'seed_clearance_master_data',
     'application': True,
     'installable': True,

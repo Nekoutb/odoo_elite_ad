@@ -67,6 +67,20 @@ jobs:
         with:
           ref: prod
           path: prod-src
+      # The suite includes a browser test (tests/test_expense_dialog_tour.py):
+      # Odoo drives a headless Chrome through the expense dialog. The odoo:19
+      # image is Ubuntu noble, where apt's "chromium" is a snap stub with no
+      # browser in it, so Google's own deb is installed instead - its binary,
+      # google-chrome, is the first name odoo/tests/common.py looks for.
+      # Without a browser Odoo silently SKIPS the test, so a later step
+      # refuses a run in which it did not happen.
+      - name: Chrome for the browser test
+        shell: bash
+        run: |
+          apt-get update -qq
+          curl -fsSL -o /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends /tmp/chrome.deb python3-websocket > /dev/null
+          google-chrome --version
       - name: Install production's version
         shell: bash
         run: |
@@ -88,6 +102,20 @@ jobs:
             exit 1
           fi
           echo "upgrade path green"
+      - name: The browser test actually ran
+        shell: bash
+        run: |
+          if ! grep -q "Starting TestExpenseDialogTour\." upgrade.log; then
+            echo "::error::TestExpenseDialogTour never started"
+            exit 1
+          fi
+          # Odoo logs a skip as "skipped <Class>.<test> : <reason>"
+          if grep -Eq "skipped TestExpenseDialogTour\." upgrade.log; then
+            echo "::error::the browser test was skipped:"
+            grep -E "skipped TestExpenseDialogTour\.|Chrome executable not found|Chrome headless failed to start|websocket-client module is not installed" upgrade.log
+            exit 1
+          fi
+          echo "browser test ran"
       - name: Keep the upgrade log
         if: always()
         uses: actions/upload-artifact@v4
@@ -115,6 +143,21 @@ jobs:
           --health-retries 20
     steps:
       - uses: actions/checkout@v4
+
+      # The suite includes a browser test (tests/test_expense_dialog_tour.py):
+      # Odoo drives a headless Chrome through the expense dialog. The odoo:19
+      # image is Ubuntu noble, where apt's "chromium" is a snap stub with no
+      # browser in it, so Google's own deb is installed instead - its binary,
+      # google-chrome, is the first name odoo/tests/common.py looks for.
+      # Without a browser Odoo silently SKIPS the test, so a later step
+      # refuses a run in which it did not happen.
+      - name: Chrome for the browser test
+        shell: bash
+        run: |
+          apt-get update -qq
+          curl -fsSL -o /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends /tmp/chrome.deb python3-websocket > /dev/null
+          google-chrome --version
 
       - name: Install both modules and run their tests
         shell: bash
@@ -151,6 +194,20 @@ jobs:
             exit 1
           fi
           echo "suite green"
+      - name: The browser test actually ran
+        shell: bash
+        run: |
+          if ! grep -q "Starting TestExpenseDialogTour\." odoo.log; then
+            echo "::error::TestExpenseDialogTour never started"
+            exit 1
+          fi
+          # Odoo logs a skip as "skipped <Class>.<test> : <reason>"
+          if grep -Eq "skipped TestExpenseDialogTour\." odoo.log; then
+            echo "::error::the browser test was skipped:"
+            grep -E "skipped TestExpenseDialogTour\.|Chrome executable not found|Chrome headless failed to start|websocket-client module is not installed" odoo.log
+            exit 1
+          fi
+          echo "browser test ran"
 
       - name: Both modules' suites actually ran
         shell: bash

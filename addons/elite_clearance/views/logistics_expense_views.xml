@@ -52,17 +52,19 @@
                             <field name="category_id" readonly="state not in ('draft', 'submitted')"/>
                             <field name="description" readonly="state not in ('draft', 'submitted')"/>
                             <field name="amount" readonly="state not in ('draft', 'submitted')"/>
+                            <!-- Named by the team that keyed the expense, corrected
+                                 by Finance at settlement. Greyed out as a control:
+                                 money goes to a vendor OR to a staff member, never
+                                 to both, and a constraint enforces it too. -->
+                            <field name="vendor_id"
+                                   readonly="state not in ('draft', 'submitted', 'approved') or payment_mode == 'advance' or employee_id"
+                                   placeholder="who is paid - not used for a staff advance"
+                                   options="{'no_create': True}"/>
                             <field name="currency_id" invisible="1"/>
                             <field name="company_id" invisible="1"/>
                         </group>
                         <group string="Settlement (Finance)" groups="elite_clearance.group_clearance_finance">
                             <field name="payment_mode" widget="radio" readonly="state != 'approved'"/>
-                            <!-- Greyed out as a control: money goes to a vendor
-                                 OR to a staff member, never to both, and a
-                                 constraint enforces it server-side too. -->
-                            <field name="vendor_id"
-                                   readonly="state != 'approved' or payment_mode == 'advance' or employee_id"
-                                   placeholder="not used for a staff advance"/>
                             <field name="employee_id"
                                    required="payment_mode == 'advance'"
                                    readonly="state != 'approved' or payment_mode != 'advance' or vendor_id"
@@ -71,6 +73,9 @@
                             <field name="settlement_move_id" invisible="not settlement_move_id"/>
                             <field name="justification_move_id" invisible="not justification_move_id"/>
                         </group>
+                    </group>
+                    <group string="Documents">
+                        <field name="attachment_ids" widget="many2many_binary" nolabel="1" colspan="2"/>
                     </group>
                     <group string="Timeline">
                         <group>
@@ -101,9 +106,10 @@
     invocation") and left a phantom row behind. Capture happens here; the
     workflow happens on the record's own page.
 
-    An originator keys WHAT was spent. How it is paid - payment mode,
-    journal, vendor, advance holder - is Finance's, and is deliberately
-    absent from this form.
+    An originator keys WHAT was spent, to WHOM, and drops the receipt on
+    the dialog. How it is paid - payment mode, journal, advance holder - is
+    Finance's, and is deliberately absent from this form. The unit is not
+    offered: it is "Par dossier" for every disbursement (owner 06/09/2026).
   -->
   <record id="logistics_expense_view_capture_form" model="ir.ui.view">
     <field name="name">logistics.expense.capture.form</field>
@@ -112,24 +118,39 @@
     <field name="arch" type="xml">
       <form string="Out-of-Pocket Expense">
         <sheet>
+          <!-- Read by the vendor's readonly rule. readonly="1" as well as
+               invisible: the web client sends every editable field of a
+               new record, blanks included, and a blank payment mode sent
+               by an originator is refused by the Finance-only guard. -->
+          <field name="state" invisible="1" readonly="1"/>
+          <field name="employee_id" invisible="1" readonly="1"/>
+          <field name="payment_mode" invisible="1" readonly="1"/>
           <group>
             <group>
-              <field name="category_id"/>
-              <field name="description" placeholder="What the money was spent on"/>
-              <field name="unit_label"/>
+              <field name="category_id" readonly="state not in ('draft', 'submitted')"/>
+              <field name="description" placeholder="What the money was spent on"
+                     readonly="state not in ('draft', 'submitted')"/>
+              <field name="vendor_id" placeholder="who is paid, if known"
+                     readonly="state not in ('draft', 'submitted') or payment_mode == 'advance' or employee_id"
+                     options="{'no_create': True}"/>
             </group>
             <group>
-              <field name="amount"/>
+              <field name="amount" readonly="state not in ('draft', 'submitted')"/>
               <field name="currency_id" invisible="1"/>
               <field name="date_requested"/>
               <field name="file_id" invisible="1"/>
             </group>
           </group>
+          <separator string="Documents"/>
+          <!-- The widget makes the whole dialog a drop target: a receipt
+               dragged anywhere onto it is uploaded and listed here. -->
+          <field name="attachment_ids" widget="clearance_expense_documents"
+                 nolabel="1" colspan="2"/>
           <div class="alert alert-info" role="alert">
             Save this, then <strong>Submit</strong> it from the list. How it
-            gets paid - the payment mode, the journal, the vendor or the
-            advance holder - is keyed by Finance afterwards, on the
-            expense's own page.
+            gets paid - the payment mode, the journal or the advance
+            holder - is keyed by Finance afterwards, on the expense's own
+            page.
           </div>
         </sheet>
       </form>

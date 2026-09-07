@@ -32,9 +32,11 @@ Customs clearance job files for a logistics/clearance services provider.
   lines saved together; bulk override via the Set Received Date/Time wizard.
 - `logistics.expense` — out-of-pocket expenses. draft → submitted →
   approved → settlement_submitted → settlement_approved → settled
-  [→ justified, advances only]. Finance keys mode / vendor-or-holder /
-  journal on an `approved` expense and SENDS it
-  (`action_submit_settlement`); the Finance Manager approves or returns
+  [→ justified, advances only]. Finance keys mode / journal /
+  holder-for-an-advance on an `approved` expense, confirms or corrects
+  the vendor the originator named (`action_submit_settlement` still
+  refuses a cash/electronic expense with no vendor) and SENDS it; the
+  Finance Manager approves or returns
   (`action_return_settlement`); the money then leaves through the
   **Cashier** for a cash journal or **Treasury** for bank/mobile money
   (`_check_disburser` routes on `journal_id.type`; kinds `cash_disburse` /
@@ -48,11 +50,13 @@ Customs clearance job files for a logistics/clearance services provider.
   reopen). An expense is KEYED only by an originating team, never Finance
   (`_check_originating_team`, su-exempt so hooks/tests pass; admin is NOT
   exempt). It is APPROVED by any team manager. The settlement fields
-  (`payment_mode`, `journal_id`, `vendor_id`, `employee_id` —
-  `SETTLEMENT_FIELDS`) are Finance-only on create AND write; an originator
-  submits without them. Finance fills them on an `approved` expense, the
-  Finance Manager signs (`action_approve_settlement` → `settlement_approved`),
-  and only then can Finance settle. `payment_mode` has no default any more.
+  (`payment_mode`, `journal_id`, `employee_id` — `SETTLEMENT_FIELDS`) are
+  Finance-only on create AND write; an originator submits without them.
+  Finance fills them on an `approved` expense, the Finance Manager signs
+  (`action_approve_settlement` → `settlement_approved`), and only then can
+  Finance settle. `payment_mode` has no default any more. **`vendor_id` is
+  NOT a settlement field (owner 06/09/2026):** WHO is paid is the spending
+  team's knowledge, keyed in the capture dialog; only HOW is Finance's.
 - **Ops-close gate.** `action_close_operations` requires the caller to pass
   the `ops_close` approval (Operations Manager) AND `customs_fee_amount`
   non-zero — the fee is keyed by hand from the declaration and a file closed
@@ -171,6 +175,19 @@ Customs clearance job files for a logistics/clearance services provider.
    The row carries a Submit button and an Open button, so the workflow is
    one click away on the record's own page. Owner spec 06/09/2026: the
    inline editable row is gone.
+   **The dialog (owner 06/09/2026, second pass):** category, description,
+   amount, vendor, requested-on, and a Documents field — no unit (it is
+   "Par dossier" for every disbursement; the field keeps its default and
+   still prints). `attachment_ids` is a COMPUTED many2many over the
+   attachments pointing at the expense, inversed by pointing new ones at
+   it and deleting removed ones, so the dialog, the chatter and the
+   justification count see ONE set. The widget
+   `clearance_expense_documents` (`static/src/expense_documents/`) is
+   `many2many_binary` plus `useDropzone` over the enclosing
+   `.modal .o_form_view`: a file dropped anywhere on the dialog is posted
+   to `/web/binary/upload_attachment` exactly as the Upload button posts
+   it (`model`, `id` 0 for a new record, `csrf_token`, `ufile`) and
+   linked. Business fields go readonly past `submitted`, as on the page.
 - **The billing screen (owner spec, 03/09/2026).** `ops_closed` now reads
    "OK for Billing". The **Billing** button opens `logistics.billing.wizard`:
    a disbursement section (one row per `_billable_expenses()`, columns
@@ -230,6 +247,25 @@ Customs clearance job files for a logistics/clearance services provider.
 - **readonly fields in one2many lists are DROPPED on save for new rows**
   unless `force_save="1"` — this caused our worst bug. Always browser-test
   the real save path; unit tests run as admin and miss access errors.
+- **There IS a browser test now.** `tests/test_expense_dialog_tour.py`
+  (`HttpCase`) drives `static/tests/tours/expense_dialog_tour.js` in a
+  headless Chrome; CI installs Google's `google-chrome-stable` deb +
+  `python3-websocket` in both Odoo jobs (the odoo:19 image is Ubuntu
+  noble, where apt's `chromium` is a snap stub with no browser in it) and
+  FAILS a run in which the test was skipped, because Odoo only logs a
+  skip when Chrome is missing. Tour files live in
+  `web.assets_tests` (loaded only with `--test-enable`, never on
+  staging). Odoo 19 tour rules learnt writing it: a step's `run` function
+  is called with `this.anchor` = the trigger element; while a modal is
+  open every trigger must sit INSIDE it unless it starts with `body`;
+  triggers are hoot selectors (`:contains`, `:visible`, `:has`,
+  `:not`); `queryFirst` takes the first match. The drag is simulated with
+  one `DataTransfer` shared by the `dragenter` and `drop` events.
+- **A related `readonly=False` field is inversed ONE AT A TIME.** Each
+  becomes its own `write()` on the target, so a constraint on the target
+  that wants several fields together refuses the first write for the
+  ones not yet written. Use plain wizard fields and write them back in
+  one `write()` (the billing screen's shipment box does).
 - **Manifest data order is load order.** `%(action_x)d` in a view resolves at
   load time, so the file defining `action_x` must be listed first. The wizard
   view files therefore precede `views/logistics_file_views.xml`, and
