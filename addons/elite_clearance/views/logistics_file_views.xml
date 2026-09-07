@@ -190,11 +190,18 @@
                     <field name="expense_ids" readonly="state not in ('draft', 'in_progress')"
                            context="{'default_file_id': id,
                                      'form_view_ref': 'elite_clearance.logistics_expense_view_capture_form'}">
+                        <!-- No readonly on the columns. The list is not editable,
+                             so readonly changes nothing on screen - but a row keyed
+                             in the dialog is handed back to THIS list's modifiers
+                             when the dialog closes, and the file's save then drops
+                             every readonly column from the new row's create
+                             command. Category and description arrived NULL
+                             (browser test, 07/09/2026). -->
                         <list open_form_view="1"
                               decoration-muted="state == 'cancel' or is_legacy">
-                            <field name="name" readonly="1"/>
-                            <field name="category_id" readonly="1"/>
-                            <field name="description" readonly="1"/>
+                            <field name="name"/>
+                            <field name="category_id"/>
+                            <field name="description"/>
                             <field name="vendor_id" optional="show"/>
                             <field name="payment_mode" groups="elite_clearance.group_clearance_finance"/>
                             <field name="employee_id" optional="hide" groups="elite_clearance.group_clearance_finance"/>

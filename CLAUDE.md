@@ -247,6 +247,13 @@ Customs clearance job files for a logistics/clearance services provider.
 - **readonly fields in one2many lists are DROPPED on save for new rows**
   unless `force_save="1"` — this caused our worst bug. Always browser-test
   the real save path; unit tests run as admin and miss access errors.
+  **It also bites rows keyed in a DIALOG**: when the dialog closes,
+  `StaticList.validateExtendedRecord()` calls `_restoreActiveFields()`
+  and the row is serialised with the LIST's modifiers, not the form's.
+  The file's expense list had `readonly="1"` on category/description
+  (pointless on a non-editable list) and the browser test's row arrived
+  with both NULL (07/09/2026). Never put readonly on a column of a
+  non-editable x2many list; it does nothing visible and eats the value.
 - **There IS a browser test now.** `tests/test_expense_dialog_tour.py`
   (`HttpCase`) drives `static/tests/tours/expense_dialog_tour.js` in a
   headless Chrome; CI installs Google's `google-chrome-stable` deb +
