@@ -403,6 +403,42 @@ class TestBillingWizard(TransactionCase):
         self.file.action_mark_complete()
         self.assertEqual(self.file.state, 'done')
 
+    def test_34b_a_billed_invoice_is_cancelled_never_deleted(self):
+        """Every gate reads the file's two pointers, so a deleted half
+        would leave the survivor reading as the whole bill."""
+        wizard = self._wizard()
+        wizard.split_invoices = True
+        wizard.action_create_invoice()
+        debours = self.file.debours_invoice_id
+        debours.button_cancel()
+        with self.assertRaises(UserError):
+            debours.unlink()
+        self.assertTrue(debours.exists())
+        self.assertFalse(self.file.bill_stands, "the half is still missing")
+        with self.assertRaises(UserError):
+            self.file.invoice_id.unlink()
+
+    def test_34c_the_standing_half_cannot_be_re_negotiated(self):
+        """Only the missing half is issued, so a change to the standing
+        side would be recorded on the file and printed nowhere."""
+        wizard = self._wizard()
+        wizard.split_invoices = True
+        wizard.action_create_invoice()
+        services = self.file.invoice_id
+        self.file.debours_invoice_id.button_cancel()
+        again = self._wizard()
+        self.assertEqual(again.reissue_kind, 'debours')
+        again.customs_fee_amount = 45000          # the standing side
+        with self.assertRaises(UserError) as caught:
+            again.action_create_invoice()
+        self.assertIn(services.name, str(caught.exception))
+        self.assertEqual(self.file.customs_fee_amount, 30000,
+                         "the frozen side is not recorded either")
+        again.customs_fee_amount = 30000
+        again.action_create_invoice()
+        self.assertEqual(self.file.invoice_id, services)
+        self.assertEqual(self.file.debours_invoice_id.amount_total, 100000)
+
     def test_35_the_services_half_can_be_issued_again_too(self):
         wizard = self._wizard()
         wizard.split_invoices = True

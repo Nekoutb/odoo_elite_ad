@@ -306,7 +306,8 @@ class LogisticsFile(models.Model):
     recharge_approved_date = fields.Datetime(readonly=True, copy=False)
     recharge_requested_date = fields.Datetime(readonly=True, copy=False)
     invoice_id = fields.Many2one(
-        'account.move', string="Client Invoice", readonly=True, copy=False)
+        'account.move', string="Client Invoice", readonly=True, copy=False,
+        ondelete='restrict')
     invoice_state = fields.Selection(related='invoice_id.state', string="Invoice Status")
     # A split bill (owner 07/09/2026): the disbursements on one invoice, the
     # services on another. `invoice_id` is then the SERVICES invoice and
@@ -315,7 +316,7 @@ class LogisticsFile(models.Model):
     # same way as a plain one.
     debours_invoice_id = fields.Many2one(
         'account.move', string="Disbursements Invoice", readonly=True,
-        copy=False,
+        copy=False, ondelete='restrict',
         help="Set only when the bill was split: the invoice carrying the "
              "out-of-pocket expenses alone, without VAT. The commission and "
              "fees are then on the Client Invoice.")
@@ -521,11 +522,11 @@ class LogisticsFile(models.Model):
         cancelled - the only case in which billing issues a single side
         again, leaving the standing one (posted or not) untouched."""
         self.ensure_one()
-        sides = self._bill_sides()
-        live = sides.filtered(lambda move: move.state != 'cancel')
-        if len(sides) == 2 and len(live) == 1:
-            return live
-        return self.env['account.move']
+        if not self.billing_split:
+            return self.env['account.move']
+        live = self._bill_sides().filtered(
+            lambda move: move.state != 'cancel')
+        return live if len(live) == 1 else self.env['account.move']
 
     # The buttons, the My Tasks queue and the actions all read these two,
     # so a split bill answers "billed?" and "posted?" as ONE bill: a
@@ -544,9 +545,11 @@ class LogisticsFile(models.Model):
         for file in self:
             sides = file._bill_sides()
             live = sides.filtered(lambda move: move.state != 'cancel')
-            file.bill_stands = bool(file.invoice_id) and len(live) == len(sides)
-            file.invoices_posted = bool(file.invoice_id) and all(
-                move.state == 'posted' for move in sides)
+            whole = len(sides) == (2 if file.billing_split else 1)
+            file.bill_stands = (bool(file.invoice_id) and whole
+                                and len(live) == len(sides))
+            file.invoices_posted = (bool(file.invoice_id) and whole and all(
+                move.state == 'posted' for move in sides))
 
     @api.depends('documents_complete', 'waiver_state')
     def _compute_can_start(self):
@@ -1236,6 +1239,7 @@ class LogisticsFile(models.Model):
             reissue = ('services' if standing.clearance_invoice_kind == 'debours'
                        else 'debours')
             split = True
+            self._check_standing_half(standing, debours, services)
         if self.recharge_state in ('requested', 'ops_approved'):
             raise UserError(self.env._(
                 "The recharge adjustment on %s is still awaiting approval.",
@@ -1405,6 +1409,30 @@ class LogisticsFile(models.Model):
                 "holder, to recover separately.",
                 amount=self.unjustified_advance_total))
         return invoices
+
+    def _check_standing_half(self, standing, debours, services):
+        """The half that stands cannot be re-negotiated.
+
+        Only the missing half is issued again, so anything the biller
+        changed on the OTHER side would be recorded on the file and
+        printed nowhere. A disbursements invoice carries no tax, so its
+        untaxed total IS the recharge it was issued at; a services
+        invoice's untaxed total is what its lines came to.
+        """
+        self.ensure_one()
+        currency = self.currency_id
+        if standing.clearance_invoice_kind == 'debours':
+            now, label = self._recharge_total(), self.env._("disbursements")
+        else:
+            now = sum(line['amount'] for line in services)
+            label = self.env._("services")
+        if currency.compare_amounts(standing.amount_untaxed, now):
+            raise UserError(self.env._(
+                "The %(side)s invoice %(inv)s stands at %(was)s and the "
+                "screen now comes to %(now)s. Cancel it as well to bill "
+                "%(side)s differently, or put the figure back.",
+                side=label, inv=standing.name,
+                was=standing.amount_untaxed, now=now))
 
     def _invoices_action(self, invoices):
         """Open what billing produced: the invoice, or the pair."""

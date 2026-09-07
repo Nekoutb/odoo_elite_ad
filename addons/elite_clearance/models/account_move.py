@@ -54,6 +54,28 @@ class AccountMove(models.Model):
          ('services', "Services only")],
         string="Clearance Invoice Kind", copy=False, readonly=True)
 
+    @api.ondelete(at_uninstall=False)
+    def _clearance_keep_billed_invoices(self):
+        """A file's invoice is cancelled, never deleted.
+
+        The file names one invoice, or the two halves of a split bill, and
+        every gate - billed? posted? which half is missing? - reads those
+        pointers. Deleting one would leave the survivor reading as the
+        whole bill. The foreign key refuses it anyway; this says why.
+        """
+        files = self.env['logistics.file'].sudo().search(
+            ['|', ('invoice_id', 'in', self.ids),
+             ('debours_invoice_id', 'in', self.ids)])
+        if files:
+            raise UserError(self.env._(
+                "%(inv)s is the invoice of clearance file %(file)s. Cancel "
+                "it if it should not stand - the file keeps it as the "
+                "record of what was billed.",
+                inv=", ".join(self.filtered(
+                    lambda m: m in files.invoice_id | files.debours_invoice_id
+                ).mapped('name')),
+                file=", ".join(files.mapped('name'))))
+
     def _clearance_analytic_distribution(self):
         """The file's analytic account as a distribution, or False."""
         self.ensure_one()

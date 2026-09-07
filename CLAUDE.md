@@ -229,6 +229,14 @@ Customs clearance job files for a logistics/clearance services provider.
    between documents (the legacy CSS property — wkhtmltopdf's WebKit
    does not know `break-before`); `test_clearance_invoice_print.test_32`
    counts the pages through the real wkhtmltopdf.
+   Both pointers are `ondelete='restrict'` and `account.move` has an
+   `@api.ondelete` saying why: every gate reads them, so a DELETED half
+   would leave the survivor reading as the whole bill (found by review,
+   07/09/2026). While a half stands, its side is frozen —
+   `_check_standing_half()` refuses to issue the other half against
+   figures the standing one does not carry (a debours invoice has no
+   tax, so its untaxed total IS the recharge it was issued at), and
+   `_persist()` writes back only the side being issued.
    **Four gates, ONE group (06/09/2026):** the Billing / Resume Billing /
    Request Reopening / Mark Complete buttons, `APPROVAL_KINDS['billing']`,
    the wizard's ACL rows and `clearance.task.KIND_GROUPS['billing']` all

@@ -250,7 +250,7 @@ class LogisticsBillingWizard(models.TransientModel):
     @api.depends('debours_line_ids.amount_engaged',
                  'debours_line_ids.amount_recharged',
                  'service_line_ids.amount', 'commission_rate',
-                 'customs_fee_amount',
+                 'customs_fee_amount', 'reissue_kind',
                  'file_id.recharge_state', 'file_id.recharge_amount')
     def _compute_totals(self):
         for wizard in self:
@@ -285,6 +285,12 @@ class LogisticsBillingWizard(models.TransientModel):
                 file.recharge_state == 'approved'
                 and not file.currency_id.compare_amounts(
                     file.recharge_amount, recharged))
+            # While the disbursements invoice stands, its figures cannot
+            # move: the screen is only here to issue the services half, and
+            # _check_standing_half refuses anything else outright.
+            if wizard.reissue_kind == 'services':
+                wizard.needs_review = False
+                continue
             wizard.needs_review = bool(
                 file.currency_id.compare_amounts(recharged, engaged)
                 and not settled)
@@ -298,22 +304,33 @@ class LogisticsBillingWizard(models.TransientModel):
         discounted, and by how much, is worth knowing later.
         """
         self.ensure_one()
-        for line in self.debours_line_ids:
-            if line.expense_id:
-                line.expense_id.recharge_amount = line.amount_recharged
+        # A standing half's side is not the biller's to record: only the
+        # half being issued is written back.
+        frozen = {'services': 'debours',
+                  'debours': 'services'}.get(self.reissue_kind)
+        if frozen != 'debours':
+            for line in self.debours_line_ids:
+                if line.expense_id:
+                    line.expense_id.recharge_amount = line.amount_recharged
         recharged = self.debours_recharged_total
         at_cost = not self.file_id.currency_id.compare_amounts(
             recharged, self.debours_engaged_total)
         vals = {
-            'recharge_amount': 0.0 if at_cost else recharged,
-            'recharge_reason': self.review_reason or False,
-            'billing_commission_rate': self.commission_rate,
-            'customs_fee_amount': self.customs_fee_amount,
             'advance_had_amount': self.advance_had_amount,
             'advance_had_vat_amount': self.advance_had_vat_amount,
             'advance_other_amount': self.advance_other_amount,
             'billing_split': self.split_invoices,
         }
+        if frozen != 'debours':
+            vals.update({
+                'recharge_amount': 0.0 if at_cost else recharged,
+                'recharge_reason': self.review_reason or False,
+            })
+        if frozen != 'services':
+            vals.update({
+                'billing_commission_rate': self.commission_rate,
+                'customs_fee_amount': self.customs_fee_amount,
+            })
         # The shipment details go back in the same write, and only those
         # that changed: the file's constraint wants all three together,
         # and a set left blank must not stop a review from being sent -
