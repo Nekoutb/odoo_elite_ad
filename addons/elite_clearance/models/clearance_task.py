@@ -177,10 +177,13 @@ class ClearanceTask(models.Model):
             file_task % dict(
                 offset=13, kind='billing',
                 detail="'OK for billing'", amount='f.oop_total',
-                # a cancelled invoice is no invoice: the file is billed again
-                where="f.state = 'ops_closed' AND NOT EXISTS ("
-                      "SELECT 1 FROM account_move m WHERE m.id = f.invoice_id "
-                      "AND m.state <> 'cancel')"),
+                # a cancelled invoice is no invoice: the file is billed
+                # again - and a split bill with one half cancelled has
+                # that half to issue again (logistics.file.bill_stands)
+                where="f.state = 'ops_closed' AND (f.invoice_id IS NULL OR EXISTS ("
+                      "SELECT 1 FROM account_move m "
+                      "WHERE m.id IN (f.invoice_id, f.debours_invoice_id) "
+                      "AND m.state = 'cancel'))"),
             # a proposed revenue line, waiting for Operations to allow it
             """
             SELECT (14 * 10000000 + s.id) AS id,

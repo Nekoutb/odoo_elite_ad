@@ -52,22 +52,24 @@
                             groups="elite_clearance.group_clearance_ops_manager"/>
                     <!-- Gated on the SAME group as the action, the wizard's access
                          rule and the My Tasks queue. When those disagreed the dialog
-                         vanished for Billing and refused Finance (06/09/2026). A
-                         cancelled invoice does not hide them: the file may be billed
-                         again. -->
+                         vanished for Billing and refused Finance (06/09/2026).
+                         bill_stands is the one answer to "is it billed?": a cancelled
+                         invoice does not hide the buttons, nor does a split bill with
+                         one half cancelled - that half is issued again. -->
                     <button name="action_open_billing" type="object" string="Billing"
                             class="oe_highlight"
-                            invisible="state != 'ops_closed' or (invoice_id and invoice_state != 'cancel') or recharge_state == 'approved'"
+                            invisible="state != 'ops_closed' or bill_stands or recharge_state == 'approved'"
                             groups="elite_clearance.group_clearance_billing"/>
                     <button name="action_open_billing" type="object" string="Resume Billing"
                             class="oe_highlight"
-                            invisible="state != 'ops_closed' or (invoice_id and invoice_state != 'cancel') or recharge_state != 'approved'"
+                            invisible="state != 'ops_closed' or bill_stands or recharge_state != 'approved'"
                             groups="elite_clearance.group_clearance_billing"/>
                     <button name="action_preview_invoice" type="object"
                             string="Preview Invoice" invisible="not invoice_id"
                             groups="account.group_account_invoice,account.group_account_readonly"/>
+                    <!-- both invoices of a split bill: a file is completed whole -->
                     <button name="action_mark_complete" type="object" string="Mark Complete"
-                            invisible="state != 'ops_closed' or invoice_state != 'posted'"
+                            invisible="state != 'ops_closed' or not invoices_posted"
                             groups="elite_clearance.group_clearance_billing"/>
                     <button name="%(action_logistics_reopen_wizard)d" type="action" string="Reopen (Approval)"
                             invisible="state not in ('ops_closed', 'done')"
@@ -85,6 +87,8 @@
                     <field name="can_start" invisible="1"/>
                     <field name="invoice_id" invisible="1"/>
                     <field name="invoice_state" invisible="1"/>
+                    <field name="bill_stands" invisible="1"/>
+                    <field name="invoices_posted" invisible="1"/>
                     <field name="documents_complete" invisible="1"/>
 
                     <div class="alert alert-warning" role="alert"
@@ -247,6 +251,9 @@
                         <group>
                             <field name="invoice_id" readonly="1"/>
                             <field name="invoice_state" readonly="1" invisible="not invoice_id"/>
+                            <field name="billing_split" readonly="1" invisible="not billing_split"/>
+                            <field name="debours_invoice_id" readonly="1" invisible="not debours_invoice_id"/>
+                            <field name="debours_invoice_state" readonly="1" invisible="not debours_invoice_id"/>
                             <field name="reopen_count" readonly="1" invisible="not reopen_count"/>
                         </group>
                     </group>

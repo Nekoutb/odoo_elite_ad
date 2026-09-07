@@ -43,6 +43,17 @@ class AccountMove(models.Model):
     # ------------------------------------------------------------------
     # analytic: the file number on every line that reaches the ledger
     # ------------------------------------------------------------------
+    # Which part of a clearance bill this invoice is. An unsplit bill
+    # carries everything ('full'); a split bill (owner 07/09/2026) issues
+    # one 'debours' invoice - the out-of-pocket expenses, no VAT - and one
+    # 'services' invoice for the commission and fees, with VAT. The printed
+    # document reads it to leave out the rows that do not apply.
+    clearance_invoice_kind = fields.Selection(
+        [('full', "Disbursements and services"),
+         ('debours', "Disbursements only"),
+         ('services', "Services only")],
+        string="Clearance Invoice Kind", copy=False, readonly=True)
+
     def _clearance_analytic_distribution(self):
         """The file's analytic account as a distribution, or False."""
         self.ensure_one()
@@ -186,6 +197,35 @@ class AccountMove(models.Model):
         if chosen:
             return chosen
         return self.company_id.partner_id.bank_ids[:2]
+
+    def _clearance_advances(self):
+        """The client's advances this invoice deducts: (HAD/DAU, VAT on
+        HAD/DAU, other), each None when the row does not belong on it.
+
+        An advance on the HAD/DAU - and the VAT on it - is an advance on the
+        SERVICES; "other advances" are funds the client put up for the
+        disbursements. An unsplit invoice deducts all three, rows printed
+        even at zero as the model document does; a split invoice deducts
+        its own side's and omits the other rows.
+        """
+        self.ensure_one()
+        file = self.logistics_file_id
+        kind = self.clearance_invoice_kind or 'full'
+        return (
+            file.advance_had_amount if kind != 'debours' else None,
+            file.advance_had_vat_amount if kind != 'debours' else None,
+            file.advance_other_amount if kind != 'services' else None,
+        )
+
+    def _clearance_advance_total(self):
+        self.ensure_one()
+        return sum(amount for amount in self._clearance_advances() if amount)
+
+    def _clearance_prints_vat(self):
+        """A disbursements-only invoice carries no VAT and shows no VAT
+        row; every other clearance invoice shows it, at zero if need be."""
+        self.ensure_one()
+        return (self.clearance_invoice_kind or 'full') != 'debours'
 
 
 class AccountMoveLine(models.Model):

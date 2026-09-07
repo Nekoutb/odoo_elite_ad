@@ -224,6 +224,12 @@ class LogisticsFile(models.Model):
         string="Billed Commission Rate (%)", digits=(6, 3), readonly=True,
         help="The rate the billing agent actually used, kept once the file "
              "is billed. Zero means the service type's own rate was used.")
+    billing_split = fields.Boolean(
+        string="Split the bill", readonly=True, copy=False,
+        help="Chosen on the billing screen: the disbursements on one "
+             "invoice (no VAT), the commission and fees on another. Kept "
+             "across a recharge review so Resume Billing issues what was "
+             "asked for.")
     commission_amount = fields.Monetary(
         compute='_compute_fee_amounts', store=True, currency_field='currency_id',
         string="Commission (on OOP)")
@@ -302,6 +308,20 @@ class LogisticsFile(models.Model):
     invoice_id = fields.Many2one(
         'account.move', string="Client Invoice", readonly=True, copy=False)
     invoice_state = fields.Selection(related='invoice_id.state', string="Invoice Status")
+    # A split bill (owner 07/09/2026): the disbursements on one invoice, the
+    # services on another. `invoice_id` is then the SERVICES invoice and
+    # this is the other one; unsplit, it stays empty. Everything that asks
+    # "is the file billed?" reads invoice_id, so a split file answers the
+    # same way as a plain one.
+    debours_invoice_id = fields.Many2one(
+        'account.move', string="Disbursements Invoice", readonly=True,
+        copy=False,
+        help="Set only when the bill was split: the invoice carrying the "
+             "out-of-pocket expenses alone, without VAT. The commission and "
+             "fees are then on the Client Invoice.")
+    debours_invoice_state = fields.Selection(
+        related='debours_invoice_id.state',
+        string="Disbursements Invoice Status")
     invoice_ids = fields.One2many(
         'account.move', 'logistics_file_id', string="Client Invoices",
         domain=[('move_type', 'in', ('out_invoice', 'out_refund'))])
@@ -471,17 +491,64 @@ class LogisticsFile(models.Model):
             file.commission_amount = file.currency_id.round(
                 file.oop_total * (file.service_type_id.commission_rate or 0.0) / 100.0)
 
-    @api.depends('documents_complete', 'waiver_state')
-    @api.depends('invoice_id.amount_total', 'advance_had_amount',
-                 'advance_had_vat_amount', 'advance_other_amount')
+    @api.depends('invoice_id.amount_total', 'invoice_id.state',
+                 'debours_invoice_id.amount_total', 'debours_invoice_id.state',
+                 'advance_had_amount', 'advance_had_vat_amount',
+                 'advance_other_amount')
     def _compute_invoice_balance_due(self):
-        """What the client still owes once their advances come off."""
+        """What the client still owes once their advances come off - over
+        the one invoice, or the two of a split bill."""
         for file in self:
-            total = file.invoice_id.amount_total if file.invoice_id else 0.0
+            total = sum(file._client_invoices().mapped('amount_total'))
             file.invoice_balance_due = total - (
                 file.advance_had_amount + file.advance_had_vat_amount
                 + file.advance_other_amount)
 
+    def _bill_sides(self):
+        """The invoice(s) the current billing issued, cancelled or not:
+        one, or the two halves of a split bill - disbursements first."""
+        self.ensure_one()
+        return (self.debours_invoice_id | self.invoice_id).filtered(
+            lambda move: not move.is_legacy)
+
+    def _client_invoices(self):
+        """The same, cancelled ones excluded: what the client is owed on."""
+        self.ensure_one()
+        return self._bill_sides().filtered(lambda move: move.state != 'cancel')
+
+    def _standing_half(self):
+        """The one live half of a split bill whose other half was
+        cancelled - the only case in which billing issues a single side
+        again, leaving the standing one (posted or not) untouched."""
+        self.ensure_one()
+        sides = self._bill_sides()
+        live = sides.filtered(lambda move: move.state != 'cancel')
+        if len(sides) == 2 and len(live) == 1:
+            return live
+        return self.env['account.move']
+
+    # The buttons, the My Tasks queue and the actions all read these two,
+    # so a split bill answers "billed?" and "posted?" as ONE bill: a
+    # cancelled half means not billed and not posted. compute_sudo: the
+    # form is opened by agents with no accounting rights.
+    bill_stands = fields.Boolean(
+        compute='_compute_invoice_gates', compute_sudo=True,
+        help="Every invoice of the bill is live (draft or posted): there "
+             "is nothing left to issue.")
+    invoices_posted = fields.Boolean(
+        compute='_compute_invoice_gates', compute_sudo=True,
+        help="Every invoice of the bill is posted - both of a split bill.")
+
+    @api.depends('invoice_id.state', 'debours_invoice_id.state')
+    def _compute_invoice_gates(self):
+        for file in self:
+            sides = file._bill_sides()
+            live = sides.filtered(lambda move: move.state != 'cancel')
+            file.bill_stands = bool(file.invoice_id) and len(live) == len(sides)
+            file.invoices_posted = bool(file.invoice_id) and all(
+                move.state == 'posted' for move in sides)
+
+    @api.depends('documents_complete', 'waiver_state')
     def _compute_can_start(self):
         for file in self:
             file.can_start = file.documents_complete or file.waiver_state == 'approved'
@@ -1134,13 +1201,18 @@ class LogisticsFile(models.Model):
                 gap=chr(10) * 2,
                 missing=(chr(10) + "  - ").join(missing)))
 
-    def _create_client_invoice(self, debours, services):
-        """Build the client invoice from explicit lines.
+    def _create_client_invoice(self, debours, services, split=False):
+        """Build the client invoice from explicit lines - or two of them.
 
         `debours` are recharged AT COST so the out-of-pocket account clears
         in full; anything the client is charged above or below that is one
         further line in its own P&L account. `services` are the fee lines,
         which unlike disbursements keep their default taxes.
+
+        `split` (owner 07/09/2026) issues the disbursements on one invoice
+        and the services on another, each printed as the usual document:
+        the first carries no VAT at all, the second carries it on every
+        line. Returns the invoice, or the pair (disbursements first).
         """
         self.ensure_one()
         self._check_client_billable()
@@ -1149,11 +1221,21 @@ class LogisticsFile(models.Model):
         if self.state != 'ops_closed':
             raise UserError(self.env._(
                 "Close %s for operations before billing it.", self.name))
-        if self.invoice_id and self.invoice_id.state != 'cancel' \
-                and not self.invoice_id.is_legacy:
+        if self.bill_stands:
             raise UserError(self.env._(
                 "%(file)s already has invoice %(inv)s.",
-                file=self.name, inv=self.invoice_id.name or "in draft"))
+                file=self.name,
+                inv=", ".join(move.name or "in draft"
+                              for move in self._client_invoices())))
+        # One half of a split bill was cancelled and the other stands: only
+        # the missing half is issued again. The standing one - posted,
+        # perhaps - keeps its number and its lines.
+        standing = self._standing_half()
+        reissue = False
+        if standing:
+            reissue = ('services' if standing.clearance_invoice_kind == 'debours'
+                       else 'debours')
+            split = True
         if self.recharge_state in ('requested', 'ops_approved'):
             raise UserError(self.env._(
                 "The recharge adjustment on %s is still awaiting approval.",
@@ -1179,14 +1261,15 @@ class LogisticsFile(models.Model):
         analytic = ({str(self.analytic_account_id.id): 100}
                     if self.analytic_account_id else False)
 
-        lines = []
+        debours_lines = []
+        service_lines = []
         if debours:
-            lines.append(fields.Command.create({
+            debours_lines.append(fields.Command.create({
                 'display_type': 'line_section',
                 'name': self.env._("Out-of-pocket expenses recharged at cost"),
             }))
         for line in debours:
-            lines.append(fields.Command.create({
+            debours_lines.append(fields.Command.create({
                 'name': line['name'],
                 'quantity': 1.0,
                 'price_unit': line['amount'],
@@ -1225,7 +1308,7 @@ class LogisticsFile(models.Model):
                     "Configure the %s account under Clearance → "
                     "Configuration → Settings before billing an adjusted "
                     "recharge.", missing))
-            lines.append(fields.Command.create({
+            debours_lines.append(fields.Command.create({
                 'name': label,
                 'quantity': 1.0,
                 'price_unit': adjustment,
@@ -1235,7 +1318,7 @@ class LogisticsFile(models.Model):
             }))
 
         if services:
-            lines.append(fields.Command.create({
+            service_lines.append(fields.Command.create({
                 'display_type': 'line_section',
                 'name': self.env._("Service fees"),
             }))
@@ -1246,7 +1329,7 @@ class LogisticsFile(models.Model):
         # the invoice does not change meaning when an account does.
         service_taxes = self.company_id.clearance_service_tax_ids
         for line in services:
-            lines.append(fields.Command.create({
+            service_lines.append(fields.Command.create({
                 'name': line['name'],
                 'quantity': 1.0,
                 'price_unit': line['amount'],
@@ -1257,39 +1340,94 @@ class LogisticsFile(models.Model):
                 'analytic_distribution': analytic,
             }))
 
-        invoice = self.env['account.move'].create({
-            'move_type': 'out_invoice',
-            'journal_id': journal.id,
-            'logistics_file_id': self.id,
-            # The billing reference is imposed rather than taken from the
-            # journal sequence: Elite Advisors numbers invoices per service
-            # type (EL26IM0001).
-            'name': self._next_reference('billing', self.service_type_id,
-                                         self.company_id),
-            'partner_id': self.partner_id.id,
-            'invoice_origin': self.name,
-            'ref': self.name,
-            'invoice_line_ids': lines,
-        })
-        self.invoice_id = invoice
+        def new_invoice(lines, kind):
+            return self.env['account.move'].create({
+                'move_type': 'out_invoice',
+                'journal_id': journal.id,
+                'logistics_file_id': self.id,
+                'clearance_invoice_kind': kind,
+                # The billing reference is imposed rather than taken from
+                # the journal sequence: Elite Advisors numbers invoices per
+                # service type (EL26IM0001). A split bill takes two numbers,
+                # one after the other.
+                'name': self._next_reference('billing', self.service_type_id,
+                                             self.company_id),
+                'partner_id': self.partner_id.id,
+                'invoice_origin': self.name,
+                'ref': self.name,
+                'invoice_line_ids': lines,
+            })
+
+        if split:
+            issue_debours = reissue != 'services'
+            issue_services = reissue != 'debours'
+            if (issue_debours and not debours) or (issue_services and not services):
+                raise UserError(self.env._(
+                    "Nothing to split on %s: a split bill needs both "
+                    "disbursements and services. Untick 'Split the bill' "
+                    "to issue one invoice.", self.name))
+            vals = {'billing_split': True}
+            invoices = self.env['account.move']
+            if issue_debours:
+                invoice = new_invoice(debours_lines, 'debours')
+                vals['debours_invoice_id'] = invoice.id
+                invoices |= invoice
+            if issue_services:
+                invoice = new_invoice(service_lines, 'services')
+                vals['invoice_id'] = invoice.id
+                invoices |= invoice
+            self.write(vals)
+        else:
+            invoice = new_invoice(debours_lines + service_lines, 'full')
+            self.write({'invoice_id': invoice.id,
+                        'debours_invoice_id': False,
+                        'billing_split': False})
+            invoices = invoice
         self.date_billed = fields.Datetime.now()
         self.message_post(body=self.env._(
-            "Draft invoice created: disbursements %(oop)s recharged at "
-            "%(charged)s, services %(fees)s.",
+            "Draft invoice%(s)s created (%(names)s): disbursements %(oop)s "
+            "recharged at %(charged)s, services %(fees)s.",
+            s="s" if len(invoices) > 1 else "",
+            names=", ".join(invoices.mapped('name')),
             oop=self.oop_total, charged=self._recharge_total(),
             fees=sum(line['amount'] for line in services)))
+        if reissue:
+            self.message_post(body=self.env._(
+                "Only the %(kind)s half of the split bill was issued again; "
+                "%(standing)s stands.",
+                kind=dict(self.env['account.move']._fields[
+                    'clearance_invoice_kind'].selection)[reissue].lower(),
+                standing=standing.name))
         if self.unjustified_advance_total:
             self.message_post(body=self.env._(
                 "Billed under an approved waiver: %(amount)s of staff "
                 "advances was NOT invoiced and stays on 421101 against the "
                 "holder, to recover separately.",
                 amount=self.unjustified_advance_total))
-        return invoice
+        return invoices
+
+    def _invoices_action(self, invoices):
+        """Open what billing produced: the invoice, or the pair."""
+        action = {
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.move',
+            'view_mode': 'form',
+        }
+        if len(invoices) == 1:
+            action['res_id'] = invoices.id
+        else:
+            action.update({
+                'name': self.env._("Invoices — %s", self.name),
+                'view_mode': 'list,form',
+                'domain': [('id', 'in', invoices.ids)],
+            })
+        return action
 
     def action_preview_invoice(self):
         """See the document before the client does."""
         self.ensure_one()
-        if not self.invoice_id:
+        invoices = self._client_invoices() or self.invoice_id
+        if not invoices:
             raise UserError(self.env._(
                 "%s has not been billed yet, so there is nothing to "
                 "preview.", self.name))
@@ -1300,19 +1438,15 @@ class LogisticsFile(models.Model):
         # how the page looks. Pressing Preview must show the document.
         return self.env.ref(
             'elite_clearance.action_report_clearance_invoice'
-        ).report_action(self.invoice_id, config=False)
+        ).report_action(invoices, config=False)
 
     def action_create_invoice(self):
         """Bill at the proposed figures, without opening the screen."""
         self.ensure_one()
-        invoice = self._create_client_invoice(
-            self._billing_debours_lines(), self._billing_service_lines())
-        return {
-            'type': 'ir.actions.act_window',
-            'res_model': 'account.move',
-            'res_id': invoice.id,
-            'view_mode': 'form',
-        }
+        invoices = self._create_client_invoice(
+            self._billing_debours_lines(), self._billing_service_lines(),
+            split=self.billing_split)
+        return self._invoices_action(invoices)
 
     def action_mark_complete(self):
         """Final close: only once the client invoice is posted."""
@@ -1321,10 +1455,16 @@ class LogisticsFile(models.Model):
             if file.state != 'ops_closed':
                 raise UserError(self.env._(
                     "%s must be closed for operations first.", file.name))
-            if not file.invoice_id or file.invoice_id.state != 'posted':
+            if not file.invoices_posted:
+                sides = file._bill_sides()
+                states = dict(sides._fields['state'].selection)
                 raise UserError(self.env._(
-                    "Post the client invoice on %s before marking it "
-                    "complete.", file.name))
+                    "Post the client invoice(s) on %(file)s before marking "
+                    "it complete - a split bill is completed whole.%(gap)s%(detail)s",
+                    file=file.name, gap=chr(10) * 2 if sides else "",
+                    detail=chr(10).join(
+                        "%s: %s" % (m.name, states.get(m.state, m.state))
+                        for m in sides)))
             file.write({'state': 'done',
                         'date_closed': fields.Date.context_today(file)})
         return True
@@ -1341,11 +1481,13 @@ class LogisticsFile(models.Model):
                 file.state = 'cancel'
                 continue
             file.company_id._clearance_check_approver('waiver')
-            if file.invoice_id and file.invoice_id.state == 'posted':
+            posted = (file.invoice_id | file.debours_invoice_id).filtered(
+                lambda m: m.state == 'posted')
+            if posted:
                 raise UserError(self.env._(
                     "%(file)s carries posted invoice %(inv)s. Credit-note the "
                     "invoice from Accounting before cancelling the file.",
-                    file=file.name, inv=file.invoice_id.name))
+                    file=file.name, inv=", ".join(posted.mapped('name'))))
             unfinished = file.expense_ids.filtered(
                 lambda e: e.state not in ('draft', 'cancel'))
             if unfinished:

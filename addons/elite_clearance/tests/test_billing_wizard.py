@@ -231,6 +231,9 @@ class TestBillingWizard(TransactionCase):
                       "the Billing button is stripped from the form")
         self.assertIn('action_request_reopen_imported', arch)
         self.assertIn('action_mark_complete', arch)
+        self.assertIn('invoices_posted', arch,
+                      "Mark Complete waits for every invoice of the bill")
+        self.assertIn('bill_stands', arch)
         action = self.file.with_user(biller).action_open_billing()
         self.assertEqual(action['res_model'], 'logistics.billing.wizard')
         # and the screen works end to end AS THAT USER: the write-through
@@ -302,3 +305,193 @@ class TestBillingWizard(TransactionCase):
         self.assertEqual(old.goods_description, "Carreaux")
         self.assertEqual(old.cargo_value, 500000)
         self.assertTrue(old.invoice_id)
+
+    # ------------------------------------------------------------------
+    # A split bill (owner 07/09/2026): the disbursements on one invoice,
+    # the services on another, each printed as the usual document.
+    def test_30_the_bill_can_be_split_in_two(self):
+        wizard = self._wizard()
+        wizard.split_invoices = True
+        self.assertEqual(wizard.split_debours_total, 100000)
+        self.assertEqual(wizard.split_services_total, 32000)
+        action = wizard.action_create_invoice()
+        self.assertEqual(action['res_model'], 'account.move')
+        self.assertNotIn('res_id', action, "two invoices open as a list")
+        debours = self.file.debours_invoice_id
+        services = self.file.invoice_id
+        self.assertTrue(debours and services and debours != services)
+        self.assertEqual(debours.clearance_invoice_kind, 'debours')
+        self.assertEqual(services.clearance_invoice_kind, 'services')
+        self.assertEqual(debours.logistics_file_id, self.file)
+        self.assertEqual(services.logistics_file_id, self.file)
+        self.assertEqual(self.file.invoice_count, 2)
+        self.assertEqual(self.file._client_invoices(), debours | services)
+        # the disbursements invoice: at cost, and no VAT anywhere on it
+        products = debours.invoice_line_ids.filtered(
+            lambda l: l.display_type == 'product')
+        self.assertEqual(set(products.mapped('clearance_category')), {'debours'})
+        self.assertFalse(products.mapped('tax_ids'))
+        self.assertEqual(debours.amount_tax, 0)
+        self.assertEqual(debours.amount_total, 100000)
+        self.assertEqual(
+            sum(products.filtered(lambda l: l.account_id == self.engaged)
+                .mapped('price_subtotal')), 100000, "47xx clears in full")
+        # the services invoice: the commission and the fee, nothing else
+        products = services.invoice_line_ids.filtered(
+            lambda l: l.display_type == 'product')
+        self.assertEqual(set(products.mapped('clearance_category')),
+                         {'prestation'})
+        self.assertEqual(services.amount_untaxed, 2000 + 30000)
+        self.assertFalse(products.filtered(
+            lambda l: l.account_id == self.engaged))
+        self.assertNotEqual(debours.name, services.name,
+                            "two numbers, one after the other")
+        # billed is billed: no third invoice, and completion wants both
+        with self.assertRaises(UserError):
+            self._wizard().action_create_invoice()
+        self.assertTrue(self.file.bill_stands)
+        self.assertFalse(self.file.invoices_posted)
+        with self.assertRaises(UserError):
+            self.file.action_mark_complete()
+        services.action_post()
+        self.assertFalse(self.file.invoices_posted, "both, not one")
+        with self.assertRaises(UserError):
+            self.file.action_mark_complete()
+        debours.action_post()
+        self.assertTrue(self.file.invoices_posted)
+        self.file.action_mark_complete()
+        self.assertEqual(self.file.state, 'done')
+
+    def test_34_a_cancelled_half_is_issued_again_on_its_own(self):
+        """A split bill is one bill. Cancel one half and the file is not
+        billed: Mark Complete refuses, the file is back in Billing's queue,
+        and the screen issues that half again - the other one, posted or
+        not, stands untouched."""
+        Task = self.env['clearance.task']
+        queue = [('kind', '=', 'billing'), ('file_id', '=', self.file.id)]
+        wizard = self._wizard()
+        wizard.split_invoices = True
+        wizard.action_create_invoice()
+        services, debours = self.file.invoice_id, self.file.debours_invoice_id
+        self.assertFalse(Task.search(queue))
+        services.action_post()
+        debours.button_cancel()
+        self.assertFalse(self.file.bill_stands)
+        self.assertFalse(self.file.invoices_posted)
+        with self.assertRaises(UserError):
+            self.file.action_mark_complete()
+        self.assertTrue(Task.search(queue), "half a bill is not a bill")
+        self.assertEqual(self.file._standing_half(), services)
+        again = self._wizard()
+        self.assertEqual(again.reissue_kind, 'debours')
+        self.assertEqual(again.standing_invoice_id, services)
+        self.assertTrue(again.split_invoices, "forced while a half stands")
+        action = again.action_create_invoice()
+        self.assertEqual(self.file.invoice_id, services,
+                         "the posted half keeps its number and its lines")
+        reissued = self.file.debours_invoice_id
+        self.assertNotEqual(reissued, debours)
+        self.assertEqual(reissued.clearance_invoice_kind, 'debours')
+        self.assertEqual(reissued.amount_total, 100000)
+        self.assertEqual(action.get('res_id'), reissued.id,
+                         "one invoice was issued, so it opens directly")
+        self.assertTrue(self.file.bill_stands)
+        self.assertFalse(Task.search(queue))
+        self.assertEqual(self.file.invoice_count, 3,
+                         "the cancelled one stays on record")
+        reissued.action_post()
+        self.file.action_mark_complete()
+        self.assertEqual(self.file.state, 'done')
+
+    def test_35_the_services_half_can_be_issued_again_too(self):
+        wizard = self._wizard()
+        wizard.split_invoices = True
+        wizard.action_create_invoice()
+        services, debours = self.file.invoice_id, self.file.debours_invoice_id
+        debours.action_post()
+        services.button_cancel()
+        again = self._wizard()
+        self.assertEqual(again.reissue_kind, 'services')
+        self.assertEqual(again.standing_invoice_id, debours)
+        again.action_create_invoice()
+        self.assertEqual(self.file.debours_invoice_id, debours)
+        self.assertNotEqual(self.file.invoice_id, services)
+        self.assertEqual(self.file.invoice_id.clearance_invoice_kind, 'services')
+        self.assertEqual(self.file.invoice_id.amount_untaxed, 32000)
+        self.assertTrue(self.file.bill_stands)
+        # and the whole bill can be cancelled and issued as ONE invoice
+        self.file.invoice_id.button_cancel()
+        debours.button_draft()
+        debours.button_cancel()
+        self.assertFalse(self.file.bill_stands)
+        once = self._wizard()
+        self.assertFalse(once.reissue_kind)
+        once.split_invoices = False
+        once.action_create_invoice()
+        self.assertEqual(self.file.invoice_id.clearance_invoice_kind, 'full')
+        self.assertFalse(self.file.debours_invoice_id)
+        self.assertFalse(self.file.billing_split)
+
+    def test_31_a_split_bill_carries_the_shortfall_on_the_disbursements_side(self):
+        wizard = self._wizard()
+        wizard.split_invoices = True
+        wizard.debours_line_ids[0].amount_recharged = 45000
+        wizard.review_reason = "Client disputed the terminal charge."
+        wizard.action_submit_for_review()
+        self.assertTrue(self.file.billing_split, "the choice is recorded")
+        self.env['ir.attachment'].create({
+            'name': "agreement.pdf", 'res_model': 'logistics.file',
+            'res_id': self.file.id, 'raw': b"dummy"})
+        self.file.with_user(self.ops_manager).action_approve_recharge_ops()
+        self.file.with_user(self.general_manager).action_approve_recharge_gm()
+        again = self._wizard()
+        self.assertTrue(again.split_invoices,
+                        "Resume Billing issues what was asked for")
+        again.action_create_invoice()
+        debours = self.file.debours_invoice_id
+        lines = debours.invoice_line_ids
+        self.assertEqual(
+            sum(lines.filtered(lambda l: l.account_id == self.engaged)
+                .mapped('price_subtotal')), 100000, "47xx still clears at cost")
+        self.assertEqual(
+            lines.filtered(lambda l: l.account_id == self.undercharge)
+            .price_subtotal, -15000)
+        self.assertEqual(debours.amount_total, 85000,
+                         "the client is charged what was agreed")
+        services = self.file.invoice_id
+        self.assertFalse(services.invoice_line_ids.filtered(
+            lambda l: l.account_id in (self.undercharge, self.engaged)))
+        self.assertEqual(services.amount_untaxed, 1700 + 30000)
+
+    def test_32_a_split_needs_something_on_both_sides(self):
+        wizard = self._wizard()
+        wizard.split_invoices = True
+        wizard.commission_rate = 0
+        wizard.customs_fee_amount = 0
+        with self.assertRaises(UserError):
+            wizard.action_create_invoice()
+        self.assertFalse(self.file.invoice_id)
+        self.assertFalse(self.file.debours_invoice_id)
+
+    def test_33_each_document_of_a_split_bill_deducts_its_own_advances(self):
+        """An advance on the HAD/DAU is an advance on the services; other
+        advances are funds put up for the disbursements. The file's
+        balance due still nets everything."""
+        wizard = self._wizard()
+        wizard.split_invoices = True
+        wizard.advance_had_amount = 5000
+        wizard.advance_other_amount = 20000
+        wizard.action_create_invoice()
+        debours, services = self.file.debours_invoice_id, self.file.invoice_id
+        self.assertEqual(debours._clearance_advances(), (None, None, 20000))
+        self.assertEqual(services._clearance_advances(), (5000, 0.0, None))
+        self.assertEqual(debours._clearance_advance_total(), 20000)
+        self.assertEqual(services._clearance_advance_total(), 5000)
+        self.assertFalse(debours._clearance_prints_vat())
+        self.assertTrue(services._clearance_prints_vat())
+        self.assertEqual(self.file.invoice_balance_due,
+                         100000 + 32000 - 25000)
+        action = self.file.action_preview_invoice()
+        self.assertEqual(sorted(action['context']['active_ids']),
+                         sorted((debours | services).ids),
+                         "Preview shows both documents")

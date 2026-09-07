@@ -201,6 +201,34 @@ Customs clearance job files for a logistics/clearance services provider.
    wizard share `_create_client_invoice(debours, services)`; the debours
    lines always post AT COST so 47xx clears, and the variance is one further
    line to the under/overcharge account.
+   **Split bill (owner 07/09/2026).** `split_invoices` on the wizard
+   issues TWO invoices from the same lines: `clearance_invoice_kind`
+   `'debours'` (the disbursements at cost + the variance line, no VAT at
+   all) and `'services'` (commission, HAD, extra services, with VAT);
+   an unsplit bill is `'full'`. `logistics.file.invoice_id` is then the
+   SERVICES invoice and `debours_invoice_id` the other, so everything
+   that asks "is the file billed?" keeps reading `invoice_id`;
+   `_client_invoices()` returns the live one or two (disbursements
+   first) for completion, cancel, balance due and Preview. The printed
+   document drops the VAT row on a `'debours'` invoice and prints only
+   its own side's advance rows (`account.move._clearance_advances()`:
+   HAD/DAU + VAT on it → services, "autres avances" → disbursements —
+   the attribution is the module's reading, flagged to the owner). A
+   split needs lines on both sides or it is refused.
+   **A split pair is ONE bill.** `bill_stands` / `invoices_posted`
+   (compute_sudo, on the file) are the single answer to "billed?" and
+   "posted?" for the buttons, the actions and the My Tasks SQL: a
+   cancelled half means not billed and not posted, so Mark Complete
+   refuses and the file is back in the queue. `_standing_half()` finds
+   the live half; the wizard then forces `split_invoices`, shows which
+   half is issued again (`reissue_kind`) and `_create_client_invoice`
+   issues ONLY that half, leaving the standing one (posted, perhaps)
+   untouched. The choice itself is `billing_split` on the file, written
+   by `_persist()` and restored by `default_get`, so it survives a
+   recharge review. Preview prints the pair with a `page-break-before`
+   between documents (the legacy CSS property — wkhtmltopdf's WebKit
+   does not know `break-before`); `test_clearance_invoice_print.test_32`
+   counts the pages through the real wkhtmltopdf.
    **Four gates, ONE group (06/09/2026):** the Billing / Resume Billing /
    Request Reopening / Mark Complete buttons, `APPROVAL_KINDS['billing']`,
    the wizard's ACL rows and `clearance.task.KIND_GROUPS['billing']` all
@@ -359,6 +387,11 @@ Customs clearance job files for a logistics/clearance services provider.
   the row and computes stored computes on the following flush, so the NOT
   NULL is checked before the compute has run and every create fails on
   INSERT. Enforce it with an `@api.constrains` instead.
+- **Two stacked `@api.depends` on one method: only the OUTER one counts.**
+  Each decorator overwrites the function's `_depends`; the inner list is
+  silently dead. `_compute_invoice_balance_due` carried a stray
+  `@api.depends('documents_complete', 'waiver_state')` above its own for
+  weeks (it belonged to `_compute_can_start` below) — one list per method.
 - **One compute method may not feed both a stored and a non-stored field.**
   Stored computes default to `compute_sudo=True`, non-stored to `False`; the
   registry warns twice on every load. Split the method.

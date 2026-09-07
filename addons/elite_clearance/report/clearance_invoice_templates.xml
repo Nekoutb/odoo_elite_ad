@@ -24,6 +24,10 @@
 
       <style>
         .o_clearance_invoice { font-size: 11px; color: #000; }
+        /* Several documents in one print - a split bill's pair from
+           Preview - each start on their own page. The legacy property:
+           wkhtmltopdf's WebKit does not know break-before. */
+        .o_clearance_invoice + .o_clearance_invoice { page-break-before: always; }
         .o_clearance_invoice table { width: 100%; border-collapse: collapse; }
         /* Identity and cargo boxes: outer frame only. The inner tables
            carry no borders at all - the frame is on the wrapper. */
@@ -219,7 +223,10 @@
       </table>
 
       <!-- totals, and what the client has already advanced -->
-      <t t-set="advances" t-value="(file.advance_had_amount + file.advance_had_vat_amount + file.advance_other_amount) if file else 0.0"/>
+      <!-- A split bill deducts only its own side's advances and, on the
+           disbursements invoice, prints no VAT row: there is none. -->
+      <t t-set="adv" t-value="o._clearance_advances() if file else (None, None, None)"/>
+      <t t-set="advances" t-value="o._clearance_advance_total() if file else 0.0"/>
       <t t-set="due" t-value="o.amount_total - advances"/>
       <table style="margin-bottom:8px;">
         <tr>
@@ -230,7 +237,7 @@
                 <td>TOTAL HT</td>
                 <td class="num"><span t-esc="o._clearance_money(o.amount_untaxed)"/> <span t-field="cur.name"/></td>
               </tr>
-              <tr>
+              <tr t-if="o._clearance_prints_vat()">
                 <td><span t-esc="o._clearance_service_tax_label()"/></td>
                 <td class="num"><span t-esc="o._clearance_money(o.amount_tax)"/> <span t-field="cur.name"/></td>
               </tr>
@@ -238,17 +245,17 @@
                 <td>TOTAL TTC</td>
                 <td class="num"><span t-esc="o._clearance_money(o.amount_total)"/> <span t-field="cur.name"/></td>
               </tr>
-              <tr t-if="file">
+              <tr t-if="file and adv[0] is not None">
                 <td>AVANCE HAD/DAU</td>
-                <td class="num"><span t-esc="o._clearance_money(file.advance_had_amount)"/> <span t-field="cur.name"/></td>
+                <td class="num"><span t-esc="o._clearance_money(adv[0])"/> <span t-field="cur.name"/></td>
               </tr>
-              <tr t-if="file">
+              <tr t-if="file and adv[1] is not None">
                 <td>AVANCE TVA/HAD DAU</td>
-                <td class="num"><span t-esc="o._clearance_money(file.advance_had_vat_amount)"/> <span t-field="cur.name"/></td>
+                <td class="num"><span t-esc="o._clearance_money(adv[1])"/> <span t-field="cur.name"/></td>
               </tr>
-              <tr t-if="file">
+              <tr t-if="file and adv[2] is not None">
                 <td>AUTRES AVANCES</td>
-                <td class="num"><span t-esc="o._clearance_money(file.advance_other_amount)"/> <span t-field="cur.name"/></td>
+                <td class="num"><span t-esc="o._clearance_money(adv[2])"/> <span t-field="cur.name"/></td>
               </tr>
               <tr t-if="file">
                 <td>RESTE</td>

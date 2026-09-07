@@ -9,6 +9,13 @@
                 <field name="file_id" invisible="1"/>
                 <field name="currency_id" invisible="1"/>
                 <field name="needs_review" invisible="1"/>
+                <field name="reissue_kind" invisible="1"/>
+                <div class="alert alert-info" role="alert" invisible="not reissue_kind">
+                    <field name="standing_invoice_id" readonly="1" class="fw-bold"/>
+                    stands and stays as it is. Only the
+                    <b><field name="reissue_kind" readonly="1" class="d-inline"/></b>
+                    invoice of the split bill is issued again.
+                </div>
                 <div class="alert alert-warning" role="alert" invisible="not needs_review">
                     <b>The recharge no longer matches what was disbursed.</b>
                     No invoice can be raised until an Operations Manager approves it — and where the
@@ -58,6 +65,7 @@
                         <field name="commission_rate"/>
                         <field name="commission_amount" readonly="1"/>
                         <field name="customs_fee_amount"/>
+                        <field name="split_invoices" readonly="reissue_kind"/>
                     </group>
                     <group string="Advances already paid by the client">
                         <field name="advance_had_amount"/>
@@ -111,6 +119,8 @@
                     <field name="service_tax_total" readonly="1"
                            invisible="not service_tax_total"/>
                     <field name="invoice_total" readonly="1" class="oe_subtotal_footer_separator"/>
+                    <field name="split_debours_total" readonly="1" invisible="not split_invoices"/>
+                    <field name="split_services_total" readonly="1" invisible="not split_invoices"/>
                 </group>
 
                 <field name="review_reason" invisible="not needs_review"

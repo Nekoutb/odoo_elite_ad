@@ -93,10 +93,15 @@ out-of-pocket account (clearing it, and carrying no tax — they are the
 client's own liability paid on their behalf), then the fee lines, which do
 carry the default taxes: the commission (`service_type.commission_rate` % of
 the out-of-pocket total) and the manually keyed customs service fee, as two
-separate lines. Invoice references are structured per service type
-(`EL26IM0001`); file references likewise (`2026IM0009`).
+separate lines. The billing screen can **split the bill**: one invoice for the
+disbursements alone (they carry no VAT), another for the commission and fees
+(with VAT), each printed as the same document. Invoice references are
+structured per service type (`EL26IM0001`); file references likewise
+(`2026IM0009`).
 
-A file cannot be marked complete until that invoice is posted. Reopening a
+A file cannot be marked complete until that invoice is posted — both invoices
+of a split bill; if one half is cancelled, the billing screen issues that half
+again and the other stands. Reopening a
 closed file goes through a wizard that demands a manager and a written reason.
 
 **Approvals.** Every checkpoint — documentation waiver, expense approval,

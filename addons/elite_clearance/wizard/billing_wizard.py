@@ -114,6 +114,31 @@ class LogisticsBillingWizard(models.TransientModel):
     advance_other_amount = fields.Monetary(
         string="Other Advances", currency_field='currency_id')
 
+    # The bill in two (owner 07/09/2026): the disbursements on one invoice,
+    # without VAT, the commission and fees on another, with it. A choice
+    # made at billing time, not a setting: the same client may want one
+    # document on one file and two on the next.
+    split_invoices = fields.Boolean(
+        string="Split the bill",
+        help="Two invoices instead of one: the out-of-pocket expenses on "
+             "their own (no VAT), and the commission and fees on another "
+             "(with VAT). Both print as the usual document.")
+    # When one half of a split bill was cancelled and the other stands,
+    # the screen issues only the missing half and says so.
+    standing_invoice_id = fields.Many2one(
+        'account.move', compute='_compute_reissue', string="Standing invoice")
+    reissue_kind = fields.Selection(
+        [('debours', "disbursements"), ('services', "services")],
+        compute='_compute_reissue',
+        help="The half of a split bill that is issued again, when the other "
+             "half stands.")
+    split_debours_total = fields.Monetary(
+        compute='_compute_totals', currency_field='currency_id',
+        string="Disbursements invoice")
+    split_services_total = fields.Monetary(
+        compute='_compute_totals', currency_field='currency_id',
+        string="Services invoice (incl. VAT)")
+
     review_reason = fields.Text(
         string="Why the recharge differs from cost",
         help="Required before anyone can approve it. Below cost the company "
@@ -151,8 +176,23 @@ class LogisticsBillingWizard(models.TransientModel):
         vals['shipment_bl_awb_ref'] = file.bl_awb_ref
         vals['shipment_goods'] = file.goods_description
         vals['shipment_cargo_value'] = file.cargo_value
+        # the split choice survives a recharge review, and is forced while
+        # one half of a split bill stands
+        vals['split_invoices'] = bool(file.billing_split or file._standing_half())
         vals['service_line_ids'] = []
         return vals
+
+    @api.depends('file_id')
+    def _compute_reissue(self):
+        for wizard in self:
+            standing = (wizard.file_id._standing_half() if wizard.file_id
+                        else self.env['account.move'])
+            wizard.standing_invoice_id = standing
+            wizard.reissue_kind = False
+            if standing:
+                wizard.reissue_kind = (
+                    'services' if standing.clearance_invoice_kind == 'debours'
+                    else 'debours')
 
     def _service_lines_for_invoice(self):
         """What the invoice's service section will contain."""
@@ -237,6 +277,9 @@ class LogisticsBillingWizard(models.TransientModel):
                     )['taxes'])
             wizard.service_tax_total = tax
             wizard.invoice_total = recharged + wizard.service_total + tax
+            # what each document of a split bill would total
+            wizard.split_debours_total = recharged
+            wizard.split_services_total = wizard.service_total + tax
             file = wizard.file_id
             settled = (
                 file.recharge_state == 'approved'
@@ -269,6 +312,7 @@ class LogisticsBillingWizard(models.TransientModel):
             'advance_had_amount': self.advance_had_amount,
             'advance_had_vat_amount': self.advance_had_vat_amount,
             'advance_other_amount': self.advance_other_amount,
+            'billing_split': self.split_invoices,
         }
         # The shipment details go back in the same write, and only those
         # that changed: the file's constraint wants all three together,
@@ -308,18 +352,14 @@ class LogisticsBillingWizard(models.TransientModel):
             raise UserError(self.env._("There is nothing to bill on %s.",
                                        self.file_id.name))
         self._persist()
-        invoice = self.file_id._create_client_invoice(
+        invoices = self.file_id._create_client_invoice(
             [{'name': line.name, 'amount': line.amount_engaged,
               'unit': line.unit_label or "Par dossier"}
              for line in self.debours_line_ids],
             services,
+            split=self.split_invoices,
         )
-        return {
-            'type': 'ir.actions.act_window',
-            'res_model': 'account.move',
-            'res_id': invoice.id,
-            'view_mode': 'form',
-        }
+        return self.file_id._invoices_action(invoices)
 
 
 class LogisticsBillingWizardDebours(models.TransientModel):

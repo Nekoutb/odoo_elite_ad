@@ -61,7 +61,7 @@ class TestClearanceInvoicePrint(TransactionCase):
             'acc_number': "10035 01110 40008467011-58",
             'bank_id': bank_b.id, 'partner_id': company.partner_id.id})
 
-    def _billed_file(self, amount=566899, quantity=None):
+    def _billed_file(self, amount=566899, quantity=None, split=False):
         file = self.env['logistics.file'].create({
             'customs_regime': 'im4',
             'partner_id': self.client.id,
@@ -93,6 +93,7 @@ class TestClearanceInvoicePrint(TransactionCase):
         wizard = self.env['logistics.billing.wizard'].with_context(
             active_id=file.id).create({})
         wizard.customs_fee_amount = 256974
+        wizard.split_invoices = split
         wizard.action_create_invoice()
         if quantity is not None:
             line = file.invoice_id.invoice_line_ids.filtered(
@@ -401,3 +402,66 @@ class TestClearanceInvoicePrint(TransactionCase):
         self.assertEqual(bare.company_registry, "RC/DLA/2026/B/0777")
         wizard.action_create_invoice()
         self.assertTrue(file.invoice_id)
+
+    # --- a split bill: two documents, each the usual one ---------------
+    def test_30_a_split_bill_prints_as_two_documents(self):
+        """Owner 07/09/2026: the disbursements alone on one invoice - no
+        VAT, so no VAT row - and the commission and fees on another, with
+        the VAT row. Each deducts its own side's advances."""
+        file = self._billed_file(split=True)
+        file.write({'advance_had_amount': 256974,
+                    'advance_had_vat_amount': 49467,
+                    'advance_other_amount': 12345})
+        self.assertTrue(file.debours_invoice_id)
+        debours = self._html(file.debours_invoice_id)
+        services = self._html(file.invoice_id)
+        # the disbursements document
+        self.assertIn("Retrait tardif", debours)
+        self.assertIn("<td>Debours</td>", debours)
+        self.assertNotIn("<td>Prestations</td>", debours)
+        self.assertNotIn("Honoraires", debours)
+        self.assertNotIn("TVA SUR PRESTATIONS", debours,
+                         "no VAT on disbursements, so no VAT row")
+        self.assertNotIn("AVANCE HAD/DAU", debours)
+        self.assertIn("AUTRES AVANCES", debours)
+        self.assertIn(file.debours_invoice_id._clearance_money(12345), debours)
+        # the services document
+        self.assertIn("Honoraires", services)
+        self.assertNotIn("Retrait tardif", services)
+        self.assertNotIn("<td>Debours</td>", services)
+        self.assertIn("<td>Prestations</td>", services)
+        self.assertIn("TVA SUR PRESTATIONS", services)
+        self.assertIn("AVANCE HAD/DAU", services)
+        self.assertIn("AVANCE TVA/HAD DAU", services)
+        self.assertNotIn("AUTRES AVANCES", services)
+        self.assertIn(file.invoice_id._clearance_money(49467), services)
+        # and both are still the document, top to bottom
+        for html in (debours, services):
+            for label in ("Facture doit", "N° BL", "Produits", "TOTAL HT",
+                          "TOTAL TTC", "RESTE",
+                          "Arrêté la présente facture"):
+                self.assertIn(label, html, label)
+
+    def test_32_a_split_bill_previews_as_two_pages(self):
+        """Preview prints the pair in one go; each document must start on
+        its own page. Rendered by the real wkhtmltopdf."""
+        import io
+        from odoo.tools.pdf import PdfFileReader
+        file = self._billed_file(split=True)
+        pair = file.debours_invoice_id | file.invoice_id
+        pdf, kind = self.env['ir.actions.report'].with_context(
+            force_report_rendering=True)._render_qweb_pdf(
+            'elite_clearance.report_clearance_invoice', pair.ids)
+        self.assertEqual(kind, 'pdf')
+        self.assertEqual(len(PdfFileReader(io.BytesIO(pdf)).pages), 2,
+                         "one page per document, one document per page")
+
+    def test_31_an_unsplit_bill_still_prints_every_row(self):
+        """The model document shows all three advance rows, at zero if
+        need be, and the VAT row - a plain bill keeps that."""
+        file = self._billed_file()
+        html = self._html(file.invoice_id)
+        self.assertEqual(file.invoice_id.clearance_invoice_kind, 'full')
+        for label in ("TVA SUR PRESTATIONS", "AVANCE HAD/DAU",
+                      "AVANCE TVA/HAD DAU", "AUTRES AVANCES"):
+            self.assertIn(label, html, label)
