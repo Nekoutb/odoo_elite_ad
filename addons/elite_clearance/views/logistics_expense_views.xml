@@ -56,7 +56,10 @@
                                  by Finance at settlement. Greyed out as a control:
                                  money goes to a vendor OR to a staff member, never
                                  to both, and a constraint enforces it too. -->
-                            <field name="vendor_id"
+                            <!-- force_save on both counterparties: choosing 'advance'
+                                 clears the vendor AND makes it readonly in the same
+                                 onchange, and a readonly value is never sent on save. -->
+                            <field name="vendor_id" force_save="1"
                                    readonly="state not in ('draft', 'submitted', 'approved') or payment_mode == 'advance' or employee_id"
                                    placeholder="who is paid - not used for a staff advance"
                                    options="{'no_create': True}"/>
@@ -65,7 +68,7 @@
                         </group>
                         <group string="Settlement (Finance)" groups="elite_clearance.group_clearance_finance">
                             <field name="payment_mode" widget="radio" readonly="state != 'approved'"/>
-                            <field name="employee_id"
+                            <field name="employee_id" force_save="1"
                                    required="payment_mode == 'advance'"
                                    readonly="state != 'approved' or payment_mode != 'advance' or vendor_id"
                                    placeholder="only for a staff advance"/>

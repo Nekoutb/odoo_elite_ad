@@ -116,6 +116,13 @@ jobs:
             exit 1
           fi
           echo "browser test ran"
+      - name: Keep the browser screenshots and Chrome logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-upgrade
+          path: /tmp/odoo_tests
+          if-no-files-found: ignore
       - name: Keep the upgrade log
         if: always()
         uses: actions/upload-artifact@v4
@@ -220,6 +227,13 @@ jobs:
           done
           echo "both suites ran"
 
+      - name: Keep the browser screenshots and Chrome logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-install
+          path: /tmp/odoo_tests
+          if-no-files-found: ignore
       - name: Keep the server log
         if: always()
         uses: actions/upload-artifact@v4

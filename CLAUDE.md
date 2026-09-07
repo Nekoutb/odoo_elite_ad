@@ -261,6 +261,22 @@ Customs clearance job files for a logistics/clearance services provider.
   triggers are hoot selectors (`:contains`, `:visible`, `:has`,
   `:not`); `queryFirst` takes the first match. The drag is simulated with
   one `DataTransfer` shared by the `dragenter` and `drop` events.
+- **The file form must open for an agent with NO accounting rights.**
+  Ops / Customer Service / Transit agents are not in any `account.*`
+  group. A compute on `logistics.file` that reads `invoice_id` /
+  `invoice_ids` as that user raises AccessError, and an embedded
+  `invoice_ids` list makes `web_read` fail outright - the first browser
+  test (07/09/2026) found the file form would not open for the people
+  who work it. Rule: every figure read off the invoices is
+  `compute_sudo=True`; the invoice list and Preview button carry
+  `groups="account.group_account_invoice,account.group_account_readonly"`;
+  `test_segregation.test_02b` opens the form with `Form(file.with_user(u))`
+  for each role - that is `web_read` with the view's own spec, the
+  browser's path.
+- **An onchange that clears a field which turns readonly in the same
+  breath needs `force_save="1"`** on that field, or the cleared value is
+  never sent (readonly values are dropped on save - same trap as the
+  one2many one). The expense's vendor/holder pair does exactly this.
 - **A related `readonly=False` field is inversed ONE AT A TIME.** Each
   becomes its own `write()` on the target, so a constraint on the target
   that wants several fields together refuses the first write for the

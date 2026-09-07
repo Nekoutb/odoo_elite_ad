@@ -267,7 +267,7 @@ class LogisticsFile(models.Model):
     advance_other_amount = fields.Monetary(
         string="Other Advances", currency_field='currency_id', readonly=True)
     invoice_balance_due = fields.Monetary(
-        compute='_compute_invoice_balance_due', currency_field='currency_id',
+        compute='_compute_invoice_balance_due', compute_sudo=True, currency_field='currency_id',
         string="Balance Due")
 
     recharge_amount = fields.Monetary(
@@ -305,19 +305,19 @@ class LogisticsFile(models.Model):
     invoice_ids = fields.One2many(
         'account.move', 'logistics_file_id', string="Client Invoices",
         domain=[('move_type', 'in', ('out_invoice', 'out_refund'))])
-    invoice_count = fields.Integer(compute='_compute_invoice_count')
+    invoice_count = fields.Integer(compute='_compute_invoice_count', compute_sudo=True)
     # Billing done in the legacy system: draft invoices that can never be
     # posted, flagged is_legacy on account.move. Totals here read the Teese
     # figures, so the file shows revenue and disbursements side by side.
-    legacy_invoice_count = fields.Integer(compute='_compute_legacy_billing')
+    legacy_invoice_count = fields.Integer(compute='_compute_legacy_billing', compute_sudo=True)
     legacy_billed_total = fields.Monetary(
-        compute='_compute_legacy_billing', currency_field='currency_id',
+        compute='_compute_legacy_billing', compute_sudo=True, currency_field='currency_id',
         string="Imported Billing (Teese TTC)")
     legacy_outstanding_total = fields.Monetary(
-        compute='_compute_legacy_billing', currency_field='currency_id',
+        compute='_compute_legacy_billing', compute_sudo=True, currency_field='currency_id',
         string="Imported Outstanding at Export")
     legacy_expense_total = fields.Monetary(
-        compute='_compute_legacy_billing', currency_field='currency_id',
+        compute='_compute_legacy_billing', compute_sudo=True, currency_field='currency_id',
         string="Imported Disbursements (Teese)",
         help="Advances the legacy system disbursed on this file, excluding "
              "reversals. Not posted here; shown so that what was spent and "
@@ -367,6 +367,12 @@ class LogisticsFile(models.Model):
                     e.state == 'justified'
                     or (e.state == 'settled' and e.payment_mode != 'advance')))
 
+    # compute_sudo on every figure read off the invoices: an Operations,
+    # Customer Service or Transit agent has no accounting rights, so a
+    # compute that touches account.move as that user raises AccessError -
+    # and the file form could not be opened by the people who work it
+    # (found by the browser test, 07/09/2026). The figures are facts of
+    # the file; the ledger itself stays behind its own groups.
     @api.depends('invoice_ids')
     def _compute_invoice_count(self):
         for file in self:

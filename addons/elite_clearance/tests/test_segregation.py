@@ -91,6 +91,19 @@ class TestSegregationOfDuties(TransactionCase):
             self.env['logistics.expense'].with_user(self.plain).create(
                 self._vals())
 
+    def test_02b_every_agent_can_open_the_file_form(self):
+        """Form() loads the form view AS THE USER and reads the record with
+        the view's own field spec - the browser's exact path. The first
+        browser test found that an Operations agent could not open a file
+        at all: the form embedded the invoice list, and reading it needs
+        accounting rights the agent does not have."""
+        from odoo.tests import Form
+        for user in (self.plain, self.ops, self.finance, self.ops_manager):
+            with Form(self.file.with_user(user)) as form:
+                self.assertEqual(form.name, self.file.name, user.name)
+            self.assertEqual(
+                self.file.with_user(user).invoice_count, 0, user.name)
+
     def test_03_operations_keys_and_submits_without_settlement_details(self):
         exp = self._keyed_by_ops()
         self.assertFalse(exp.payment_mode, "No mode until Finance sets it.")
