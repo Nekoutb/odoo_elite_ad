@@ -98,8 +98,13 @@ class TestInvoiceEndToEnd(TransactionCase):
             'default_amount': OPENING_FEE, 'account_id': cls.income.id})
         cls.opening.action_approve()
 
-    def _four_day_transaction(self):
-        """Opened four days ago, worked, closed, billed."""
+    def _four_day_transaction(self, split=False):
+        """Opened four days ago, worked, closed, billed.
+
+        `split` bills it as two invoices - the disbursements without VAT,
+        the services with it - which is what the owner sees when the
+        billing screen's "Split the bill" box is ticked.
+        """
         env = self.env
         file = env['logistics.file'].create({
             'customs_regime': 'im4',
@@ -146,8 +151,28 @@ class TestInvoiceEndToEnd(TransactionCase):
             'unit_label': self.opening.unit_label,
             'amount': OPENING_FEE,
             'account_id': self.income.id})]
+        wizard.split_invoices = split
         wizard.action_create_invoice()
         return file
+
+    def _dump(self, invoice, suffix):
+        """Render the document and, when CI asks, write it out.
+
+        The owner cannot run this suite, so the page itself is kept as a
+        build artifact: describing a document is not showing it.
+        """
+        rendered = self.env['ir.actions.report']._render_qweb_html(
+            'elite_clearance.report_clearance_invoice', invoice.ids)[0]
+        text = rendered.decode() if isinstance(rendered, bytes) else rendered
+        destination = os.environ.get('CLEARANCE_INVOICE_DUMP')
+        if destination and suffix:
+            root, dot, extension = destination.rpartition('.')
+            destination = "%s_%s%s%s" % (root or destination, suffix,
+                                         dot, extension)
+        if destination:
+            with open(destination, 'w', encoding='utf-8') as handle:
+                handle.write(text)
+        return text
 
     # ------------------------------------------------------------------
     def test_01_the_thirteen_disbursements_are_billed_at_cost(self):
@@ -198,20 +223,47 @@ class TestInvoiceEndToEnd(TransactionCase):
         nothing but assert.
         """
         file = self._four_day_transaction()
-        rendered = self.env['ir.actions.report']._render_qweb_html(
-            'elite_clearance.report_clearance_invoice',
-            file.invoice_id.ids)[0]
-        text = rendered.decode() if isinstance(rendered, bytes) else rendered
+        text = self._dump(file.invoice_id, None)
         for expected in ("Facture doit", "MEDUWA265794", "SHANDONG GHUNLONG",
                          "Surestaries", "Sous total", "TOTAL HT",
                          "AVANCE HAD/DAU", "RESTE",
                          "AFRILAND FIRST BANK", "Par Conteneur"):
             self.assertIn(expected, text, expected)
 
-        destination = os.environ.get('CLEARANCE_INVOICE_DUMP')
-        if destination:
-            with open(destination, 'w', encoding='utf-8') as handle:
-                handle.write(text)
+    def test_06_the_same_transaction_split_in_two(self):
+        """The whole CTC-0063 transaction billed as a split bill: the
+        thirteen disbursements on one document without VAT, the HAD, the
+        commission and the opening charge on the other with it. Both are
+        dumped so the pair can be looked at side by side."""
+        file = self._four_day_transaction(split=True)
+        debours = self._dump(file.debours_invoice_id, "debours")
+        services = self._dump(file.invoice_id, "services")
+
+        # the disbursements document: every line, no VAT row, and only the
+        # advance that was put up against them
+        self.assertIn("Surestaries", debours)
+        self.assertIn("Par Conteneur", debours)
+        self.assertNotIn("TVA SUR PRESTATIONS", debours)
+        self.assertNotIn("AVANCE HAD/DAU", debours)
+        self.assertNotIn("Honoraires", debours)
+        self.assertEqual(file.debours_invoice_id.amount_tax, 0)
+        self.assertEqual(file.debours_invoice_id.amount_total, DEBOURS_TOTAL)
+
+        # the services document: the fees, the VAT, and the HAD advances
+        self.assertIn("Honoraires", services)
+        self.assertIn("TVA SUR PRESTATIONS", services)
+        self.assertIn("AVANCE HAD/DAU", services)
+        self.assertIn("AVANCE TVA/HAD DAU", services)
+        self.assertNotIn("Surestaries", services)
+        self.assertEqual(file.invoice_id.amount_untaxed,
+                         HAD + OPENING_FEE + file.commission_amount)
+
+        # both are the same document, top to bottom
+        for text in (debours, services):
+            for label in ("Facture doit", "MEDUWA265794", "TOTAL HT",
+                          "TOTAL TTC", "RESTE", "AFRILAND FIRST BANK",
+                          "Arrêté la présente facture"):
+                self.assertIn(label, text, label)
 
 
 @tagged('post_install', '-at_install')

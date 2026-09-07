@@ -185,12 +185,14 @@ jobs:
             --stop-after-init \
             2>&1 | tee odoo.log
 
-      - name: Keep the rendered invoice
+      - name: Keep the rendered invoices
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: invoice-preview
-          path: invoice_preview.html
+          # the whole bill, and the two halves of the same transaction
+          # billed as a split bill
+          path: invoice_preview*.html
           if-no-files-found: warn
 
       - name: Fail on any test error in the log
