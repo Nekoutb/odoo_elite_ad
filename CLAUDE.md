@@ -290,6 +290,14 @@ Customs clearance job files for a logistics/clearance services provider.
   (pointless on a non-editable list) and the browser test's row arrived
   with both NULL (07/09/2026). Never put readonly on a column of a
   non-editable x2many list; it does nothing visible and eats the value.
+- **NEVER render a PDF inside a TransactionCase.**
+  `_render_qweb_pdf(..., force_report_rendering=True)` runs wkhtmltopdf,
+  which fetches the asset bundles back off the live HTTP server while the
+  test's transaction still holds its locks: both CI jobs hung for an hour
+  with no output and no failure (07/09/2026). Assert on the HTML from
+  `_render_qweb_html` instead - a page break is a CSS rule, and the rule
+  is in the HTML. The browser test is the place where a real render is
+  exercised, and it goes through Chrome, not wkhtmltopdf.
 - **There IS a browser test now.** `tests/test_expense_dialog_tour.py`
   (`HttpCase`) drives `static/tests/tours/expense_dialog_tour.js` in a
   headless Chrome; CI installs Google's `google-chrome-stable` deb +

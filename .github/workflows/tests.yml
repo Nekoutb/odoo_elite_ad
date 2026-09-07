@@ -91,6 +91,9 @@ jobs:
       # silently sat out the rehearsal. Install it here instead.
       - name: Upgrade it to this commit, then run the suite on it
         shell: bash
+        # a hung test must fail, not burn an hour in silence: rendering a
+        # PDF inside a transaction did exactly that on 07/09/2026
+        timeout-minutes: 25
         run: |
           set -euo pipefail
           odoo -d up_test             --db_host=db --db_port=5432 --db_user=odoo --db_password=odoo             --addons-path=/usr/lib/python3/dist-packages/odoo/addons,"$GITHUB_WORKSPACE/addons"             -u elite_clearance -i elite_clearance_teese             --test-enable --test-tags /elite_clearance,/elite_clearance_teese             --log-level=test --stop-after-init 2>&1 | tee upgrade.log
@@ -168,6 +171,7 @@ jobs:
 
       - name: Install both modules and run their tests
         shell: bash
+        timeout-minutes: 25
         env:
           # the end-to-end test writes the rendered invoice here so
           # the document itself can be looked at, not just described
