@@ -228,11 +228,11 @@ class TestExpensesAndBilling(TransactionCase):
                         "Posting must keep the billing reference.")
 
     def test_08_master_data_seeded(self):
-        """The four real service types and their checklists exist."""
+        """The four services Elimelec sells, and their checklists."""
         from odoo.addons.elite_clearance.hooks import seed_clearance_master_data
         seed_clearance_master_data(self.env)
         Service = self.env['logistics.service.type']
-        for code, min_docs in (('IM', 10), ('BO', 8), ('ES', 5), ('AI', 11)):
+        for code, min_docs in (('IM', 10), ('ES', 5), ('AI', 11), ('TR', 3)):
             st = Service.search([('code', '=', code)], limit=1)
             self.assertTrue(st, "Service type %s missing." % code)
             self.assertGreaterEqual(len(st.document_ids), min_docs)

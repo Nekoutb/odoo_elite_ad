@@ -144,17 +144,20 @@
                     <!-- Owner spec 08/09/2026: everything here is filled in when
                          the file is opened. The exception is the container pair,
                          which is meaningless - and is switched off - for cargo
-                         that is not in a container. Required in draft and while
-                         the work runs; an imported Teese file is exempt, and so
-                         is a file already closed, which must stay saveable. -->
+                         that is not in a container. Required in DRAFT - "at file
+                         creation", literally: a file already in progress today,
+                         opened before this rule existed, must still be saveable.
+                         The regime and the cargo value are demanded for longer,
+                         because the invoice prints them and a constraint backs
+                         them. -->
                     <group string="Cargo &amp; Routing" name="cargo">
                         <group>
                             <field name="port_id" options="{'no_create': True}"
-                                   required="state in ('draft', 'in_progress')"/>
-                            <field name="employee_id" required="state in ('draft', 'in_progress')"/>
-                            <field name="shipment_type" required="state in ('draft', 'in_progress')"/>
+                                   required="state == 'draft'"/>
+                            <field name="employee_id" required="state == 'draft'"/>
+                            <field name="shipment_type" required="state == 'draft'"/>
                             <field name="incoterm_id" options="{'no_create': True}"
-                                   required="state in ('draft', 'in_progress')"/>
+                                   required="state == 'draft'"/>
                             <field name="customs_regime" required="state in ('draft', 'in_progress')"/>
                             <field name="legacy_customs_regime" readonly="1"
                                    invisible="not legacy_customs_regime"/>
@@ -163,16 +166,16 @@
                             <field name="not_containerised"/>
                             <field name="container_count" force_save="1"
                                    readonly="not_containerised"
-                                   required="not not_containerised and state in ('draft', 'in_progress')"/>
+                                   required="not not_containerised and state == 'draft'"/>
                             <field name="container_type" force_save="1"
                                    readonly="not_containerised"
                                    placeholder="e.g. 20, 40, 40HC"
-                                   required="not not_containerised and state in ('draft', 'in_progress')"/>
-                            <field name="package_count" required="state in ('draft', 'in_progress')"/>
-                            <field name="weight_kg" required="state in ('draft', 'in_progress')"/>
+                                   required="not not_containerised and state == 'draft'"/>
+                            <field name="package_count" required="state == 'draft'"/>
+                            <field name="weight_kg" required="state == 'draft'"/>
                             <field name="cargo_value" required="state in ('draft', 'in_progress')"/>
-                            <field name="cargo_value_currency_id" required="state in ('draft', 'in_progress')"/>
-                            <field name="importer_name" required="state in ('draft', 'in_progress')"/>
+                            <field name="cargo_value_currency_id" required="state == 'draft'"/>
+                            <field name="importer_name" required="state == 'draft'"/>
                         </group>
                     </group>
                     <group string="Legacy" name="legacy" invisible="not legacy_id">

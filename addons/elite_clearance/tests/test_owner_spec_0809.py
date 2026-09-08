@@ -87,16 +87,19 @@ class TestOwnerSpec0809(TransactionCase):
         cargo = arch.xpath("//group[@name='cargo']//field")
         asked = {node.get('name'): node.get('required') for node in cargo}
         for name in ('port_id', 'employee_id', 'shipment_type', 'incoterm_id',
-                     'customs_regime', 'package_count', 'weight_kg',
-                     'cargo_value', 'cargo_value_currency_id',
+                     'package_count', 'weight_kg', 'cargo_value_currency_id',
                      'importer_name'):
-            self.assertEqual(asked.get(name), "state in ('draft', 'in_progress')",
+            self.assertEqual(asked.get(name), "state == 'draft'",
                              "%s must be keyed when the file is opened" % name)
         for name in ('container_count', 'container_type'):
             self.assertEqual(
                 asked.get(name),
-                "not not_containerised and state in ('draft', 'in_progress')",
+                "not not_containerised and state == 'draft'",
                 "%s is asked for only when there IS a container" % name)
+        # the two the invoice prints are demanded for longer, and a
+        # constraint backs them - that rule predates this one
+        for name in ('customs_regime', 'cargo_value'):
+            self.assertEqual(asked.get(name), "state in ('draft', 'in_progress')")
 
     def test_05_cargo_that_is_not_in_a_container_says_so(self):
         file = self._file(container_count=2, container_type="40HC")
