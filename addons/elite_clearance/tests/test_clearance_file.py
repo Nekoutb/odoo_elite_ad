@@ -36,6 +36,9 @@ class TestClearanceFile(TransactionCase):
             'bl_awb_ref': "MEDUW000001",
             'goods_description': "Marchandises diverses",
             'cargo_value': 1000000.0,
+            # the cargo is described, as Start Work now demands
+            'package_count': 120, 'weight_kg': 14367.0,
+            'container_count': 1,
             'partner_id': self.client.id,
             'service_type_id': self.service.id,
         })

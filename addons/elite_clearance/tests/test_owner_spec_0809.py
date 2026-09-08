@@ -213,6 +213,8 @@ class TestOwnerSpec0809(TransactionCase):
         with self.assertRaises(AccessError):
             file.with_user(self.other).read(['name'])
 
+        file.write({'package_count': 12, 'weight_kg': 800.0,
+                    'not_containerised': True})
         file.with_user(self.author).action_start_work()
         self.assertEqual(file.state, 'in_progress')
         self.assertTrue(

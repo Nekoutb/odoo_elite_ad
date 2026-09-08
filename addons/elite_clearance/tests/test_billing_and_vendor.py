@@ -207,7 +207,8 @@ class TestVendorPayableAndRecharge(TransactionCase):
                          "47xx always clears at cost")
         over = lines.filtered(lambda l: l.account_id == self.overcharge)
         self.assertEqual(over.price_subtotal, 20000)
-        self.assertIn("overcharge", over.name)
+        self.assertNotIn("overcharge", over.name.lower(),
+                         "the client is never told we overcharged")
 
     def test_07b_a_new_figure_tears_up_the_approval(self):
         self._closed_file_with(100000)
@@ -254,7 +255,9 @@ class TestVendorPayableAndRecharge(TransactionCase):
         under = lines.filtered(lambda l: l.account_id == self.undercharge)
         self.assertEqual(under.price_subtotal, -55000,
                          "the shortfall is a cost, not a smaller recharge")
-        self.assertIn("undercharge", under.name)
+        self.assertNotIn("undercharge", under.name.lower(),
+                         "nor that we discounted it - the account says "
+                         "what the line is, the label stays neutral")
         self.assertEqual(
             sum(lines.filtered(lambda l: l.display_type == 'product')
                 .mapped('price_subtotal')),

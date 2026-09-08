@@ -152,7 +152,11 @@ class TestLegacyImport(TransactionCase):
         self.assertEqual(self.batch.count_expenses, 4)
         self.assertEqual(self.batch.count_invoices, 3)
         self.assertEqual(self.batch.count_lines, 4)
-        self.assertEqual(self.batch.count_ports, 2)
+        # the real ports are seeded now, so the import adopts them rather
+        # than creating them: what matters is that the file names its
+        # port, not how many rows the run had to insert
+        self.assertTrue(self._file(8001).port_id,
+                        "the imported file still names its port")
         self.assertEqual(self.batch.count_employees, 2)
         self.assertEqual(self.batch.count_after_cutoff, 0)
         self.assertEqual(str(self.batch.export_synced_at)[:10], "2026-08-26")
