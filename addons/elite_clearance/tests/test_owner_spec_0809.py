@@ -1,3 +1,5 @@
+import pathlib
+
 from lxml import etree
 
 from odoo import Command
@@ -142,10 +144,11 @@ class TestOwnerSpec0809(TransactionCase):
         re-prints exactly as it printed then."""
         line = self.env['account.move.line']
         self.assertIn('clearance_charged', line._fields)
-        migration = (
-            "addons/elite_clearance/migrations/19.0.27.0.0/post-migrate.py")
-        import pathlib
-        source = pathlib.Path(migration).read_text(encoding='utf-8')
+        # the module's own directory, not the working directory: CI runs
+        # the server from somewhere else entirely
+        here = pathlib.Path(__file__).resolve().parent.parent
+        source = (here / "migrations" / "19.0.27.0.0"
+                  / "post-migrate.py").read_text(encoding='utf-8')
         self.assertIn("UPDATE account_move_line", source)
         self.assertIn("clearance_charged = price_subtotal", source)
         self.assertIn("seed_clearance_master_data", source,
