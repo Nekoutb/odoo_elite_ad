@@ -135,6 +135,23 @@ class TestOwnerSpec0809(TransactionCase):
             'elite_clearance.logistics_expense_view_capture_form').arch
         self.assertIn('widget="clearance_documents"', capture)
 
+    def test_07_an_invoice_issued_before_this_version_prints_unchanged(self):
+        """clearance_charged is new; a line written before it holds
+        nothing, and the document now takes the printed figure from it.
+        The post-migration backfills it, so an invoice already sent
+        re-prints exactly as it printed then."""
+        line = self.env['account.move.line']
+        self.assertIn('clearance_charged', line._fields)
+        migration = (
+            "addons/elite_clearance/migrations/19.0.27.0.0/post-migrate.py")
+        import pathlib
+        source = pathlib.Path(migration).read_text(encoding='utf-8')
+        self.assertIn("UPDATE account_move_line", source)
+        self.assertIn("clearance_charged = price_subtotal", source)
+        self.assertIn("seed_clearance_master_data", source,
+                      "post_init_hook does not run on an upgrade, so the "
+                      "catalogue has to be seeded here too")
+
     # -- 6. a draft file is its author's until work starts --------------
     def test_06_a_draft_file_is_not_yet_anybody_elses(self):
         file = self._file(user=self.author)
