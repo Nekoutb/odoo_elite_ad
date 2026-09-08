@@ -100,6 +100,11 @@ console either. Choose the production branch name once, at project creation.
 - [ ] Verify `l10n_cm` on 19.0 and load it before the module.
 - [ ] Configure Settings → Clearance on production (421101, 47xx, fee income,
       journals) and create the team users.
+- [ ] **Create the staff records** (Employees). Since 08/09/2026 a file cannot
+      be opened without a Follow-up Employee, and an employee is not the same
+      thing as a login: a declarant who follows files day to day may have no
+      user account at all. With none on record, nobody can open a file. The
+      ports are seeded by the module itself and need nothing.
 - [ ] Import the partner list (CSV) from the old Online database.
 - [ ] Decide on OCA `account_financial_report` if Trial Balance / P&L are
       wanted beyond what Enterprise ships.
