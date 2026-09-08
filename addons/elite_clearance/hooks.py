@@ -59,6 +59,33 @@ def seed_clearance_master_data(env):
     # theirs wins.
     RENAMED = {'IM': "Import", 'ES': "Export Standard", 'AI': "Aérien"}
     RETIRED = {'BO': "Export Bois"}
+    # The ports a file is opened against. Port is required at creation
+    # and offers no "create" entry, and only a Clearance Manager may add
+    # one - so with none seeded, nobody could open a file at all on a
+    # database that has never run the Teese import (found by review,
+    # 08/09/2026). Matched on NAME, which is the model's unique key: the
+    # importer creates ports name-only, so keying on code would try to
+    # insert a second "Douala". There is no company_id on a port - it is
+    # geography, not an accounting entity.
+    PORTS = [
+        ("DLA", "Douala", "Douala"),
+        ("KRB", "Kribi", "Kribi"),
+        ("TKO", "Tiko", "Tiko"),
+        ("LMB", "Limbe", "Limbe"),
+        ("DLA-AIR", "Douala Airport", "Douala"),
+        ("NSI", "Yaoundé Nsimalen Airport", "Yaoundé"),
+    ]
+    Port = env['logistics.port']
+    by_name = {p.name.strip().upper(): p
+               for p in Port.with_context(active_test=False).search([])}
+    for seq, (code, name, city) in enumerate(PORTS, start=1):
+        existing = by_name.get(name.upper())
+        if not existing:
+            Port.create({'name': name, 'code': code, 'city': city,
+                         'sequence': seq * 10})
+        elif not existing.code:
+            existing.code = code       # back-fill an imported row, never rename
+
     Service = env['logistics.service.type']
     Line = env['logistics.service.type.document']
     for code, was in RETIRED.items():

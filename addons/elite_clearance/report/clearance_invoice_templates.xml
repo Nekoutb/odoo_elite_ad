@@ -151,8 +151,13 @@
             <td class="lbl" style="width:25%;">NBRE DE COLIS</td>
           </tr>
           <tr>
-            <td><span t-field="file.container_count"/></td>
-            <td><span t-field="file.container_type"/></td>
+            <!-- goods that are not in a container print a dash, not a
+                 zero and a blank; the weight and the package count still
+                 belong on the page -->
+            <td t-if="file.not_containerised">-</td>
+            <td t-else=""><span t-field="file.container_count"/></td>
+            <td t-if="file.not_containerised">-</td>
+            <td t-else=""><span t-field="file.container_type"/></td>
             <td><span t-esc="o._clearance_money(file.weight_kg)"/></td>
             <td><span t-field="file.package_count"/></td>
           </tr>
@@ -186,8 +191,8 @@
             <td><span t-field="line.name"/></td>
             <td><span t-field="line.clearance_unit"/></td>
             <td class="ctr"><span t-esc="'{:,.2f}'.format(line.quantity).rstrip('0').rstrip('.').replace(',', ' ')"/></td>
-            <td class="num"><span t-esc="o._clearance_money(line.clearance_charged)"/></td>
-            <td class="num"><span t-esc="o._clearance_money(line.clearance_charged)"/></td>
+            <td class="num"><span t-esc="o._clearance_money(line.price_subtotal + line.clearance_adjustment)"/></td>
+            <td class="num"><span t-esc="o._clearance_money(line.price_subtotal + line.clearance_adjustment)"/></td>
           </tr>
           <tr class="sub" t-if="debours">
             <td>Sous total</td>
@@ -195,7 +200,7 @@
             <td></td>
             <td class="ctr"><span t-esc="len(debours)"/></td>
             <td></td>
-            <td class="num"><span t-esc="o._clearance_money(sum(debours.mapped('clearance_charged')))"/></td>
+            <td class="num"><span t-esc="o._clearance_money(sum(debours.mapped('price_subtotal')) + sum(debours.mapped('clearance_adjustment')))"/></td>
           </tr>
 
           <tr t-foreach="prestations" t-as="line">

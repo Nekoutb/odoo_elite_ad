@@ -996,6 +996,7 @@ class LogisticsFile(models.Model):
                 raise UserError(self.env._(
                     "Work cannot start on %s until its customs regime is "
                     "chosen.", file.name))
+            file._check_cargo_described()
             if not file.can_start:
                 raise UserError(self.env._(
                     "Work cannot start on %(name)s: %(count)s mandatory "
@@ -1006,6 +1007,31 @@ class LogisticsFile(models.Model):
             file.write({'state': 'in_progress',
                         'date_started': fields.Datetime.now()})
         return True
+
+    # The web client treats 0 as a filled-in value, so `required` on a
+    # number never stops anybody: Packages, Weight and Containers would
+    # have been mandatory in appearance only (found by review,
+    # 08/09/2026). They are checked here instead, at the gate the module
+    # already uses for "the file is not ready to be worked".
+    CARGO_FIGURES = [
+        ('package_count', "Packages"),
+        ('weight_kg', "Weight (kg)"),
+    ]
+
+    def _check_cargo_described(self):
+        self.ensure_one()
+        if self.legacy_id or self.env.context.get('legacy_import'):
+            return                      # Teese history, exempt
+        missing = [label for name, label in self.CARGO_FIGURES
+                   if not self[name]]
+        if not self.not_containerised and not self.container_count:
+            missing.append("Containers (or tick Not Containerised)")
+        if missing:
+            raise UserError(self.env._(
+                "Work cannot start on %(name)s until the cargo is "
+                "described:%(gap)s  - %(missing)s",
+                name=self.name, gap=chr(10) * 2,
+                missing=(chr(10) + "  - ").join(missing)))
 
     def action_close_operations(self):
         """Operations are finished: no further expenses can be captured.
@@ -1300,9 +1326,14 @@ class LogisticsFile(models.Model):
                 # fee lines below deliberately keep the default taxes.
                 'tax_ids': [fields.Command.clear()],
                 'clearance_category': 'debours',
-                # what the client is charged for this one, which is what
-                # the document prints; the line still POSTS at cost
-                'clearance_charged': line.get('charged', line['amount']),
+                # The DIFFERENCE between what this one cost and what the
+                # client is charged for it. The document prints
+                # price_subtotal + this, so correcting the line on a draft
+                # invoice moves the printed figure with it, and the block
+                # still ties to the invoice total. Storing the absolute
+                # charge froze it (found by review, 08/09/2026).
+                'clearance_adjustment': (line.get('charged', line['amount'])
+                                         - line['amount']),
                 'clearance_unit': line.get('unit') or "Par dossier",
                 'analytic_distribution': analytic,
             }))
@@ -1314,29 +1345,26 @@ class LogisticsFile(models.Model):
             if adjustment < 0:
                 variance_account = (
                     self.company_id.clearance_oop_undercharge_account_id)
-                label = self.env._(
-                    "Out of pocket expense undercharge (disbursed %(cost)s, "
-                    "recharged %(charged)s)", cost=self.oop_total,
-                    charged=self._recharge_total())
+                label = self.env._("Ajustement sur débours")
                 missing = "Disbursement Undercharge"
             else:
                 variance_account = (
                     self.company_id.clearance_oop_overcharge_account_id)
-                label = self.env._(
-                    "Out of pocket expense overcharge (disbursed %(cost)s, "
-                    "recharged %(charged)s)", cost=self.oop_total,
-                    charged=self._recharge_total())
+                label = self.env._("Ajustement sur débours")
                 missing = "Disbursement Overcharge"
             if not variance_account:
                 raise UserError(self.env._(
                     "Configure the %s account under Clearance → "
                     "Configuration → Settings before billing an adjusted "
                     "recharge.", missing))
-            # Accounting only. The client is told what they are charged,
-            # never what it cost us and never that we discounted it: the
-            # printed débours lines carry the charged figures and add up
-            # to the same total, so this line is left off the document
-            # (owner spec, 08/09/2026).
+            # Accounting only, and neutrally worded. The client is told
+            # what they are charged, never what it cost us and never that
+            # we discounted it: the printed débours lines carry the
+            # charged figures and add up to the same total, so this line
+            # is left off OUR document (owner spec, 08/09/2026) - and its
+            # label is innocuous for the routes we do not control, a
+            # credit note through Odoo's own template above all. The
+            # figures behind it are in the chatter and on the account.
             debours_lines.append(fields.Command.create({
                 'name': label,
                 'quantity': 1.0,
@@ -1562,6 +1590,19 @@ class LogisticsFile(models.Model):
                     "Only a cancelled file can be reset to draft. A closed "
                     "file is reopened through the approval flow (%s).",
                     file.name))
+            # A draft is its author's alone, so resetting somebody else's
+            # file would make it vanish from the screen of the person who
+            # pressed the button (found by review, 08/09/2026).
+            if not self.env.su and file.create_uid != self.env.user \
+                    and file.user_id != self.env.user \
+                    and not self.env.user.has_group(
+                        'elite_clearance.group_clearance_manager'):
+                raise UserError(self.env._(
+                    "%s was opened by %s. A file goes back to draft - and "
+                    "out of everyone else's sight - only at the hand of "
+                    "the person who opened it, the person responsible for "
+                    "it, or a Manager.",
+                    file.name, file.create_uid.name))
         self.write({'state': 'draft', 'date_closed': False})
         return True
 

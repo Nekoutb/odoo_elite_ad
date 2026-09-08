@@ -243,6 +243,20 @@ class ClearanceTurnaround(models.Model):
         """ % select
 
     @api.model
+    def _only_readable_files(self, domain):
+        """Record rules do not reach a _table_query model - it is raw SQL
+        over other tables - so a draft file would be listed here to
+        exactly the people the file's own rule keeps it from (found by
+        review, 08/09/2026). The file's rules are applied by asking the
+        file itself what this user may read.
+        """
+        if self.env.su:
+            return list(domain or [])
+        readable = self.env['logistics.file']._search([])
+        return ['|', ('file_id', '=', False),
+                ('file_id', 'in', readable)] + list(domain or [])
+
+    @api.model
     def _search(self, domain, offset=0, limit=None, order=None, **kwargs):
         # A view over other tables flushes nothing by itself; see CLAUDE.md.
         for model in ('logistics.file', 'logistics.expense',
@@ -254,6 +268,7 @@ class ClearanceTurnaround(models.Model):
         # figures move with the clock and with the targets, so the cache
         # is dropped on every read. Change a target, see the new answer.
         self.env['clearance.turnaround'].invalidate_model()
+        domain = self._only_readable_files(domain)
         return super()._search(domain, offset=offset, limit=limit,
                                order=order, **kwargs)
 

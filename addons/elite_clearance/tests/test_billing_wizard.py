@@ -439,10 +439,10 @@ class TestBillingWizard(TransactionCase):
         self.assertNotIn("overcharge", html.lower())
         # each disbursement at what the client pays for it, and the
         # subtotal is the billed figure, not the cost
-        charged = lines.filtered(
-            lambda l: l.clearance_category == 'debours').mapped(
-                'clearance_charged')
-        self.assertEqual(sorted(charged), [40000, 45000])
+        debours = lines.filtered(lambda l: l.clearance_category == 'debours')
+        charged = sorted(l.price_subtotal + l.clearance_adjustment
+                         for l in debours)
+        self.assertEqual(charged, [40000, 45000])
         money = invoice._clearance_money
         self.assertIn(money(85000), html, "the débours subtotal is charged")
         self.assertNotIn(money(60000), html, "the cost is nobody's business")

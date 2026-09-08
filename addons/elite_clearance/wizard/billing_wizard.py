@@ -371,7 +371,7 @@ class LogisticsBillingWizard(models.TransientModel):
         self._persist()
         invoices = self.file_id._create_client_invoice(
             [{'name': line.name, 'amount': line.amount_engaged,
-              'charged': line.amount_recharged,
+              'charged': line.amount_recharged,   # the difference is derived
               'unit': line.unit_label or "Par dossier"}
              for line in self.debours_line_ids],
             services,

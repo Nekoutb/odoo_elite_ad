@@ -261,12 +261,13 @@ class AccountMoveLine(models.Model):
              "belongs under. An 'adjustment' line is accounting only: it "
              "carries the difference between what a disbursement cost and "
              "what the client is charged, and is NOT printed.")
-    clearance_charged = fields.Monetary(
-        string="Charged to Client", copy=False,
-        help="What the client is charged for this disbursement, which is "
-             "what the invoice prints. The line itself always posts AT "
-             "COST so the out-of-pocket account clears in full; the "
-             "difference is the adjustment line.")
+    clearance_adjustment = fields.Monetary(
+        string="Recharge Adjustment", copy=False,
+        help="The difference between what this disbursement cost and what "
+             "the client is charged for it. The line posts AT COST so the "
+             "out-of-pocket account clears in full, and the invoice prints "
+             "the two added together - so correcting the line moves the "
+             "printed figure with it. Zero means charged at cost.")
     clearance_unit = fields.Char(
         string="Unit", copy=False,
         help="Printed as Unité, e.g. Par dossier or Par Conteneur.")

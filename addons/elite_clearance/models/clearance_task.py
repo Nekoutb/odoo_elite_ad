@@ -229,6 +229,14 @@ class ClearanceTask(models.Model):
         # Narrow every read, so the one screen is a different list for each
         # role and nobody sees a queue they cannot act on.
         domain = [('kind', 'in', self._allowed_kinds())] + list(domain or [])
+        # ... and never a file this user cannot open: a _table_query model
+        # is raw SQL, so the file's own record rules do not reach it, and
+        # a draft file would sit in a queue that raises AccessError when
+        # clicked (found by review, 08/09/2026).
+        if not self.env.su:
+            readable = self.env['logistics.file']._search([])
+            domain = ['|', ('file_id', '=', False),
+                      ('file_id', 'in', readable)] + domain
         return super()._search(domain, offset=offset, limit=limit,
                                order=order, **kwargs)
 

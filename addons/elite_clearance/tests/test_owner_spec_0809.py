@@ -141,22 +141,60 @@ class TestOwnerSpec0809(TransactionCase):
         self.assertIn('widget="clearance_documents"', capture)
 
     def test_07_an_invoice_issued_before_this_version_prints_unchanged(self):
-        """clearance_charged is new; a line written before it holds
-        nothing, and the document now takes the printed figure from it.
-        The post-migration backfills it, so an invoice already sent
-        re-prints exactly as it printed then."""
+        """The printed figure is the line plus its adjustment, so a line
+        written before this version - adjustment zero - prints exactly
+        what it printed then, and correcting a draft line moves the
+        printed row with it."""
         line = self.env['account.move.line']
-        self.assertIn('clearance_charged', line._fields)
+        self.assertIn('clearance_adjustment', line._fields)
+        self.assertNotIn('clearance_charged', line._fields,
+                         "an absolute figure froze; the difference tracks")
         # the module's own directory, not the working directory: CI runs
         # the server from somewhere else entirely
         here = pathlib.Path(__file__).resolve().parent.parent
-        source = (here / "migrations" / "19.0.27.0.0"
-                  / "post-migrate.py").read_text(encoding='utf-8')
-        self.assertIn("UPDATE account_move_line", source)
-        self.assertIn("clearance_charged = price_subtotal", source)
-        self.assertIn("seed_clearance_master_data", source,
-                      "post_init_hook does not run on an upgrade, so the "
-                      "catalogue has to be seeded here too")
+        for version in ("19.0.27.0.0", "19.0.28.0.0"):
+            source = (here / "migrations" / version
+                      / "post-migrate.py").read_text(encoding='utf-8')
+            self.assertIn("seed_clearance_master_data", source,
+                          "post_init_hook does not run on an upgrade, so "
+                          "the master data has to be seeded here too")
+
+    def test_08_a_fresh_database_has_ports_to_open_a_file_against(self):
+        """Port is required at creation and offers no create entry, and
+        only a Manager may add one - so with none seeded nobody could
+        open a file at all."""
+        ports = self.env['logistics.port'].search([])
+        self.assertTrue(ports, "a file cannot be opened without a port")
+        self.assertIn("Douala", ports.mapped('name'))
+
+    def test_09_work_cannot_start_until_the_cargo_is_described(self):
+        """required= is inert on a number - the web client counts 0 as
+        filled in - so the figures are enforced at Start Work."""
+        from odoo.exceptions import UserError
+        file = self._file(user=self.author)
+        with self.assertRaises(UserError) as caught:
+            file.with_user(self.author).action_start_work()
+        self.assertIn("Packages", str(caught.exception))
+        file.write({'package_count': 12, 'weight_kg': 800.0})
+        with self.assertRaises(UserError) as caught:
+            file.with_user(self.author).action_start_work()
+        self.assertIn("Containers", str(caught.exception))
+        file.not_containerised = True
+        file.with_user(self.author).action_start_work()
+        self.assertEqual(file.state, 'in_progress')
+
+    def test_10_a_queue_never_lists_a_file_it_cannot_open(self):
+        """A _table_query model is raw SQL, so the file's record rules do
+        not reach it: a draft file would sit in a queue that raises
+        AccessError when clicked."""
+        file = self._file(user=self.author)
+        rows = self.env['clearance.turnaround'].with_user(self.other).search(
+            [('file_id', '=', file.id)])
+        self.assertFalse(rows, "Finance sees no step of a file it cannot open")
+        self.assertTrue(
+            self.env['clearance.turnaround'].with_user(self.author).search(
+                [('file_id', '=', file.id)]),
+            "its author does")
 
     # -- 6. a draft file is its author's until work starts --------------
     def test_06_a_draft_file_is_not_yet_anybody_elses(self):
