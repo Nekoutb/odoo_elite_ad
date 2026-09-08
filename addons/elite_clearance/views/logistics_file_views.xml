@@ -141,24 +141,38 @@
                             <field name="analytic_account_id" readonly="1" invisible="not analytic_account_id"/>
                         </group>
                     </group>
+                    <!-- Owner spec 08/09/2026: everything here is filled in when
+                         the file is opened. The exception is the container pair,
+                         which is meaningless - and is switched off - for cargo
+                         that is not in a container. Required in draft and while
+                         the work runs; an imported Teese file is exempt, and so
+                         is a file already closed, which must stay saveable. -->
                     <group string="Cargo &amp; Routing" name="cargo">
                         <group>
-                            <field name="port_id" options="{'no_create': True}"/>
-                            <field name="employee_id"/>
-                            <field name="shipment_type"/>
-                            <field name="incoterm_id" options="{'no_create': True}"/>
+                            <field name="port_id" options="{'no_create': True}"
+                                   required="state in ('draft', 'in_progress')"/>
+                            <field name="employee_id" required="state in ('draft', 'in_progress')"/>
+                            <field name="shipment_type" required="state in ('draft', 'in_progress')"/>
+                            <field name="incoterm_id" options="{'no_create': True}"
+                                   required="state in ('draft', 'in_progress')"/>
                             <field name="customs_regime" required="state in ('draft', 'in_progress')"/>
                             <field name="legacy_customs_regime" readonly="1"
                                    invisible="not legacy_customs_regime"/>
                         </group>
                         <group>
-                            <field name="container_count"/>
-                            <field name="container_type"/>
-                            <field name="package_count"/>
-                            <field name="weight_kg"/>
+                            <field name="not_containerised"/>
+                            <field name="container_count" force_save="1"
+                                   readonly="not_containerised"
+                                   required="not not_containerised and state in ('draft', 'in_progress')"/>
+                            <field name="container_type" force_save="1"
+                                   readonly="not_containerised"
+                                   placeholder="e.g. 20, 40, 40HC"
+                                   required="not not_containerised and state in ('draft', 'in_progress')"/>
+                            <field name="package_count" required="state in ('draft', 'in_progress')"/>
+                            <field name="weight_kg" required="state in ('draft', 'in_progress')"/>
                             <field name="cargo_value" required="state in ('draft', 'in_progress')"/>
-                            <field name="cargo_value_currency_id"/>
-                            <field name="importer_name"/>
+                            <field name="cargo_value_currency_id" required="state in ('draft', 'in_progress')"/>
+                            <field name="importer_name" required="state in ('draft', 'in_progress')"/>
                         </group>
                     </group>
                     <group string="Legacy" name="legacy" invisible="not legacy_id">
@@ -168,17 +182,27 @@
                         </group>
                     </group>
                     <separator string="Document Checklist"/>
-                    <field name="document_ids">
-                        <list editable="bottom">
-                            <field name="sequence" widget="handle"/>
-                            <field name="document_type_id" readonly="1" force_save="1"/>
-                            <field name="is_mandatory" readonly="1" force_save="1"/>
-                            <field name="received" widget="boolean_toggle"/>
-                            <field name="date_received" readonly="1"/>
-                            <field name="reference" placeholder="Document number"/>
-                            <field name="note" optional="hide"/>
-                        </list>
-                    </field>
+                    <!-- The whole block is the drop target, checklist included:
+                         a document is dragged onto the list it belongs to,
+                         from the moment the file is opened (owner spec,
+                         08/09/2026). The widget uploads it exactly as its
+                         Upload button would. -->
+                    <div class="o_clearance_documents_area">
+                        <field name="document_ids">
+                            <list editable="bottom">
+                                <field name="sequence" widget="handle"/>
+                                <field name="document_type_id" readonly="1" force_save="1"/>
+                                <field name="is_mandatory" readonly="1" force_save="1"/>
+                                <field name="received" widget="boolean_toggle"/>
+                                <field name="date_received" readonly="1"/>
+                                <field name="reference" placeholder="Document number"/>
+                                <field name="note" optional="hide"/>
+                            </list>
+                        </field>
+                        <field name="attachment_ids" widget="clearance_documents"
+                               nolabel="1" colspan="2"
+                               options="{'dropzone': '.o_clearance_documents_area'}"/>
+                    </div>
 
                     <separator string="Out-of-Pocket Expenses"/>
                     <!-- editable inline, and open_form_view for the arrow that

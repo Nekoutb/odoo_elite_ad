@@ -403,6 +403,52 @@ class TestBillingWizard(TransactionCase):
         self.file.action_mark_complete()
         self.assertEqual(self.file.state, 'done')
 
+    def test_33b_the_client_is_told_what_they_are_charged_and_no_more(self):
+        """Owner spec 08/09/2026: no "out of pocket expense undercharge"
+        on the client's invoice. The disbursement lines print what the
+        client is charged and add up to the same total; the difference
+        stays in the ledger, on its own account."""
+        wizard = self._wizard()
+        wizard.debours_line_ids[0].amount_recharged = 45000    # was 60,000
+        wizard.review_reason = "Client disputed the terminal charge."
+        wizard.action_submit_for_review()
+        self.env['ir.attachment'].create({
+            'name': "agreement.pdf", 'res_model': 'logistics.file',
+            'res_id': self.file.id, 'raw': b"dummy"})
+        self.file.with_user(self.ops_manager).action_approve_recharge_ops()
+        self.file.with_user(self.general_manager).action_approve_recharge_gm()
+        self._wizard().action_create_invoice()
+        invoice = self.file.invoice_id
+
+        # the ledger is untouched: 47xx clears at cost, the shortfall has
+        # its own account and its own line
+        lines = invoice.invoice_line_ids
+        self.assertEqual(
+            sum(lines.filtered(lambda l: l.account_id == self.engaged)
+                .mapped('price_subtotal')), 100000)
+        adjustment = lines.filtered(
+            lambda l: l.clearance_category == 'adjustment')
+        self.assertEqual(adjustment.account_id, self.undercharge)
+        self.assertEqual(adjustment.price_subtotal, -15000)
+
+        # the document says only what is billed
+        html = self.env['ir.actions.report']._render_qweb_html(
+            'elite_clearance.report_clearance_invoice', invoice.ids)[0]
+        html = html.decode() if isinstance(html, bytes) else html
+        self.assertNotIn("undercharge", html.lower())
+        self.assertNotIn("overcharge", html.lower())
+        # each disbursement at what the client pays for it, and the
+        # subtotal is the billed figure, not the cost
+        charged = lines.filtered(
+            lambda l: l.clearance_category == 'debours').mapped(
+                'clearance_charged')
+        self.assertEqual(sorted(charged), [40000, 45000])
+        money = invoice._clearance_money
+        self.assertIn(money(85000), html, "the débours subtotal is charged")
+        self.assertNotIn(money(60000), html, "the cost is nobody's business")
+        # and the page still adds up: débours charged + services = TOTAL HT
+        self.assertEqual(invoice.amount_untaxed, 85000 + 1700 + 30000)
+
     def test_34b_a_billed_invoice_is_cancelled_never_deleted(self):
         """Every gate reads the file's two pointers, so a deleted half
         would leave the survivor reading as the whole bill."""

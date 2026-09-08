@@ -250,6 +250,50 @@ Customs clearance job files for a logistics/clearance services provider.
    as a Billing-only and a Finance-only user and assert on the arch —
    Odoo strips `groups=`-gated nodes server-side, so that is the one
    ORM-level test that sees what the browser shows.
+- **Owner spec 08/09/2026, seven instructions.**
+  1. Turnaround targets are **hours** and fractional - 30 minutes is 0.5.
+     `clearance.turnaround.target.target_hours` (Float), `is_late` compares
+     `hours_taken`, and a pre-migration multiplies the old whole days by 24
+     (guarded: a fresh install never had the column). Leaving that out
+     would have set every allowance to zero, which reads as "late".
+  2. The catalogue is **four** services: IM Import Maritime, ES Export,
+     AI Aérien (Air Freight), TR Transport. CODES are load-bearing - file
+     and invoice references are built from them (2026IM0009, EL26IM0001)
+     and sit on posted moves - so a service is RENAMED, never recoded, and
+     "Export Bois" (BO) is archived rather than deleted because old files
+     point at it. The hook renames only a service still carrying the name
+     we seeded: if the owner renamed it, theirs wins.
+  3. Every field under **Cargo & Routing** is required in draft and
+     in_progress - view-level, like the invoice essentials before it, so
+     the Teese import and existing closed files stay saveable.
+  4. **Documents are dropped on the area they belong to.** The widget is
+     now `clearance_documents` (`static/src/documents/`) and takes
+     `options="{'dropzone': '<selector>'}"` - the nearest ancestor matching
+     it becomes the target. The file form wraps the checklist in
+     `.o_clearance_documents_area`, so a document is dragged onto the list
+     it belongs to; with no option the target is the enclosing dialog, as
+     the expense dialog has it. `attachment_ids` moved to the
+     `clearance.documents.mixin` AbstractModel, which both `logistics.file`
+     and `logistics.expense` inherit; `_clearance_documents_added()` is the
+     hook the expense uses to stamp `date_documents_submitted`.
+  5. **Not Containerised** on the file switches the container count and
+     type off (readonly + `force_save="1"`, and an onchange clears them)
+     and drops their `required`.
+  6. **A draft file is its author's alone.** `rule_logistics_file_draft_is_the_authors`
+     (group_clearance_user): `['|', ('state','!=','draft'), ('create_uid','=',user.id)]`,
+     with `rule_logistics_file_manager_sees_all` for the general Manager so
+     an abandoned file can still be found. Rules with groups are OR-ed; the
+     global company rule still applies on top. No `clearance.task` kind
+     reads draft files, so nothing had to change there - but remember a
+     `_table_query` model is raw SQL and record rules do NOT apply to it.
+  7. **The client's invoice says what is charged, never what it cost.**
+     The disbursement lines still POST at cost so 47xx clears, and the
+     difference is still its own line on its own P&L account - but that
+     line is now `clearance_category='adjustment'` and is left off the
+     printed document, while each débours row prints
+     `clearance_charged`, the per-line figure the biller agreed. The two
+     add to the same total, so TOTAL HT is unchanged; "out of pocket
+     expense undercharge" no longer reaches a customer.
 - **My Tasks (owner spec, 03/09/2026).** `views/clearance_tasks_views.xml`:
    ten group-restricted actions under a "My Tasks" menu, so each role sees
    only the queue it can act on. No new model — domains over the existing

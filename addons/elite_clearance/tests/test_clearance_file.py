@@ -27,8 +27,11 @@ class TestClearanceFile(TransactionCase):
             ],
         })
 
-    def _new_file(self):
-        return self.env['logistics.file'].create({
+    def _new_file(self, user=None):
+        model = self.env['logistics.file']
+        if user:
+            model = model.with_user(user)
+        return model.create({
             'customs_regime': 'im4',
             'bl_awb_ref': "MEDUW000001",
             'goods_description': "Marchandises diverses",
@@ -156,9 +159,12 @@ class TestClearanceFile(TransactionCase):
                 self.env.ref('elite_clearance.group_clearance_user').id,
             ])],
         })
-        file = self._new_file()
+        # opened BY that user: since 08/09/2026 a draft file is its
+        # author's alone, so a file somebody else opened would fail on
+        # the read and this would stop testing the approval at all.
+        file = self._new_file(user=user)
         file.waiver_reason = "Client sending the invoice tomorrow."
-        file.action_request_waiver()
+        file.with_user(user).action_request_waiver()
         with self.assertRaises(UserError):
             file.with_user(user).action_approve_waiver()
 

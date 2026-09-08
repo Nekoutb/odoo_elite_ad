@@ -38,23 +38,39 @@ def seed_clearance_master_data(env):
             rec = Doc.create({'code': code, 'name': name, 'sequence': seq * 10})
         docs[code] = rec
 
+    # The four services Elimelec sells (owner spec, 08/09/2026). The CODES
+    # are load-bearing - file and invoice references are built from them
+    # (2026IM0009, EL26IM0001) and sit on posted moves - so a service is
+    # renamed, never recoded. "Export Bois" is retired rather than deleted,
+    # for the same reason: old files still point at it.
     SERVICE_TYPES = {
-        'IM': ("Import", 10,
+        'IM': ("Import Maritime", 10,
                ['BL', 'INV', 'PKL', 'DI', 'RVC', 'BESC', 'ANOR', 'LFAC',
                 'CAH', 'DFIS']),
-        'BO': ("Export Bois", 20,
-               ['OBOK', 'OTRA', 'INV', 'ECH', 'DOMX', 'DEXP', 'SPEC', 'BCMD']),
-        'ES': ("Export Standard", 30,
+        'ES': ("Export", 20,
                ['OTRA', 'INV', 'PKL', 'ECH', 'BCMD']),
-        'AI': ("Aérien", 40,
+        'AI': ("Aérien (Air Freight)", 30,
                ['LTA', 'INV', 'PKL', 'FTRA', 'DI', 'RVC', 'ANOR', 'VTEC',
                 'FTEC', 'EUR1', 'CANA']),
+        'TR': ("Transport", 40, ['OTRA', 'INV', 'BCMD']),
     }
+    # What each was called when we seeded it. A service is renamed only if
+    # it still carries that name: if the owner has renamed it themselves,
+    # theirs wins.
+    RENAMED = {'IM': "Import", 'ES': "Export Standard", 'AI': "Aérien"}
+    RETIRED = {'BO': "Export Bois"}
     Service = env['logistics.service.type']
     Line = env['logistics.service.type.document']
+    for code, was in RETIRED.items():
+        old = Service.with_context(active_test=False).search(
+            [('code', '=', code), ('company_id', '=', company.id)], limit=1)
+        if old and old.active and old.name == was:
+            old.active = False
     for code, (name, seq, doc_codes) in SERVICE_TYPES.items():
         st = Service.search([('code', '=', code),
                              ('company_id', '=', company.id)], limit=1)
+        if st and st.name == RENAMED.get(code):
+            st.name = name
         if not st:
             st = Service.create({'code': code, 'name': name, 'sequence': seq,
                                  'commission_rate': 2.0})

@@ -318,7 +318,7 @@ class TestExpenseCapture(TransactionCase):
             self.assertIn(wanted, arch, wanted)
         self.assertNotIn('name="unit_label"', arch, "the unit is fixed")
         self.assertNotIn('name="journal_id"', arch)
-        self.assertIn('widget="clearance_expense_documents"', arch,
+        self.assertIn('widget="clearance_documents"', arch,
                       "the documents field is the drop-zone widget")
         # payment mode and holder appear only to feed the vendor's readonly
         # rule: invisible AND readonly, so the web client never sends them

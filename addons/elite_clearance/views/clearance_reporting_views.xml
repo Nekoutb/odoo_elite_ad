@@ -9,7 +9,7 @@
     <field name="arch" type="xml">
       <list string="Turnaround Targets" editable="bottom">
         <field name="step"/>
-        <field name="target_days"/>
+        <field name="target_hours"/>
         <field name="active" optional="hide"/>
         <field name="company_id" groups="base.group_multi_company"
                optional="hide"/>
@@ -45,9 +45,11 @@
         <field name="step"/>
         <field name="started"/>
         <field name="completed"/>
-        <field name="days_taken" widget="float" digits="[6,2]"
+        <field name="hours_taken" widget="float" digits="[6,2]"
                sum="Average" optional="show"/>
-        <field name="target_days" optional="show"/>
+        <field name="target_hours" optional="show"/>
+        <field name="days_taken" widget="float" digits="[6,2]"
+               optional="hide"/>
         <field name="is_done" optional="hide"/>
         <field name="is_late" optional="show"/>
         <field name="file_state" optional="hide"/>

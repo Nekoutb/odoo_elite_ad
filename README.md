@@ -87,6 +87,13 @@ the file, never the money: the unsupported amount is not recharged to the
 client, stays on 421101 against the holder, and remains recoverable from
 them.
 
+**Opening a file.** Everything under Cargo & Routing is keyed when the file
+is opened, and a file stays the author's own until they press **Start Work** —
+Finance, Transit, Customer Service and Operations see it from that moment, not
+before. Cargo that is not in a container is marked **Not Containerised**, and
+the container count and type are then switched off. Supporting documents are
+dragged straight onto the Document Checklist.
+
 **Billing.** From `ops_closed`, `action_create_invoice` raises a customer
 invoice with two sections: disbursements recharged at cost against the
 out-of-pocket account (clearing it, and carrying no tax — they are the

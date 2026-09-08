@@ -254,10 +254,19 @@ class AccountMoveLine(models.Model):
     _inherit = 'account.move.line'
 
     clearance_category = fields.Selection(
-        [('debours', "Débours"), ('prestation', "Prestations")],
+        [('debours', "Débours"), ('prestation', "Prestations"),
+         ('adjustment', "Recharge adjustment")],
         string="Clearance Category", copy=False,
         help="Which block of the printed clearance invoice this line "
-             "belongs under.")
+             "belongs under. An 'adjustment' line is accounting only: it "
+             "carries the difference between what a disbursement cost and "
+             "what the client is charged, and is NOT printed.")
+    clearance_charged = fields.Monetary(
+        string="Charged to Client", copy=False,
+        help="What the client is charged for this disbursement, which is "
+             "what the invoice prints. The line itself always posts AT "
+             "COST so the out-of-pocket account clears in full; the "
+             "difference is the adjustment line.")
     clearance_unit = fields.Char(
         string="Unit", copy=False,
         help="Printed as Unité, e.g. Par dossier or Par Conteneur.")

@@ -12,6 +12,29 @@
             <field name="domain_force">[('company_id', 'in', company_ids)]</field>
         </record>
 
+        <!-- Owner spec 08/09/2026: a file belongs to whoever opened it
+             until they press Start Work. Finance, Transit, Customer Service
+             and Operations see it from that moment, not before - a half-keyed
+             file is nobody else's business and must not reach a queue. The
+             general Manager sees everything, because somebody has to be able
+             to find a file its author has abandoned. Rules with groups are
+             OR-ed together; the company rule above is global and still
+             applies on top of both. -->
+
+        <record id="rule_logistics_file_draft_is_the_authors" model="ir.rule">
+            <field name="name">Clearance file: a draft is its author's until work starts</field>
+            <field name="model_id" ref="model_logistics_file"/>
+            <field name="groups" eval="[(4, ref('group_clearance_user'))]"/>
+            <field name="domain_force">['|', ('state', '!=', 'draft'), ('create_uid', '=', user.id)]</field>
+        </record>
+
+        <record id="rule_logistics_file_manager_sees_all" model="ir.rule">
+            <field name="name">Clearance file: a manager sees every file</field>
+            <field name="model_id" ref="model_logistics_file"/>
+            <field name="groups" eval="[(4, ref('group_clearance_manager'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+        </record>
+
         <record id="rule_logistics_file_document_company" model="ir.rule">
             <field name="name">Clearance file document: own companies only</field>
             <field name="model_id" ref="model_logistics_file_document"/>

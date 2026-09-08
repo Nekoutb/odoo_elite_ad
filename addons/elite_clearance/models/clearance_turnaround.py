@@ -26,24 +26,28 @@ STEPS = [
     ('exp_justify', "Advance: documents submitted → justified"),
 ]
 
-DEFAULT_TARGET_DAYS = {
-    'file_start': 2, 'file_waiver': 1, 'file_ops_close': 10,
-    'file_bill': 2, 'file_adv_waiver': 2, 'file_recharge': 2,
-    'file_reopen': 2, 'doc_receive': 3, 'exp_submit': 1,
-    'exp_approve': 1, 'exp_settle_key': 1, 'exp_settle_approve': 1,
-    'exp_pay': 2, 'exp_justify_docs': 3, 'exp_justify': 2,
+# Hours, not days, and fractional: half an hour is 0.5 (owner spec,
+# 08/09/2026). Clearance work is chased within a day, so a target of "2
+# days" said nothing useful about a step that should take twenty minutes.
+DEFAULT_TARGET_HOURS = {
+    'file_start': 48.0, 'file_waiver': 24.0, 'file_ops_close': 240.0,
+    'file_bill': 48.0, 'file_adv_waiver': 48.0, 'file_recharge': 48.0,
+    'file_reopen': 48.0, 'doc_receive': 72.0, 'exp_submit': 24.0,
+    'exp_approve': 24.0, 'exp_settle_key': 24.0, 'exp_settle_approve': 24.0,
+    'exp_pay': 48.0, 'exp_justify_docs': 72.0, 'exp_justify': 48.0,
 }
 
 
 class ClearanceTurnaroundTarget(models.Model):
-    """How many days a step is allowed to take before it is chased."""
+    """How many hours a step is allowed to take before it is chased."""
     _name = 'clearance.turnaround.target'
     _description = "Turnaround Target"
     _order = 'step'
 
     step = fields.Selection(STEPS, required=True)
-    target_days = fields.Integer(
-        string="Target (days)", required=True, default=2,
+    target_hours = fields.Float(
+        string="Target (hours)", required=True, default=48.0,
+        digits=(6, 2),
         help="Working from the moment the step became possible to the "
              "moment it was done. Zero means same day.")
     active = fields.Boolean(default=True)
@@ -86,7 +90,7 @@ class ClearanceTurnaround(models.Model):
     days_taken = fields.Float(
         string="Days", readonly=True, group_operator='avg',
         help="Elapsed so far when the step is not finished.")
-    target_days = fields.Integer(readonly=True)
+    target_hours = fields.Float(readonly=True, digits=(6, 2))
     is_late = fields.Boolean(string="Over target", readonly=True)
     company_id = fields.Many2one('res.company', readonly=True)
 
@@ -225,11 +229,11 @@ class ClearanceTurnaround(models.Model):
                    EXTRACT(EPOCH FROM (
                        COALESCE(base.completed, clock_timestamp()) - base.started
                    )) / 86400.0 AS days_taken,
-                   COALESCE(tgt.target_days, 0) AS target_days,
-                   (tgt.target_days IS NOT NULL
+                   COALESCE(tgt.target_hours, 0) AS target_hours,
+                   (tgt.target_hours IS NOT NULL
                     AND EXTRACT(EPOCH FROM (
                             COALESCE(base.completed, clock_timestamp()) - base.started
-                        )) / 86400.0 > tgt.target_days) AS is_late,
+                        )) / 3600.0 > tgt.target_hours) AS is_late,
                    base.company_id
               FROM (%s) AS base
               LEFT JOIN clearance_turnaround_target tgt

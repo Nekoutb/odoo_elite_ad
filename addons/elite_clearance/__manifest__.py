@@ -39,7 +39,7 @@ where no explicit approver list is set, the security groups apply.
     'author': "Elite Advisors",
     'website': "https://eliteadvisors.cm-ea.com",
     'category': 'Services/Clearance',
-    'version': '19.0.26.0.0',
+    'version': '19.0.27.0.0',
     'license': 'LGPL-3',
     'depends': ['base', 'mail', 'analytic', 'account', 'hr'],
     'data': [
@@ -80,10 +80,10 @@ where no explicit approver list is set, the security groups apply.
         'demo/clearance_demo.xml',
     ],
     'assets': {
-        # the expense dialog's documents field: many2many_binary plus a
-        # drop zone over the whole dialog
+        # the documents field: many2many_binary plus a drop zone over
+        # whichever area of the screen the documents belong to
         'web.assets_backend': [
-            'elite_clearance/static/src/expense_documents/**/*',
+            'elite_clearance/static/src/documents/**/*',
         ],
         # browser tests, loaded only when the server runs with --test-enable
         'web.assets_tests': [

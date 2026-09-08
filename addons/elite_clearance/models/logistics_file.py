@@ -13,7 +13,8 @@ class LogisticsFile(models.Model):
 
     _name = 'logistics.file'
     _description = "Clearance File"
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin',
+                'clearance.documents.mixin']
     _order = 'date_opened desc, create_date desc, id desc'
     _rec_names_search = ['name', 'partner_id.name', 'customs_declaration_ref']
 
@@ -91,6 +92,11 @@ class LogisticsFile(models.Model):
          ('conventional', "Conventional / break-bulk"),
          ('flatbed', "Flatbed truck")],
         string="Shipment Type")
+    not_containerised = fields.Boolean(
+        string="Not Containerised",
+        help="The goods are not in a container - break-bulk, conventional "
+             "or loose cargo. The container count and type are then not "
+             "asked for, and are cleared.")
     container_count = fields.Integer(string="Containers")
     package_count = fields.Integer(string="Packages")
     weight_kg = fields.Float(string="Weight (kg)", digits=(16, 3))
@@ -954,6 +960,16 @@ class LogisticsFile(models.Model):
                 'name': file.name or "The file",
                 'missing': (chr(10) + "  - ").join(missing)})
 
+    @api.onchange('not_containerised')
+    def _onchange_not_containerised(self):
+        """Cargo that is not in a container has no container count and no
+        container type; leaving old figures behind would print them on the
+        invoice."""
+        for file in self:
+            if file.not_containerised:
+                file.container_count = 0
+                file.container_type = False
+
     @api.constrains('customs_regime', 'state')
     def _check_customs_regime(self):
         """Mandatory to open a file and to work it.
@@ -1118,7 +1134,8 @@ class LogisticsFile(models.Model):
         self.ensure_one()
         return [
             {'name': "%s — %s" % (expense.category_id.name, expense.description),
-             'amount': expense.amount}
+             'amount': expense.amount,
+             'charged': expense.recharge_amount or expense.amount}
             for expense in self._billable_expenses()
         ]
 
@@ -1283,6 +1300,9 @@ class LogisticsFile(models.Model):
                 # fee lines below deliberately keep the default taxes.
                 'tax_ids': [fields.Command.clear()],
                 'clearance_category': 'debours',
+                # what the client is charged for this one, which is what
+                # the document prints; the line still POSTS at cost
+                'clearance_charged': line.get('charged', line['amount']),
                 'clearance_unit': line.get('unit') or "Par dossier",
                 'analytic_distribution': analytic,
             }))
@@ -1312,12 +1332,18 @@ class LogisticsFile(models.Model):
                     "Configure the %s account under Clearance → "
                     "Configuration → Settings before billing an adjusted "
                     "recharge.", missing))
+            # Accounting only. The client is told what they are charged,
+            # never what it cost us and never that we discounted it: the
+            # printed débours lines carry the charged figures and add up
+            # to the same total, so this line is left off the document
+            # (owner spec, 08/09/2026).
             debours_lines.append(fields.Command.create({
                 'name': label,
                 'quantity': 1.0,
                 'price_unit': adjustment,
                 'account_id': variance_account.id,
                 'tax_ids': [fields.Command.clear()],
+                'clearance_category': 'adjustment',
                 'analytic_distribution': analytic,
             }))
 

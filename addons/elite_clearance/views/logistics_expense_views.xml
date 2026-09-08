@@ -147,7 +147,7 @@
           <separator string="Documents"/>
           <!-- The widget makes the whole dialog a drop target: a receipt
                dragged anywhere onto it is uploaded and listed here. -->
-          <field name="attachment_ids" widget="clearance_expense_documents"
+          <field name="attachment_ids" widget="clearance_documents"
                  nolabel="1" colspan="2"/>
           <div class="alert alert-info" role="alert">
             Save this, then <strong>Submit</strong> it from the list. How it

@@ -68,7 +68,8 @@ class LogisticsExpense(models.Model):
 
     _name = 'logistics.expense'
     _description = "Clearance Out-of-Pocket Expense"
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin',
+                'clearance.documents.mixin']
     _order = 'file_id, id'
 
     name = fields.Char(
@@ -108,16 +109,9 @@ class LogisticsExpense(models.Model):
     employee_id = fields.Many2one(
         'hr.employee', string="Advance Holder", tracking=True,
         help="Employee who receives the cash advance and must justify it.")
-    # The receipts and invoices behind the expense, as a field so the
-    # capture dialog can take them - dropped on the dialog or picked with
-    # Upload. Computed from the attachments that already point at the
-    # expense (the chatter's included) and inversed by pointing new ones
-    # at it, so there is ONE set of documents whichever way they arrived.
-    attachment_ids = fields.Many2many(
-        'ir.attachment', string="Documents",
-        compute='_compute_attachment_ids', inverse='_inverse_attachment_ids',
-        help="Receipts, invoices, tickets. Drop files anywhere on the "
-             "expense dialog, or use Upload.")
+    # attachment_ids comes from clearance.documents.mixin: the receipts
+    # and invoices behind the expense, dropped on the dialog or picked
+    # with Upload. Their arrival is what stamps date_documents_submitted.
     state = fields.Selection(
         [('draft', "Draft"),
          ('submitted', "Submitted"),
@@ -209,43 +203,9 @@ class LogisticsExpense(models.Model):
                 or (exp.state == 'settled' and exp.payment_mode != 'advance')
                 or exp.state == 'cancel')
 
-    def _compute_attachment_ids(self):
-        Attachment = self.env['ir.attachment']
-        by_expense = {}
-        real = self.filtered(lambda e: isinstance(e.id, int))
-        if real:
-            for att in Attachment.search([
-                    ('res_model', '=', self._name),
-                    ('res_id', 'in', real.ids),
-                    ('res_field', '=', False)]):
-                by_expense.setdefault(att.res_id, []).append(att.id)
-        for exp in self:
-            exp.attachment_ids = Attachment.browse(
-                by_expense.get(exp.id, []) if isinstance(exp.id, int) else [])
-
-    def _inverse_attachment_ids(self):
-        """Adopt what was added; delete what was taken away.
-
-        A file dropped on the dialog is uploaded against the model with no
-        record yet (res_id 0) and then linked here. Pointing it at the
-        expense is what puts it in the chatter, in the justification
-        count and on the documents-received stamp. One removed with the
-        widget's cross is deleted: the person who dropped the wrong file
-        meant it gone, not orphaned.
-        """
-        Attachment = self.env['ir.attachment']
-        for exp in self:
-            current = Attachment.search([
-                ('res_model', '=', self._name), ('res_id', '=', exp.id),
-                ('res_field', '=', False)])
-            wanted = exp.attachment_ids
-            added = wanted - current
-            if added:
-                added.write({'res_model': self._name, 'res_id': exp.id})
-                exp._stamp_documents_received()
-            removed = current - wanted
-            if removed:
-                removed.unlink()
+    def _clearance_documents_added(self, attachments):
+        """A document's arrival dates itself on the expense."""
+        self._stamp_documents_received()
 
     def _stamp_documents_received(self):
         """The first document's arrival dates itself, once."""

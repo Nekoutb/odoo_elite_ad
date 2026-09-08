@@ -177,13 +177,17 @@
           </tr>
         </thead>
         <tbody>
+          <!-- A disbursement prints at what the CLIENT is charged. The
+               line posts at cost and the difference is a separate
+               accounting line, which the client never sees: the invoice
+               says what is being billed, not what it cost us. -->
           <tr t-foreach="debours" t-as="line">
             <td>Debours</td>
             <td><span t-field="line.name"/></td>
             <td><span t-field="line.clearance_unit"/></td>
             <td class="ctr"><span t-esc="'{:,.2f}'.format(line.quantity).rstrip('0').rstrip('.').replace(',', ' ')"/></td>
-            <td class="num"><span t-esc="o._clearance_money(line.price_unit)"/></td>
-            <td class="num"><span t-esc="o._clearance_money(line.price_subtotal)"/></td>
+            <td class="num"><span t-esc="o._clearance_money(line.clearance_charged)"/></td>
+            <td class="num"><span t-esc="o._clearance_money(line.clearance_charged)"/></td>
           </tr>
           <tr class="sub" t-if="debours">
             <td>Sous total</td>
@@ -191,7 +195,7 @@
             <td></td>
             <td class="ctr"><span t-esc="len(debours)"/></td>
             <td></td>
-            <td class="num"><span t-esc="o._clearance_money(sum(debours.mapped('price_subtotal')))"/></td>
+            <td class="num"><span t-esc="o._clearance_money(sum(debours.mapped('clearance_charged')))"/></td>
           </tr>
 
           <tr t-foreach="prestations" t-as="line">
