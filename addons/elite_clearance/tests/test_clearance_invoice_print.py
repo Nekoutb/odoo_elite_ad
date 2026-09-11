@@ -31,7 +31,7 @@ class TestClearanceInvoicePrint(TransactionCase):
             'clearance_sale_journal_id': cls.sale_journal.id,
             'clearance_service_tax_ids': [(6, 0, cls.vat.ids)],
             'vat': "M051612521065D",
-            'company_registry': "RC/DLA/2018/B/2056", 'clearance_invoice_name': "Full Legal Name SARL",
+            'company_registry': "RC/DLA/2018/B/2056",
         })
         cls.cash = env['account.journal'].create({
             'name': "Cash", 'type': 'cash', 'code': 'PCSH'})
