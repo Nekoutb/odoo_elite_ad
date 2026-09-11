@@ -196,9 +196,16 @@ class TestManualScreenshots(HttpCase):
 
     # ------------------------------------------------------------------
     def _evaluate(self, browser, expression):
-        result = browser._websocket_request('Runtime.evaluate', params={
+        """Run an expression in the page and return its value.
+
+        _websocket_request already unwraps the envelope, so the payload
+        is {'result': {'type': ..., 'value': ...}} - one level, not two.
+        Reading it one key too deep returned None for everything, which
+        looked exactly like "the element is not there" (11/09/2026).
+        """
+        answer = browser._websocket_request('Runtime.evaluate', params={
             'expression': expression, 'awaitPromise': False})
-        return result.get('result', {}).get('result', {}).get('value')
+        return (answer or {}).get('result', {}).get('value')
 
     def _click(self, browser, selector):
         outcome = self._evaluate(browser, """
