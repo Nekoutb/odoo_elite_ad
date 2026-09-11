@@ -111,7 +111,13 @@ class TestExpensesAndBilling(TransactionCase):
             'res_id': exp.id, 'raw': b"dummy"})
         exp.action_submit_justification()
         self.assertEqual(exp.state, 'justification_submitted')
+        # Operations accepts the documents; the Finance Manager signs the
+        # reclassification (owner, 11/09/2026)
         exp.action_justify()
+        self.assertEqual(exp.state, 'justification_ops_approved')
+        self.assertFalse(exp.justification_move_id,
+                         "nothing moves on the first signature")
+        exp.action_justify_finance()
         self.assertEqual(exp.state, 'justified')
         jmove = exp.justification_move_id
         jd = jmove.line_ids.filtered(lambda l: l.debit > 0)
@@ -291,6 +297,7 @@ class TestExpensesAndBilling(TransactionCase):
             'res_id': advance.id, 'raw': b"dummy"})
         advance.action_submit_justification()
         advance.action_justify()
+        advance.action_justify_finance()
         for line in advance.justification_move_id.line_ids:
             self.assertEqual(line.analytic_distribution, {tag: 100})
 

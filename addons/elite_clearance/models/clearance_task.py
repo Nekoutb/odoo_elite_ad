@@ -18,6 +18,10 @@ KIND_GROUPS = {
     'disburse_cash': ('elite_clearance.group_clearance_cashier',),
     'disburse_bank': ('elite_clearance.group_clearance_treasury',),
     'justification_approve': ('elite_clearance.group_clearance_ops_manager',),
+    # anyone may hold an advance; the row is then narrowed to the one
+    # person it stands against, in _search
+    'advance_justify': ('elite_clearance.group_clearance_user',),
+    'justification_finance': ('elite_clearance.group_clearance_finance_manager',),
     'doc_waiver': ('elite_clearance.group_clearance_manager',
                    'elite_clearance.group_clearance_ops_manager'),
     'advance_waiver': ('elite_clearance.group_clearance_ops_manager',),
@@ -35,7 +39,9 @@ KINDS = [
     ('settlement_approve', "Approve settlement"),
     ('disburse_cash', "Pay from cash"),
     ('disburse_bank', "Pay from bank"),
+    ('advance_justify', "Justify your cash advance"),
     ('justification_approve', "Approve justification"),
+    ('justification_finance', "Sign a justification"),
     ('doc_waiver', "Approve document waiver"),
     ('advance_waiver', "Approve advance waiver"),
     ('recharge_ops', "Approve recharge (Operations)"),
@@ -58,6 +64,10 @@ class ClearanceTask(models.Model):
     res_model = fields.Char(readonly=True)
     res_id = fields.Integer(readonly=True)
     file_id = fields.Many2one('logistics.file', readonly=True)
+    holder_user_id = fields.Many2one(
+        'res.users', readonly=True, string="Advance Held By",
+        help="Set only on an advance awaiting justification: the row is "
+             "shown to that person alone.")
     partner_id = fields.Many2one('res.partner', string="Client", readonly=True)
     detail = fields.Char(string="What is waiting", readonly=True)
     amount = fields.Monetary(readonly=True, currency_field='currency_id')
@@ -102,7 +112,8 @@ class ClearanceTask(models.Model):
                    e.amount AS amount,
                    e.date_requested AS date_deadline,
                    e.company_id AS company_id,
-                   c.currency_id AS currency_id
+                   c.currency_id AS currency_id,
+                   NULL::integer AS holder_user_id
               FROM logistics_expense e
               JOIN logistics_file f ON f.id = e.file_id
               JOIN res_company c ON c.id = e.company_id
@@ -120,7 +131,8 @@ class ClearanceTask(models.Model):
                    %(amount)s AS amount,
                    f.create_date::date AS date_deadline,
                    f.company_id AS company_id,
-                   c.currency_id AS currency_id
+                   c.currency_id AS currency_id,
+                   NULL::integer AS holder_user_id
               FROM logistics_file f
               JOIN res_company c ON c.id = f.company_id
              WHERE %(where)s
@@ -166,6 +178,33 @@ class ClearanceTask(models.Model):
                 detail="'Undercharge awaiting the General Manager'",
                 amount='f.recharge_amount',
                 where="f.recharge_state = 'ops_approved'"),
+            # An advance that has been paid out and not yet justified,
+            # shown to the person it stands against (owner 11/09/2026).
+            # It is their debt until the receipts are accepted.
+            """
+            SELECT (15 * 10000000 + e.id) AS id,
+                   %s AS name,
+                   'advance_justify' AS kind,
+                   'logistics.expense' AS res_model,
+                   e.id AS res_id,
+                   e.file_id AS file_id,
+                   f.partner_id AS partner_id,
+                   e.description AS detail,
+                   e.amount AS amount,
+                   e.date_settled::date AS date_deadline,
+                   e.company_id AS company_id,
+                   c.currency_id AS currency_id,
+                   emp.user_id AS holder_user_id
+              FROM logistics_expense e
+              JOIN logistics_file f ON f.id = e.file_id
+              JOIN res_company c ON c.id = e.company_id
+              JOIN hr_employee emp ON emp.id = e.employee_id
+             WHERE e.state = 'settled'
+               AND e.payment_mode = 'advance'
+               AND emp.user_id IS NOT NULL
+            """ % self._text('e.name'),
+            expense % dict(offset=16, kind='justification_finance',
+                           state='justification_ops_approved', extra='TRUE'),
             file_task % dict(
                 offset=11, kind='reopen_imported',
                 detail="'Reopening requested for an imported file'",
@@ -197,7 +236,8 @@ class ClearanceTask(models.Model):
                    s.default_amount AS amount,
                    s.create_date::date AS date_deadline,
                    s.company_id AS company_id,
-                   c.currency_id AS currency_id
+                   c.currency_id AS currency_id,
+                   NULL::integer AS holder_user_id
               FROM logistics_billing_service s
               JOIN res_company c ON c.id = s.company_id
              WHERE s.state = 'draft' AND s.active = TRUE
@@ -229,6 +269,11 @@ class ClearanceTask(models.Model):
         # Narrow every read, so the one screen is a different list for each
         # role and nobody sees a queue they cannot act on.
         domain = [('kind', 'in', self._allowed_kinds())] + list(domain or [])
+        # An advance to justify is one person's, not a department's: it
+        # stands against them until the receipts are accepted.
+        if not self.env.su:
+            domain = ['|', ('kind', '!=', 'advance_justify'),
+                      ('holder_user_id', '=', self.env.user.id)] + domain
         # ... and never a file this user cannot open: a _table_query model
         # is raw SQL, so the file's own record rules do not reach it, and
         # a draft file would sit in a queue that raises AccessError when

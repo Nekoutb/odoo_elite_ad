@@ -131,6 +131,10 @@
                                  help="Who may approve that the documents attached to a staff advance really justify it. Empty = any Clearance Operations Manager.">
                             <field name="clearance_justification_approver_ids" widget="many2many_tags"/>
                         </setting>
+                        <setting string="Justification Signatories (Finance Manager)"
+                                 help="Who signs the reclassification of a justified advance from 421101 to the billable account. Empty = any Clearance Finance Manager.">
+                            <field name="clearance_justification_finance_approver_ids" widget="many2many_tags"/>
+                        </setting>
                         <setting string="Recharge Adjustment Approvers (Operations)"
                                  help="Who may approve recharging the client at other than cost. Empty = any Clearance Operations Manager.">
                             <field name="clearance_recharge_ops_approver_ids" widget="many2many_tags"/>

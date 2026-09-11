@@ -51,6 +51,9 @@ class ResConfigSettings(models.TransientModel):
         related='company_id.clearance_service_fee_account_id', readonly=False)
     clearance_justification_approver_ids = fields.Many2many(
         related='company_id.clearance_justification_approver_ids', readonly=False)
+    clearance_justification_finance_approver_ids = fields.Many2many(
+        related='company_id.clearance_justification_finance_approver_ids',
+        readonly=False)
     clearance_recharge_ops_approver_ids = fields.Many2many(
         related='company_id.clearance_recharge_ops_approver_ids', readonly=False)
     clearance_recharge_gm_approver_ids = fields.Many2many(

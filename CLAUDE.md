@@ -76,6 +76,21 @@ Customs clearance job files for a logistics/clearance services provider.
   that contact, because hr only creates it as a side effect of writing a
   work e-mail or phone. Justification is the reclassification 421101 → 47xx
   and is the ONLY thing that makes a disbursement billable.
+- **An advance is the holder's to clear (owner 11/09/2026).** A settled
+  advance appears in the holder's OWN My Tasks as `advance_justify`
+  ("Justify your cash advance"), and they may submit the receipts
+  themselves - `action_submit_justification` is no longer Finance-only,
+  because a queue whose row cannot be acted on is worse than no queue.
+  `clearance.task` carries a `holder_user_id` column (NULL on every
+  other kind, because a UNION needs the same columns everywhere) and
+  `_search` narrows that kind to `holder_user_id = uid`: it is one
+  person's debt, not a department's queue.
+  **And a justification is signed twice:** `action_justify` (Operations
+  Manager) accepts the documents and moves to
+  `justification_ops_approved` WITHOUT posting anything, then
+  `action_justify_finance` (Finance Manager, approval kind
+  `justification_finance`) signs the reclassification that actually
+  moves 421101 -> 47xx. The file stays blocked between the two.
 - **The unjustified-advance gate.** `unjustified_advance_total` (settled
   advances not yet justified) blocks ops-close and billing. A new
   `group_clearance_ops_manager` — deliberately NOT the Manager who approved

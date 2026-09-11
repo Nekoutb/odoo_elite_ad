@@ -76,6 +76,90 @@ class TestStaffAdvances(TransactionCase):
             'name': "receipt.pdf", 'res_model': 'logistics.expense',
             'res_id': expense.id, 'raw': b"dummy"})
 
+    def _settled_advance(self, amount=80000, employee=None):
+        """An advance paid out and awaiting its receipts."""
+        advance = self._advance(amount, employee)
+        advance.action_submit()
+        advance.action_approve()
+        advance.action_submit_settlement()
+        advance.action_approve_settlement()
+        advance.action_settle()
+        return advance
+
+    # -- the holder's own queue, and the second signature ---------------
+    def test_20_an_unjustified_advance_sits_in_its_holders_queue(self):
+        """Owner 11/09/2026: once the cash is handed over it is that
+        person's to clear, and it says so on their own screen."""
+        holder = self.env['res.users'].create({
+            'name': "Ndoh", 'login': "ndoh@adv.test",
+            'group_ids': [(6, 0, [self.env.ref(
+                'elite_clearance.group_clearance_operations').id])]})
+        self.employee.user_id = holder
+        advance = self._settled_advance()
+
+        Task = self.env['clearance.task']
+        mine = Task.with_user(holder).search(
+            [('kind', '=', 'advance_justify')])
+        self.assertEqual(mine.res_id, advance.id)
+        self.assertEqual(mine.holder_user_id, holder)
+        self.assertEqual(mine.amount, 80000)
+
+        # and it is nobody else's: the debt stands against one person
+        somebody = self.env['res.users'].create({
+            'name': "Other", 'login': "other@adv.test",
+            'group_ids': [(6, 0, [self.env.ref(
+                'elite_clearance.group_clearance_operations').id])]})
+        self.assertFalse(Task.with_user(somebody).search(
+            [('kind', '=', 'advance_justify')]),
+            "another agent's advance is not my queue")
+
+        # the holder can act on it, or the queue would be decoration
+        self._receipt(advance)
+        advance.with_user(holder).action_submit_justification()
+        self.assertEqual(advance.state, 'justification_submitted')
+        self.assertFalse(Task.with_user(holder).search(
+            [('kind', '=', 'advance_justify')]),
+            "submitted, so it leaves the holder's queue")
+
+    def test_21_a_justification_is_signed_twice(self):
+        """Operations accepts the documents; the Finance Manager signs
+        the reclassification, because it moves money between two
+        accounts (owner, 11/09/2026)."""
+        advance = self._settled_advance()
+        self._receipt(advance)
+        advance.action_submit_justification()
+
+        ops = self._ops_manager("ops.two.sig@adv.test")
+        finance_manager = self.env['res.users'].create({
+            'name': "Fin Mgr Adv", 'login': "finmgr@adv.test",
+            'group_ids': [(6, 0, [self.env.ref(
+                'elite_clearance.group_clearance_finance_manager').id])]})
+
+        # the Finance Manager cannot sign before Operations has accepted
+        with self.assertRaises(UserError):
+            advance.with_user(finance_manager).action_justify_finance()
+
+        advance.with_user(ops).action_justify()
+        self.assertEqual(advance.state, 'justification_ops_approved')
+        self.assertFalse(advance.justification_move_id,
+                         "the first signature moves nothing")
+        self.assertEqual(self.file.unjustified_advance_total, 80000,
+                         "and the file is still blocked by it")
+
+        # ... and Operations cannot sign for Finance either
+        with self.assertRaises(UserError):
+            advance.with_user(ops).action_justify_finance()
+
+        # it waits in the Finance Manager's queue meanwhile
+        waiting = self.env['clearance.task'].with_user(finance_manager).search(
+            [('kind', '=', 'justification_finance')])
+        self.assertEqual(waiting.res_id, advance.id)
+
+        advance.with_user(finance_manager).action_justify_finance()
+        self.assertEqual(advance.state, 'justified')
+        self.assertTrue(advance.justification_move_id)
+        self.assertEqual(self.file.unjustified_advance_total, 0)
+
     # -- registration and the auxiliary --------------------------------
     def test_01_advance_needs_a_registered_staff_member(self):
         """No holder, no advance - refused at keying, not at settlement."""

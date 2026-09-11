@@ -46,6 +46,9 @@ APPROVAL_KINDS = {
                         "approve reopening an imported file"),
     # Reclassifying an advance to the billable account is an operational
     # judgement about whether the documents really support it.
+    'justification_finance': ("clearance_justification_finance_approver_ids",
+                              ('elite_clearance.group_clearance_finance_manager',),
+                              "sign an advance justification"),
     'justification': ("clearance_justification_approver_ids",
                       ('elite_clearance.group_clearance_ops_manager',),
                       "approve the justification of a staff advance"),
@@ -199,6 +202,12 @@ class ResCompany(models.Model):
         string="Justification Approvers",
         help="Who may approve that the documents attached to a staff advance "
              "really justify it. Empty = any Clearance Operations Manager.")
+    clearance_justification_finance_approver_ids = fields.Many2many(
+        'res.users', 'clearance_justification_finance_approver_rel',
+        string="Justification Signatories",
+        help="Who signs the reclassification of a justified advance from "
+             "421101 to the billable account. Empty = any Clearance "
+             "Finance Manager.")
     clearance_recharge_ops_approver_ids = fields.Many2many(
         'res.users', 'clearance_recharge_ops_approver_rel',
         string="Recharge Adjustment Approvers (Operations)",

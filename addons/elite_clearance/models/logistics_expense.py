@@ -119,7 +119,8 @@ class LogisticsExpense(models.Model):
          ('settlement_submitted', "Awaiting Finance Manager"),
          ('settlement_approved', "Settlement Approved"),
          ('settled', "Settled"),
-         ('justification_submitted', "Justification Awaiting Approval"),
+         ('justification_submitted', "Justification: Operations"),
+         ('justification_ops_approved', "Justification: Finance Manager"),
          ('justified', "Justified"),
          ('cancel', "Cancelled")],
         default='draft', required=True, tracking=True, index=True)
@@ -572,13 +573,21 @@ class LogisticsExpense(models.Model):
             })
 
     def action_submit_justification(self):
-        """Finance sends the supporting documents up for review.
+        """The receipts go up for review.
 
-        Attaching a receipt is not the same as the receipt being accepted:
-        the reclassification that makes an advance billable is an
-        operational judgement, so it goes to the Operations Manager.
+        Sent by Finance, or by the staff member holding the advance:
+        it is their debt until it is justified, the queue shows it to
+        them as theirs to clear (owner, 11/09/2026), and a queue whose
+        row cannot be acted on is worse than no queue at all.
+
+        Attaching a receipt is not the same as the receipt being
+        accepted. The reclassification that makes an advance billable is
+        an operational judgement AND a movement between two accounts, so
+        it is approved twice - Operations, then the Finance Manager.
         """
-        self._check_finance()
+        for exp in self:
+            if not exp._is_held_by_current_user():
+                exp._check_finance()
         for exp in self:
             if exp.state != 'settled' or exp.payment_mode != 'advance':
                 raise UserError(self.env._(
@@ -593,14 +602,24 @@ class LogisticsExpense(models.Model):
                        'date_justification_submitted': fields.Datetime.now()})
             exp.message_post(body=self.env._(
                 "Justification submitted with %(count)s supporting "
-                "document(s), for the Operations Manager to review.",
-                count=attachments))
+                "document(s), for the Operations Manager and then the "
+                "Finance Manager to review.", count=attachments))
+
+    def _is_held_by_current_user(self):
+        """The advance stands against this person, so it is theirs to
+        clear."""
+        self.ensure_one()
+        holder = self.employee_id.user_id
+        return bool(holder) and holder == self.env.user
 
     def action_refuse_justification(self):
         """The documents do not support the advance; back to Finance."""
         for exp in self:
-            exp.company_id._clearance_check_approver('justification')
-            if exp.state != 'justification_submitted':
+            if exp.state == 'justification_ops_approved':
+                exp.company_id._clearance_check_approver('justification_finance')
+            elif exp.state == 'justification_submitted':
+                exp.company_id._clearance_check_approver('justification')
+            else:
                 raise UserError(self.env._(
                     "No justification is awaiting approval on %s.", exp.name))
             exp.write({'state': 'settled',
@@ -610,15 +629,32 @@ class LogisticsExpense(models.Model):
                 "the holder and is not billable."))
 
     def action_justify(self):
-        """The Operations Manager accepts the documents; the advance is
-        reclassified from 421101 to the engaged account and becomes
-        billable."""
+        """The Operations Manager accepts the documents as evidence of
+        what the money was spent on.
+
+        It does not yet move anything: the reclassification is a
+        movement between two accounts, so the Finance Manager signs it
+        too (owner, 11/09/2026).
+        """
         for exp in self:
             exp.company_id._clearance_check_approver('justification')
             if exp.state != 'justification_submitted':
                 raise UserError(self.env._(
-                    "%s has not been submitted for justification approval "
-                    "by Finance.", exp.name))
+                    "%s has not been submitted for justification approval.",
+                    exp.name))
+            exp.write({'state': 'justification_ops_approved'})
+            exp.message_post(body=self.env._(
+                "Justification accepted by Operations. It now awaits the "
+                "Finance Manager, who signs the reclassification."))
+
+    def action_justify_finance(self):
+        """The Finance Manager signs it; the advance is reclassified from
+        421101 to the engaged account and becomes billable."""
+        for exp in self:
+            exp.company_id._clearance_check_approver('justification_finance')
+            if exp.state != 'justification_ops_approved':
+                raise UserError(self.env._(
+                    "%s has not been accepted by Operations yet.", exp.name))
             # The decision is the Operations Manager's; the entry that
             # follows is the system's consequence of it. They hold the
             # operational authority, not accounting rights, so the
@@ -666,9 +702,9 @@ class LogisticsExpense(models.Model):
             booking.write({'justification_move_id': move.id, 'state': 'justified',
                            'date_justified': fields.Datetime.now()})
             exp.message_post(body=self.env._(
-                "Advance justified: %(amount)s reclassified from 421101 "
-                "(held by %(who)s) to the engaged disbursements account. "
-                "It is now billable.",
+                "Advance justified by Operations and the Finance Manager: "
+                "%(amount)s reclassified from 421101 (held by %(who)s) to "
+                "the engaged disbursements account. It is now billable.",
                 amount=exp.amount, who=exp.employee_id.name))
 
     def action_reset_to_draft(self):

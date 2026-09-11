@@ -27,20 +27,25 @@
                     <button name="action_settle" type="object" string="Disburse / Pay"
                             class="oe_highlight" invisible="state != 'settlement_approved'"
                             groups="elite_clearance.group_clearance_cashier,elite_clearance.group_clearance_treasury"/>
+                    <!-- Not Finance-only: the advance stands against the
+                         staff member, it sits in their own queue, and a
+                         queue whose row cannot be acted on is no queue. -->
                     <button name="action_submit_justification" type="object" string="Submit Justification"
                             class="oe_highlight"
-                            invisible="state != 'settled' or payment_mode != 'advance'"
-                            groups="elite_clearance.group_clearance_finance"/>
-                    <button name="action_justify" type="object" string="Approve Justification"
+                            invisible="state != 'settled' or payment_mode != 'advance'"/>
+                    <button name="action_justify" type="object" string="Approve Justification (Operations)"
                             class="oe_highlight" invisible="state != 'justification_submitted'"
                             groups="elite_clearance.group_clearance_ops_manager"/>
+                    <button name="action_justify_finance" type="object" string="Sign Justification (Finance Manager)"
+                            class="oe_highlight" invisible="state != 'justification_ops_approved'"
+                            groups="elite_clearance.group_clearance_finance_manager"/>
                     <button name="action_refuse_justification" type="object" string="Refuse Justification"
-                            invisible="state != 'justification_submitted'"
-                            groups="elite_clearance.group_clearance_ops_manager"/>
+                            invisible="state not in ('justification_submitted', 'justification_ops_approved')"
+                            groups="elite_clearance.group_clearance_ops_manager,elite_clearance.group_clearance_finance_manager"/>
                     <button name="action_reset_to_draft" type="object" string="Reset to Draft"
                             invisible="state not in ('submitted', 'cancel')"/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="draft,submitted,approved,settlement_submitted,settlement_approved,settled,justification_submitted,justified"/>
+                           statusbar_visible="draft,submitted,approved,settlement_submitted,settlement_approved,settled,justification_submitted,justification_ops_approved,justified"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
@@ -182,7 +187,7 @@
                 <field name="is_legacy" optional="hide"/>
                 <field name="state" widget="badge"
                        decoration-info="state in ('draft', 'submitted')"
-                       decoration-warning="state in ('approved', 'settlement_submitted', 'settlement_approved', 'justification_submitted')"
+                       decoration-warning="state in ('approved', 'settlement_submitted', 'settlement_approved', 'justification_submitted', 'justification_ops_approved')"
                        decoration-success="state in ('settled', 'justified')"/>
             </list>
         </field>
@@ -206,7 +211,7 @@
                 <filter name="to_justify" string="Advances To Justify"
                         domain="[('state', '=', 'settled'), ('payment_mode', '=', 'advance')]"/>
                 <filter name="justification_pending" string="Justification Awaiting Approval"
-                        domain="[('state', '=', 'justification_submitted')]"/>
+                        domain="[('state', 'in', ('justification_submitted', 'justification_ops_approved'))]"/>
                 <group>
                     <filter name="group_file" string="File" context="{'group_by': 'file_id'}"/>
                     <filter name="group_category" string="Category" context="{'group_by': 'category_id'}"/>

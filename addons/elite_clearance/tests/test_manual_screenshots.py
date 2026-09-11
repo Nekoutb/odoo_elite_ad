@@ -76,8 +76,9 @@ class TestManualScreenshots(HttpCase):
         # made to present as the franc: same symbol, same whole-franc
         # rounding as XAF. Cosmetic, and confined to the test database
         # that produces these pictures.
-        company.currency_id.write({
-            'symbol': "FCFA", 'position': 'after', 'rounding': 1.0})
+        # Only the symbol: the rounding cannot be reduced either once
+        # entries exist, and the currency itself cannot be swapped.
+        company.currency_id.write({'symbol': "FCFA", 'position': 'after'})
         Account = env['account.account']
 
         def account(code, name, kind, reconcile=False):

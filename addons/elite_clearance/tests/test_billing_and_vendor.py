@@ -160,6 +160,7 @@ class TestVendorPayableAndRecharge(TransactionCase):
         with self.assertRaises(UserError):
             exp.with_user(self.finance).action_justify()
         exp.with_user(self.ops_manager).action_justify()
+        exp.with_user(self.finance_manager).action_justify_finance()
         self.assertEqual(exp.state, 'justified')
         self.assertTrue(exp.date_justified)
         self.assertTrue(exp.justification_move_id)
