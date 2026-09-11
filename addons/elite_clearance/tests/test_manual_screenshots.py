@@ -67,14 +67,16 @@ class TestManualScreenshots(HttpCase):
         env.ref('base.user_admin').write({
             'name': "A. MBARGA", 'password': 'admin'})
 
-        if not company.chart_template:
-            env['account.chart.template'].try_loading('generic_coa', company)
-        # The chart brings its own currency and the manual would then
-        # quote dollars at a Douala clearing agent. The change has to
-        # happen before anything is posted.
+        # Francs BEFORE the chart: account.company refuses the change
+        # once the template has posted a single journal item, and the
+        # manual would then quote dollars at a Douala clearing agent.
         francs = env.ref('base.XAF')
         francs.active = True
-        company.currency_id = francs
+        if company.currency_id != francs:
+            company.currency_id = francs
+        if not company.chart_template:
+            env['account.chart.template'].try_loading('generic_coa', company)
+            company.currency_id = francs      # the template sets its own
         Account = env['account.account']
 
         def account(code, name, kind, reconcile=False):
