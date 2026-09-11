@@ -10,15 +10,23 @@
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
+            <!-- Beside the Tax ID, on the first screen. It had been put
+                 next to `ref`, which Odoo buries in Sales & Purchases ->
+                 Misc: the owner went looking for the field and could not
+                 find it (11/09/2026). What an invoice prints belongs where
+                 somebody would look for it. -->
+            <xpath expr="//field[@name='vat']" position="after">
+                <field name="clearance_invoice_name"
+                       invisible="not is_company"
+                       groups="elite_clearance.group_clearance_user"
+                       placeholder="the full legal name, as it prints on an invoice"/>
+            </xpath>
             <xpath expr="//field[@name='ref']" position="after">
                 <!-- Readonly for everyone: the slug is assigned by the system
                      when the client's first file is opened and then kept, and
                      the analytic accounts already named after it sit on posted
                      lines. Correcting one is a deliberate exception, not a
                      field somebody edits in passing. -->
-                <field name="clearance_invoice_name"
-                       groups="elite_clearance.group_clearance_user"
-                       placeholder="the full legal name, as it prints on an invoice"/>
                 <field name="clearance_slug" readonly="1"
                        groups="elite_clearance.group_clearance_user"
                        placeholder="set when the first file is opened"/>

@@ -325,6 +325,24 @@ class TestBillingWizard(TransactionCase):
         wizard.action_create_invoice()
         self.assertTrue(self.file.invoice_id)
 
+    def test_25_the_full_name_is_on_the_customer_form_itself(self):
+        """It was first placed next to `ref`, which Odoo buries in
+        Sales & Purchases -> Misc, and the owner went looking for it and
+        could not find it (11/09/2026). It belongs on the first screen,
+        beside the Tax ID it is printed with."""
+        from lxml import etree
+        biller = self._user("Bill Form", 'billing')
+        arch = self.env['res.partner'].with_user(biller).get_view(
+            self.env.ref('base.view_partner_form').id)['arch']
+        tree = etree.fromstring(arch)
+        found = tree.xpath("//field[@name='clearance_invoice_name']")
+        self.assertTrue(found, "the field is not on the customer form")
+        # the sibling it is printed with, not a tab nobody opens
+        previous = found[0].getprevious()
+        self.assertIsNotNone(previous)
+        self.assertEqual(previous.get('name'), 'vat',
+                         "it should sit right after the Tax ID")
+
     # ------------------------------------------------------------------
     # A split bill (owner 07/09/2026): the disbursements on one invoice,
     # the services on another, each printed as the usual document.
