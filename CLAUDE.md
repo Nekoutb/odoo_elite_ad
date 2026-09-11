@@ -324,6 +324,18 @@ Customs clearance job files for a logistics/clearance services provider.
   being written down right here; `tools/check_view_pitfalls.py` now
   fails the static job on it. Demo data needs `--with-demo` (default
   flipped).
+- **A form's pager comes from the LIST that selected the record, never
+  from the action.** `form_controller.js` line 360:
+  `resIds: this.props.resIds || (this.props.resId ? [this.props.resId] : [])`,
+  and `props.resIds` is only ever set by `openFormView(resId, {activeIds})`
+  in `action_service.js` - the list/kanban handing over what it loaded.
+  An `ir.actions.act_window` has ONE `res_id` and no `res_ids`, and
+  `view_mode: 'list,form'` with a `res_id` does NOT push the list first
+  (grep: `action.res_id` appears exactly once, at `viewProps.resId =`).
+  So a button that jumps straight to a record always reads 1 / 1. To let
+  somebody walk a queue, open the QUEUE - a list of that model filtered
+  to it - and let them click in: `clearance.task.action_open` does this,
+  falling back to the record itself when the queue holds only one.
 - **readonly fields in one2many lists are DROPPED on save for new rows**
   unless `force_save="1"` — this caused our worst bug. Always browser-test
   the real save path; unit tests run as admin and miss access errors.

@@ -242,12 +242,34 @@ class ClearanceTask(models.Model):
 
     # ------------------------------------------------------------------
     def action_open(self):
-        """Go to the record the task is about."""
+        """Go to the work this task is about - and to the rest of its queue.
+
+        Opening the record straight from here gives a form whose pager
+        reads 1 / 1, because Odoo takes a form's siblings from the LIST
+        that selected it (`props.resIds`, form_controller.js) and an
+        action can only ever carry one `res_id`. So the queue itself is
+        what opens: every record of this kind still waiting on this user,
+        as a list of its own model. One click in, and the arrows then
+        walk the whole queue without coming back here - which is the
+        point of a queue (owner, 11/09/2026).
+
+        A queue of one opens the record directly: there is nothing to
+        walk, and a one-row list would be a click for nothing.
+        """
         self.ensure_one()
-        return {
+        siblings = self.search([('kind', '=', self.kind),
+                                ('res_model', '=', self.res_model)])
+        action = {
             'type': 'ir.actions.act_window',
+            'name': dict(self._fields['kind'].selection).get(
+                self.kind, self.kind),
             'res_model': self.res_model,
-            'res_id': self.res_id,
-            'view_mode': 'form',
             'target': 'current',
         }
+        if len(siblings) < 2:
+            action['res_id'] = self.res_id
+            action['view_mode'] = 'form'
+            return action
+        action['view_mode'] = 'list,form'
+        action['domain'] = [('id', 'in', siblings.mapped('res_id'))]
+        return action

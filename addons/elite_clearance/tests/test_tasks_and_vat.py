@@ -155,13 +155,54 @@ class TestTasksAndVat(TransactionCase):
         self.assertNotIn('billing', kinds_for(finance),
                          "and billing it takes it back out")
 
-    def test_08_opening_a_task_goes_to_the_real_record(self):
+    def test_08_a_queue_of_one_opens_the_record_itself(self):
+        """Nothing to walk, so no list to click through first."""
         ops = self._user("Ops T", 'group_clearance_ops_manager')
         task = self.env['clearance.task'].with_user(ops).search(
             [('kind', '=', 'ops_close')], limit=1)
         action = task.action_open()
         self.assertEqual(action['res_model'], 'logistics.file')
         self.assertEqual(action['res_id'], self.file.id)
+        self.assertEqual(action['view_mode'], 'form')
+
+    def test_08b_a_queue_of_several_opens_the_queue(self):
+        """Odoo takes a form's pager from the LIST that selected the
+        record, so a task that jumps straight to a record leaves the
+        arrows reading 1 / 1. Opening the queue instead means one click
+        in and then the arrows walk the rest of it (owner, 11/09/2026).
+        """
+        second = self.env['logistics.expense'].create({
+            'file_id': self.file.id, 'category_id': self.category.id,
+            'description': "Crane hire", 'amount': 45000})
+        second.action_submit()
+        third = self.env['logistics.expense'].create({
+            'file_id': self.file.id, 'category_id': self.category.id,
+            'description': "Forklift", 'amount': 12000})
+        third.action_submit()
+        ops = self._user("Ops T8b", 'group_clearance_ops_manager')
+        Task = self.env['clearance.task'].with_user(ops)
+        waiting = Task.search([('kind', '=', 'expense_approve')])
+        self.assertGreaterEqual(len(waiting), 2)
+        action = waiting[0].action_open()
+        self.assertEqual(action['res_model'], 'logistics.expense')
+        self.assertEqual(action['view_mode'], 'list,form')
+        self.assertNotIn('res_id', action,
+                         "the queue is the landing page, not one record")
+        self.assertEqual(action['domain'], [('id', 'in', waiting.mapped('res_id'))])
+        self.assertIn(second.id, action['domain'][0][2])
+        self.assertIn(third.id, action['domain'][0][2])
+        self.assertEqual(action['name'], "Approve expense")
+        # and a different queue is a different list
+        other = Task.search([('kind', '=', 'ops_close')], limit=1)
+        self.assertEqual(other.action_open()['res_model'], 'logistics.file')
+
+    def test_08c_the_queue_never_reaches_past_what_the_user_may_act_on(self):
+        """The siblings are re-read through the model's own _search, so a
+        queue can never hand somebody a record their role does not own."""
+        finance = self._user("Fin T8c", 'group_clearance_finance')
+        Task = self.env['clearance.task'].with_user(finance)
+        self.assertFalse(Task.search([('kind', '=', 'expense_approve')]),
+                         "approving is not Finance's queue")
 
     def test_09_an_expense_task_carries_its_own_detail(self):
         """A second expense, left waiting, shows up with its description."""
