@@ -210,7 +210,8 @@ class TestManualScreenshots(HttpCase):
             })()
         """ % selector)
         if outcome != "clicked":
-            raise AssertionError("nothing matched %s" % selector)
+            raise AssertionError("nothing matched %s. Present: %s"
+                                 % (selector, self._inventory(browser)))
         time.sleep(1.6)          # let Owl render what the click opened
 
     def _scroll_to(self, browser, selector):
@@ -223,12 +224,30 @@ class TestManualScreenshots(HttpCase):
             })()
         """ % selector)
         if found != "scrolled":
-            raise AssertionError("nothing matched %s" % selector)
+            raise AssertionError("nothing matched %s. Present: %s"
+                                 % (selector, self._inventory(browser)))
         time.sleep(0.9)
 
     def _wait_for(self, browser, selector, timeout=25):
+        """_wait_ready RETURNS on timeout rather than raising, so a
+        missing element looks like a rendered page. Check it."""
         browser._wait_ready(
             "!!document.querySelector(%r)" % selector, timeout=timeout)
+        if self._evaluate(browser, "!!document.querySelector(%r)" % selector):
+            return
+        raise AssertionError("%s never appeared. Present: %s"
+                             % (selector, self._inventory(browser)))
+
+    def _inventory(self, browser):
+        """What the page actually offers, for when a selector misses."""
+        return self._evaluate(browser, """
+            (() => {
+                const names = [...document.querySelectorAll("[name]")]
+                    .map(e => e.tagName.toLowerCase() + "[" +
+                              e.getAttribute("name") + "]");
+                return [...new Set(names)].slice(0, 70).join(" ");
+            })()
+        """)
 
     # ------------------------------------------------------------------
     def test_01_the_screens_the_manual_shows(self):
@@ -256,6 +275,8 @@ class TestManualScreenshots(HttpCase):
                     browser.navigate_to("%s%s" % (self.base_url(), url),
                                         wait_stop=True)
                     self._wait_for(browser, wait)
+                    for selector in list(clicks) + ([scroll] if scroll else []):
+                        self._wait_for(browser, selector, timeout=15)
                     for selector in clicks:
                         self._click(browser, selector)
                     if scroll:
@@ -285,7 +306,7 @@ class TestManualScreenshots(HttpCase):
                  wait=".o_form_view")
             shot("04_file_open", form % self.file_work.id, wait=".o_form_view")
             shot("05_cargo_routing", form % self.file_work.id,
-                 wait=".o_form_view", scroll="div[name='not_containerised']")
+                 wait=".o_form_view", scroll=".o_field_widget[name='not_containerised']")
 
             # 4  the document checklist
             shot("06_checklist", form % self.file_work.id, wait=".o_form_view",
