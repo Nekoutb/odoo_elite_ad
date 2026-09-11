@@ -32,9 +32,9 @@ class TestRegimeAndBillingParams(TransactionCase):
         cls.cash = env['account.journal'].create({
             'name': "Cash", 'type': 'cash', 'code': 'WCSH'})
         cls.client = env['res.partner'].create({
-            'name': "Regime Client", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001"})
+            'name': "Regime Client", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'clearance_invoice_name': "Full Legal Name SARL"})
         cls.vendor = env['res.partner'].create({
-            'name': "Terminal W", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'supplier_rank': 1})
+            'name': "Terminal W", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'clearance_invoice_name': "Full Legal Name SARL", 'supplier_rank': 1})
         cls.category = env['logistics.expense.category'].create({
             'name': "Port", 'code': "W-PRT"})
         cls.service = env['logistics.service.type'].create({
@@ -274,7 +274,7 @@ class TestInvoiceEssentials(TransactionCase):
         cls.complete = env['res.partner'].create({
             'name': "Complete Client", 'is_company': True,
             'street': "BP 18302 Douala", 'email': "c@test.cm",
-            'vat': "M000000000009A", 'company_registry': "RC/DLA/2026/B/9"})
+            'vat': "M000000000009A", 'company_registry': "RC/DLA/2026/B/9", 'clearance_invoice_name': "Full Legal Name SARL"})
         cls.bare = env['res.partner'].create({
             'name': "Bare Client", 'is_company': True})
         cls.service = env['logistics.service.type'].create({

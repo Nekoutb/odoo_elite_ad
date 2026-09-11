@@ -42,9 +42,9 @@ class TestBillingWizard(TransactionCase):
         cls.cash = env['account.journal'].create({
             'name': "Cash", 'type': 'cash', 'code': 'XCSH6'})
         cls.client = env['res.partner'].create({
-            'name': "Wizard Client", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001"})
+            'name': "Wizard Client", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'clearance_invoice_name': "Full Legal Name SARL"})
         cls.vendor = env['res.partner'].create({
-            'name': "Terminal SA", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'supplier_rank': 1})
+            'name': "Terminal SA", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'clearance_invoice_name': "Full Legal Name SARL", 'supplier_rank': 1})
         cls.category = env['logistics.expense.category'].create({
             'name': "Port", 'code': "T-PRT6"})
         cls.service = env['logistics.service.type'].create({
@@ -305,6 +305,25 @@ class TestBillingWizard(TransactionCase):
         self.assertEqual(old.goods_description, "Carreaux")
         self.assertEqual(old.cargo_value, 500000)
         self.assertTrue(old.invoice_id)
+
+    def test_24_no_full_name_no_invoice(self):
+        """The name Teese left behind is a handle, not what a client
+        should read on their bill. It is asked for at billing, once, and
+        kept on the customer (owner, 11/09/2026)."""
+        self.client.clearance_invoice_name = False
+        wizard = self._wizard()
+        self.assertTrue(wizard.client_details_missing)
+        with self.assertRaises(UserError) as caught:
+            wizard.action_create_invoice()
+        self.assertIn("full name", str(caught.exception))
+        self.assertFalse(self.file.invoice_id)
+        # filled on the screen, it lands on the CUSTOMER, not the invoice
+        wizard.client_name = "WIZARD CLIENT TRADING LTD"
+        self.assertEqual(self.client.clearance_invoice_name,
+                         "WIZARD CLIENT TRADING LTD")
+        self.assertFalse(wizard.client_details_missing)
+        wizard.action_create_invoice()
+        self.assertTrue(self.file.invoice_id)
 
     # ------------------------------------------------------------------
     # A split bill (owner 07/09/2026): the disbursements on one invoice,

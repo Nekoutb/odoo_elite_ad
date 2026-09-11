@@ -282,7 +282,7 @@ class TestLegacyImport(TransactionCase):
         f.partner_id.write({
             'street': "BP 1234 Douala", 'email': "client@test.cm",
             'vat': "M000000000003A",
-            'company_registry': "RC/DLA/2026/B/0003"})
+            'company_registry': "RC/DLA/2026/B/0003", 'clearance_invoice_name': "Full Legal Name SARL"})
         # The shipment box is demanded the same way: Teese carried a cargo
         # value for this file but no BL and no goods, and the invoice
         # prints both. The billing screen completes them on the spot,
@@ -309,7 +309,7 @@ class TestLegacyImport(TransactionCase):
             'name': "Post-import Client", 'is_company': True,
             'street': "BP 1234 Douala", 'email': "client@test.cm",
             'vat': "M000000000002A",
-            'company_registry': "RC/DLA/2026/B/0002"})
+            'company_registry': "RC/DLA/2026/B/0002", 'clearance_invoice_name': "Full Legal Name SARL"})
         new = self.env['logistics.file'].create({
             'customs_regime': 'im4',
             'bl_awb_ref': "MEDUW000001",

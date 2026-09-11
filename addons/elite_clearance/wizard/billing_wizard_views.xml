@@ -47,6 +47,11 @@
                 <separator string="Printed on the invoice"/>
                 <group>
                     <group string="Client">
+                        <!-- First, and first on the printed page: the short
+                             name beside it is the handle everyone searches
+                             by, not what a client should read on their bill. -->
+                        <field name="client_name" required="1"
+                               placeholder="e.g. CAPITAL TRADING PRIVATE LTD"/>
                         <field name="client_street"/>
                         <field name="client_email"/>
                         <field name="client_vat"/>

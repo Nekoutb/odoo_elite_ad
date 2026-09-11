@@ -16,6 +16,9 @@
                      the analytic accounts already named after it sit on posted
                      lines. Correcting one is a deliberate exception, not a
                      field somebody edits in passing. -->
+                <field name="clearance_invoice_name"
+                       groups="elite_clearance.group_clearance_user"
+                       placeholder="the full legal name, as it prints on an invoice"/>
                 <field name="clearance_slug" readonly="1"
                        groups="elite_clearance.group_clearance_user"
                        placeholder="set when the first file is opened"/>
@@ -36,6 +39,8 @@
         <field name="inherit_id" ref="base.view_partner_tree"/>
         <field name="arch" type="xml">
             <field name="email" position="after">
+                <field name="clearance_invoice_name"
+                       string="Full Name (invoices)" optional="show"/>
                 <field name="street" optional="show"/>
                 <field name="vat" string="Tax ID (NIU)" optional="show"/>
                 <field name="company_registry" string="Company ID (RC)"
@@ -55,7 +60,9 @@
                 <separator/>
                 <filter name="clearance_incomplete"
                         string="Missing invoice details"
-                        domain="['|', '|', '|', ('street', '=', False),
+                        domain="['|', '|', '|', '|',
+                                 ('clearance_invoice_name', '=', False),
+                                 ('street', '=', False),
                                  ('email', '=', False), ('vat', '=', False),
                                  ('company_registry', '=', False)]"/>
                 <filter name="clearance_from_teese" string="Imported from Teese"

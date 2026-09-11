@@ -37,9 +37,9 @@ class TestReportingAndBillingFix(TransactionCase):
         cls.cash = env['account.journal'].create({
             'name': "Cash", 'type': 'cash', 'code': 'RCSH'})
         cls.client = env['res.partner'].create({
-            'name': "Reporting Client", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001"})
+            'name': "Reporting Client", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'clearance_invoice_name': "Full Legal Name SARL"})
         cls.vendor = env['res.partner'].create({
-            'name': "Terminal R", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'supplier_rank': 1})
+            'name': "Terminal R", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'clearance_invoice_name': "Full Legal Name SARL", 'supplier_rank': 1})
         cls.category = env['logistics.expense.category'].create({
             'name': "Port", 'code': "R-PRT"})
         cls.service = env['logistics.service.type'].create({
@@ -212,7 +212,7 @@ class TestReportingAndBillingFix(TransactionCase):
     def test_12_reporting_filters_by_customer_and_by_file(self):
         file_a, _ = self._billable_file()
         other = self.env['res.partner'].create({
-            'name': "Second Client", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001"})
+            'name': "Second Client", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'clearance_invoice_name': "Full Legal Name SARL"})
         file_b = self.env['logistics.file'].create({
             'customs_regime': 'im5', 'partner_id': other.id,
             'bl_awb_ref': "MEDUW000001",

@@ -56,7 +56,7 @@ class TestInvoiceEndToEnd(TransactionCase):
             'clearance_sale_journal_id': cls.sale_journal.id,
             'clearance_service_tax_ids': [(6, 0, cls.vat.ids)],
             'vat': "M051612521065D",
-            'company_registry': "RC/DLA/2018/B/2056",
+            'company_registry': "RC/DLA/2018/B/2056", 'clearance_invoice_name': "Full Legal Name SARL",
         })
         cls.cash = env['account.journal'].create({
             'name': "Cash", 'type': 'cash', 'code': 'ECSH'})
@@ -66,9 +66,9 @@ class TestInvoiceEndToEnd(TransactionCase):
             'phone': "(+237) 691 149 100",
             'email': "info@capitaltrading-cm.com",
             'vat': "M071300046804A",
-            'company_registry': "RC/LBE/2013/B/0560"})
+            'company_registry': "RC/LBE/2013/B/0560", 'clearance_invoice_name': "Full Legal Name SARL"})
         cls.vendor = env['res.partner'].create({
-            'name': "Terminal", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'supplier_rank': 1})
+            'name': "Terminal", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'clearance_invoice_name': "Full Legal Name SARL", 'supplier_rank': 1})
         cls.category = env['logistics.expense.category'].create({
             'name': "Douane", 'code': "E-DOU"})
         # commission at zero: this file is billed with an opening fee and
@@ -275,7 +275,7 @@ class TestExpenseCapture(TransactionCase):
         super().setUpClass()
         env = cls.env
         cls.client = env['res.partner'].create({
-            'name': "Capture Client", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001"})
+            'name': "Capture Client", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'clearance_invoice_name': "Full Legal Name SARL"})
         cls.category = env['logistics.expense.category'].create({
             'name': "Douane", 'code': "C-DOU"})
         cls.service = env['logistics.service.type'].create({

@@ -35,9 +35,9 @@ class TestStaffAdvances(TransactionCase):
         cls.journal = env['account.journal'].create({
             'name': "Mobile Money", 'type': 'cash', 'code': 'XMOM2'})
         cls.client = env['res.partner'].create({
-            'name': "Advance Client SA", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001"})
+            'name': "Advance Client SA", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'clearance_invoice_name': "Full Legal Name SARL"})
         cls.vendor = env['res.partner'].create({
-            'name': "Douala Port", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001"})
+            'name': "Douala Port", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'clearance_invoice_name': "Full Legal Name SARL"})
         cls.category = env['logistics.expense.category'].create({
             'name': "Port charges", 'code': "T-PORT"})
         cls.service = env['logistics.service.type'].create({

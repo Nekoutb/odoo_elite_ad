@@ -124,7 +124,14 @@
           <td style="width:50%; padding-left:3px; vertical-align:stretch;">
             <div class="frame" style="height:100%;">
               <table>
-                <tr><td class="lbl"><span t-field="partner.name"/></td></tr>
+                <!-- The full legal name, and the short handle only as a
+                     fallback - an invoice raised before the name was asked
+                     for still prints exactly as it printed then. -->
+                <tr><td class="lbl">
+                  <span t-if="partner.clearance_invoice_name"
+                        t-field="partner.clearance_invoice_name"/>
+                  <span t-else="" t-field="partner.name"/>
+                </td></tr>
                 <tr><td>
                   <span t-field="partner.street"/>
                   <t t-if="partner.street2"> - <span t-field="partner.street2"/></t>

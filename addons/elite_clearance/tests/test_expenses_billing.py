@@ -39,9 +39,9 @@ class TestExpensesAndBilling(TransactionCase):
         cls.maviance_journal = env['account.journal'].create({
             'name': "Maviance", 'type': 'cash', 'code': 'XMAV'})
         cls.client = env['res.partner'].create({
-            'name': "Billing Client SA", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001"})
+            'name': "Billing Client SA", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'clearance_invoice_name': "Full Legal Name SARL"})
         cls.customs = env['res.partner'].create({
-            'name': "Douala Customs", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001"})
+            'name': "Douala Customs", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'clearance_invoice_name': "Full Legal Name SARL"})
         cls.employee = env['hr.employee'].create({'name': "Field Declarant"})
         cls.category = env['logistics.expense.category'].create({
             'name': "Customs Duty", 'code': "T-DUTY"})

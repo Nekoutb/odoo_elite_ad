@@ -10,7 +10,7 @@ class TestClearanceFile(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.client = cls.env['res.partner'].create({
-            'name': "Test Importer SARL", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001",
+            'name': "Test Importer SARL", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'clearance_invoice_name': "Full Legal Name SARL",
         })
         cls.doc_bl = cls.env['logistics.document.type'].create({
             'name': "Bill of Lading", 'code': "T-BL",
@@ -103,8 +103,8 @@ class TestClearanceFile(TransactionCase):
             self.assertEqual(candidate, expected, "%s -> %s" % (name, candidate))
 
         # two clients that want the same three letters get different ones
-        a = Partner.create({'name': "Pizzaroti Cameroun", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001"})
-        b = Partner.create({'name': "Pizzaroti Douala", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001"})
+        a = Partner.create({'name': "Pizzaroti Cameroun", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'clearance_invoice_name': "Full Legal Name SARL"})
+        b = Partner.create({'name': "Pizzaroti Douala", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'clearance_invoice_name': "Full Legal Name SARL"})
         slug_a = a._clearance_ensure_slug()
         slug_b = b._clearance_ensure_slug()
         self.assertEqual(len(slug_a), 3)

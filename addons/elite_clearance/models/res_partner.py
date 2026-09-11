@@ -27,6 +27,20 @@ class ResPartner(models.Model):
         string="Legacy ID", index=True, copy=False,
         help="Identifier of this partner in the legacy Teese system. Set "
              "only by the migration; makes re-imports idempotent.")
+    # The name as it must read on the client's invoice. NOT `name`:
+    # Teese carried a short handle for all 190 customers ("CTC"), and
+    # that handle is what everyone searches and picks by - renaming it
+    # would take the tool away from the people who use it daily. The
+    # legal name is a separate fact, entered once at billing and kept
+    # (owner, 11/09/2026). Empty until somebody fills it, which is what
+    # makes "mandatory before an invoice is issued" enforceable at all:
+    # `name` is never empty, so demanding it would demand nothing.
+    clearance_invoice_name = fields.Char(
+        string="Full Name (printed on invoices)",
+        help="The client's full legal name, exactly as it must appear at "
+             "the top of their invoice. The short name above stays as it "
+             "is for searching and for the file references.")
+
     clearance_slug = fields.Char(
         string="Clearance Slug", size=3, index=True, copy=False, tracking=True,
         help="Three letters standing for this client in clearance analytic "

@@ -912,6 +912,7 @@ class LogisticsFile(models.Model):
         ('cargo_value', "Valeur RVC"),
     ]
     CLIENT_ESSENTIALS = [
+        ('clearance_invoice_name', "full name, as it must print on the invoice"),
         ('street', "postal address"),
         ('email', "e-mail address"),
         ('vat', "Tax ID (NIU)"),

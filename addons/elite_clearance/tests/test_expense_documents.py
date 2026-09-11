@@ -19,7 +19,7 @@ class TestExpenseDocuments(TransactionCase):
         cls.client = env['res.partner'].create({
             'name': "Documents Client", 'is_company': True,
             'street': "BP 1234 Douala", 'email': "client@test.cm",
-            'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001"})
+            'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'clearance_invoice_name': "Full Legal Name SARL"})
         cls.vendor = env['res.partner'].create({
             'name': "Douala Terminal", 'is_company': True})
         cls.category = env['logistics.expense.category'].create({

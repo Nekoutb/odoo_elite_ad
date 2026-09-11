@@ -31,7 +31,7 @@ class TestClearanceInvoicePrint(TransactionCase):
             'clearance_sale_journal_id': cls.sale_journal.id,
             'clearance_service_tax_ids': [(6, 0, cls.vat.ids)],
             'vat': "M051612521065D",
-            'company_registry': "RC/DLA/2018/B/2056",
+            'company_registry': "RC/DLA/2018/B/2056", 'clearance_invoice_name': "Full Legal Name SARL",
         })
         cls.cash = env['account.journal'].create({
             'name': "Cash", 'type': 'cash', 'code': 'PCSH'})
@@ -40,9 +40,9 @@ class TestClearanceInvoicePrint(TransactionCase):
             'street': "BP 18302 DOUALA", 'phone': "(+237) 691 149 100",
             'email': "info@capitaltrading-cm.com",
             'vat': "M071300046804A",
-            'company_registry': "RC/LBE/2013/B/0560"})
+            'company_registry': "RC/LBE/2013/B/0560", 'clearance_invoice_name': "Full Legal Name SARL"})
         cls.vendor = env['res.partner'].create({
-            'name': "Terminal P", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'supplier_rank': 1})
+            'name': "Terminal P", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'clearance_invoice_name': "Full Legal Name SARL", 'supplier_rank': 1})
         cls.category = env['logistics.expense.category'].create({
             'name': "Port", 'code': "P-PRT"})
         cls.service = env['logistics.service.type'].create({
@@ -390,6 +390,7 @@ class TestClearanceInvoicePrint(TransactionCase):
         wizard = self.env['logistics.billing.wizard'].with_context(
             active_id=file.id).create({})
         self.assertTrue(wizard.client_details_missing)
+        wizard.client_name = "BARE CLIENT TRADING LTD"
         wizard.client_street = "BP 999 Douala"
         wizard.client_email = "q@test.cm"
         wizard.client_vat = "M000000000777A"
@@ -400,6 +401,10 @@ class TestClearanceInvoicePrint(TransactionCase):
         self.assertEqual(bare.street, "BP 999 Douala")
         self.assertEqual(bare.vat, "M000000000777A")
         self.assertEqual(bare.company_registry, "RC/DLA/2026/B/0777")
+        self.assertEqual(bare.clearance_invoice_name,
+                         "BARE CLIENT TRADING LTD")
+        self.assertEqual(bare.name, "Bare Client Q",
+                         "the short handle everyone searches by is untouched")
         wizard.action_create_invoice()
         self.assertTrue(file.invoice_id)
 
@@ -465,6 +470,15 @@ class TestClearanceInvoicePrint(TransactionCase):
         self.assertIn("Retrait tardif", first)
         self.assertNotIn("TVA SUR PRESTATIONS", first)
         self.assertIn("TVA SUR PRESTATIONS", second)
+
+    def test_33_the_client_block_prints_the_full_legal_name(self):
+        """Teese gave all 190 customers a short handle ("CTC"); the
+        invoice must read the legal name instead (owner, 11/09/2026)."""
+        file = self._billed_file()
+        html = self._html(file.invoice_id)
+        self.assertIn(self.client.clearance_invoice_name, html)
+        # the handle is not what a client should read on their bill
+        self.assertNotIn(">%s<" % self.client.name, html)
 
     def test_31_an_unsplit_bill_still_prints_every_row(self):
         """The model document shows all three advance rows, at zero if

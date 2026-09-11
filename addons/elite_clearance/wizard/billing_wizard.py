@@ -77,6 +77,9 @@ class LogisticsBillingWizard(models.TransientModel):
     # customer record. Teese carried only a name for its 190 customers, so
     # for most files this is the first moment anybody needs the address and
     # the Tax ID - and the billing agent is the person who can get them.
+    client_name = fields.Char(
+        related='partner_id.clearance_invoice_name', readonly=False,
+        string="Full name")
     client_street = fields.Char(
         related='partner_id.street', readonly=False, string="Address")
     client_email = fields.Char(
@@ -231,13 +234,14 @@ class LogisticsBillingWizard(models.TransientModel):
             })
         return services
 
-    @api.depends('client_street', 'client_email', 'client_vat',
-                 'client_registry')
+    @api.depends('client_name', 'client_street', 'client_email',
+                 'client_vat', 'client_registry')
     def _compute_client_details_missing(self):
         for wizard in self:
             wizard.client_details_missing = not all(
-                (wizard.client_street, wizard.client_email,
-                 wizard.client_vat, wizard.client_registry))
+                (wizard.client_name, wizard.client_street,
+                 wizard.client_email, wizard.client_vat,
+                 wizard.client_registry))
 
     @api.depends('shipment_bl_awb_ref', 'shipment_goods',
                  'shipment_cargo_value')

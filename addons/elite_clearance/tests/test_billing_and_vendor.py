@@ -50,9 +50,9 @@ class TestVendorPayableAndRecharge(TransactionCase):
         cls.bank = env['account.journal'].create({
             'name': "Bank", 'type': 'bank', 'code': 'XBNK5'})
         cls.client = env['res.partner'].create({
-            'name': "Recharge Client SA", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001"})
+            'name': "Recharge Client SA", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'clearance_invoice_name': "Full Legal Name SARL"})
         cls.vendor = env['res.partner'].create({
-            'name': "Maersk Cameroun", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'supplier_rank': 1})
+            'name': "Maersk Cameroun", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'clearance_invoice_name': "Full Legal Name SARL", 'supplier_rank': 1})
         cls.vendor.property_account_payable_id = cls.payable
         cls.employee = env['hr.employee'].create({'name': "Field Agent R"})
         cls.category = env['logistics.expense.category'].create({

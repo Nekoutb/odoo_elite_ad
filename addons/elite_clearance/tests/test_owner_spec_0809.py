@@ -18,7 +18,7 @@ class TestOwnerSpec0809(TransactionCase):
         cls.client = env['res.partner'].create({
             'name': "Spec Client", 'is_company': True,
             'street': "BP 1234 Douala", 'email': "client@test.cm",
-            'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001"})
+            'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'clearance_invoice_name': "Full Legal Name SARL"})
         cls.service = env['logistics.service.type'].create({
             'name': "Spec service", 'code': "T-SPEC"})
 
