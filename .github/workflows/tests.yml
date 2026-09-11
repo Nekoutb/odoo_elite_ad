@@ -176,6 +176,10 @@ jobs:
           # the end-to-end test writes the rendered invoice here so
           # the document itself can be looked at, not just described
           CLEARANCE_INVOICE_DUMP: ${{ github.workspace }}/invoice_preview.html
+          # the user manual's pictures, taken from the running app by the
+          # same Chrome the browser test uses; they come back under
+          # screenshots/ in the browser-install artifact
+          CLEARANCE_MANUAL_SHOTS: "1"
         run: |
           set -euo pipefail
           odoo \

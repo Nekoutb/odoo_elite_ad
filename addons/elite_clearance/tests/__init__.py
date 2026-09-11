@@ -12,3 +12,4 @@ from . import test_invoice_end_to_end
 from . import test_expense_documents
 from . import test_expense_dialog_tour
 from . import test_owner_spec_0809
+from . import test_manual_screenshots
