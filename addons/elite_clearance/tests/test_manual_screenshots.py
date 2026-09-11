@@ -20,6 +20,7 @@ a screenshot half way through.
 
 import contextlib
 import os
+import pathlib
 import time
 
 from odoo.tests import HttpCase, tagged
@@ -67,6 +68,9 @@ class TestManualScreenshots(HttpCase):
             self.cr.flush()
             self.cr.clear()
 
+            # save_test_file asserts the prefix is \w*_ - a hyphen makes it
+            # raise INSIDE the screenshot's done-callback, where nothing
+            # reports it: the run went green and produced no pictures.
             def shot(name, url, wait=".o_content", clicks=()):
                 browser.navigate_to("%s%s" % (self.base_url(), url),
                                     wait_stop=True)
@@ -74,13 +78,23 @@ class TestManualScreenshots(HttpCase):
                 for selector, label in clicks:
                     self._click(browser, selector, label)
                 time.sleep(1.0)
-                browser.take_screenshot("manual-%s-" % name)
+                browser.take_screenshot("manual_%s_" % name).result(timeout=30)
 
             files = self.env.ref('elite_clearance.action_logistics_file')
             tasks = self.env.ref('elite_clearance.action_clearance_tasks')
-            shot("01-files", "/odoo/action-%d" % files.id)
-            shot("02-my-tasks", "/odoo/action-%d" % tasks.id)
-            shot("03-new-file", "/odoo/action-%d/new" % files.id,
+            shot("01_files", "/odoo/action-%d" % files.id)
+            shot("02_my_tasks", "/odoo/action-%d" % tasks.id)
+            shot("03_new_file", "/odoo/action-%d/new" % files.id,
                  wait=".o_form_view")
-            # every future waits for its callback; give them a moment
             time.sleep(2.0)
+
+        # and prove they exist, so a silent callback failure cannot pass
+        # for success a second time
+        import odoo.tools
+        from odoo.tests.common import get_db_name
+        shots = pathlib.Path(odoo.tools.config['screenshots']) / get_db_name()
+        taken = sorted((shots / 'screenshots').glob('manual_*.png'))
+        self.assertEqual(len(taken), 3,
+                         "expected three screenshots, found %s" % taken)
+        for image in taken:
+            self.assertGreater(image.stat().st_size, 5000, image.name)
