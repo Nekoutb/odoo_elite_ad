@@ -136,6 +136,17 @@ class TestManualScreenshots(HttpCase):
                 'container_count': 2, 'container_type': "40",
                 'package_count': 860, 'weight_kg': 14367.0})
 
+        def receive_documents(file, leave_one_outstanding=False):
+            """Tick the checklist the way the office does. Work cannot
+            start while a mandatory document is missing - that gate is
+            the point of chapter 4, so the picture shows a real
+            checklist rather than a bypassed one."""
+            lines = file.document_ids
+            if leave_one_outstanding:
+                lines = lines[1:]
+            lines.write({'received': True,
+                         'date_received': fields.Datetime.now()})
+
         def disbursement(file, description, amount):
             return env['logistics.expense'].create({
                 'file_id': file.id, 'category_id': cls.category.id,
@@ -153,6 +164,7 @@ class TestManualScreenshots(HttpCase):
 
         # a file being worked, with disbursements standing at each stage
         cls.file_work = new_file("MSCU7741203")
+        receive_documents(cls.file_work)
         cls.file_work.action_start_work()
         keyed = [disbursement(cls.file_work, d, a) for d, a in DEBOURS]
         cls.exp_submitted = keyed[1]
@@ -163,6 +175,7 @@ class TestManualScreenshots(HttpCase):
 
         # a file ready to bill
         cls.file_bill = new_file("MEDUW8830155")
+        receive_documents(cls.file_bill)
         cls.file_bill.action_start_work()
         for description, amount in DEBOURS:
             settle(disbursement(cls.file_bill, description, amount))
@@ -171,6 +184,7 @@ class TestManualScreenshots(HttpCase):
 
         # and one already billed, for the invoice chapter
         cls.file_done = new_file("CMAU4410987")
+        receive_documents(cls.file_done)
         cls.file_done.action_start_work()
         settle(disbursement(cls.file_done, "RTC Acconage & relevage", 1467524))
         cls.file_done.customs_fee_amount = 256974
