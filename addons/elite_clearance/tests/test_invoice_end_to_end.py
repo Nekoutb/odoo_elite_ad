@@ -66,7 +66,9 @@ class TestInvoiceEndToEnd(TransactionCase):
             'phone': "(+237) 691 149 100",
             'email': "info@capitaltrading-cm.com",
             'vat': "M071300046804A",
-            'company_registry': "RC/LBE/2013/B/0560", 'clearance_invoice_name': "Full Legal Name SARL"})
+            'company_registry': "RC/LBE/2013/B/0560",
+            # Teese carried the handle; the bill carries the legal name
+            'clearance_invoice_name': "CAPITAL TRADING PRIVATE LIMITED"})
         cls.vendor = env['res.partner'].create({
             'name': "Terminal", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'clearance_invoice_name': "Full Legal Name SARL", 'supplier_rank': 1})
         cls.category = env['logistics.expense.category'].create({
