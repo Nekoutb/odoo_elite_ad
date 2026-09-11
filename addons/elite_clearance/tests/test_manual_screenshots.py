@@ -282,11 +282,14 @@ class TestManualScreenshots(HttpCase):
                     browser.navigate_to("%s%s" % (self.base_url(), url),
                                         wait_stop=True)
                     self._wait_for(browser, wait)
-                    for selector in list(clicks) + ([scroll] if scroll else []):
-                        self._wait_for(browser, selector, timeout=15)
+                    # wait for each thing just before touching it: a
+                    # scroll target inside a dialog does not exist until
+                    # the click that opens the dialog has happened
                     for selector in clicks:
+                        self._wait_for(browser, selector, timeout=15)
                         self._click(browser, selector)
                     if scroll:
+                        self._wait_for(browser, scroll, timeout=15)
                         self._scroll_to(browser, scroll)
                     time.sleep(1.0)
                     browser.take_screenshot(
