@@ -67,16 +67,17 @@ class TestManualScreenshots(HttpCase):
         env.ref('base.user_admin').write({
             'name': "A. MBARGA", 'password': 'admin'})
 
-        # Francs BEFORE the chart: account.company refuses the change
-        # once the template has posted a single journal item, and the
-        # manual would then quote dollars at a Douala clearing agent.
-        francs = env.ref('base.XAF')
-        francs.active = True
-        if company.currency_id != francs:
-            company.currency_id = francs
         if not company.chart_template:
             env['account.chart.template'].try_loading('generic_coa', company)
-            company.currency_id = francs      # the template sets its own
+        # The manual must not quote dollars at a Douala clearing agent.
+        # The company's CURRENCY cannot be swapped - account.company
+        # refuses it once any journal item exists, and in a shared test
+        # database they always do - so the currency it already has is
+        # made to present as the franc: same symbol, same whole-franc
+        # rounding as XAF. Cosmetic, and confined to the test database
+        # that produces these pictures.
+        company.currency_id.write({
+            'symbol': "FCFA", 'position': 'after', 'rounding': 1.0})
         Account = env['account.account']
 
         def account(code, name, kind, reconcile=False):
