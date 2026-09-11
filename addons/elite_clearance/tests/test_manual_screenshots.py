@@ -69,6 +69,12 @@ class TestManualScreenshots(HttpCase):
 
         if not company.chart_template:
             env['account.chart.template'].try_loading('generic_coa', company)
+        # The chart brings its own currency and the manual would then
+        # quote dollars at a Douala clearing agent. The change has to
+        # happen before anything is posted.
+        francs = env.ref('base.XAF')
+        francs.active = True
+        company.currency_id = francs
         Account = env['account.account']
 
         def account(code, name, kind, reconcile=False):
@@ -122,6 +128,7 @@ class TestManualScreenshots(HttpCase):
 
         def new_file(ref):
             return env['logistics.file'].create({
+                'user_id': env.ref('base.user_admin').id,
                 'partner_id': cls.client.id,
                 'service_type_id': cls.service.id,
                 'customs_regime': 'im4',
@@ -347,6 +354,13 @@ class TestManualScreenshots(HttpCase):
             shot("13_billing_totals", form % self.file_bill.id,
                  wait=".o_form_view",
                  clicks=["button[name='action_open_billing']"],
+                 scroll="%s .oe_subtotal_footer" % modal)
+
+            shot("18_billing_split", form % self.file_bill.id,
+                 wait=".o_form_view",
+                 clicks=["button[name='action_open_billing']",
+                         "%s .o_field_widget[name='split_invoices'] input"
+                         % modal],
                  scroll="%s .oe_subtotal_footer" % modal)
 
             # 10  the invoice, and the document the client receives
