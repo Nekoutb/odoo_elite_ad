@@ -359,7 +359,11 @@ class TestExpensesAndBilling(TransactionCase):
 
         exp.action_submit_justification()
         self.assertTrue(exp.date_justification_submitted)
+        # two signatures: Operations accepts, the Finance Manager posts
         exp.action_justify()
+        self.assertFalse(exp.date_justified,
+                         "nothing is justified until the entry is made")
+        exp.action_justify_finance()
         self.assertTrue(exp.date_justified)
         self.assertLessEqual(exp.date_submitted, exp.date_settled,
                              "the timeline must run forwards")
