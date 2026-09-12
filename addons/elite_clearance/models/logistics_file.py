@@ -1,4 +1,6 @@
 from odoo import api, fields, models
+
+from .logistics_expense import UNJUSTIFIED_ADVANCE_STATES
 from odoo.exceptions import UserError, ValidationError
 
 
@@ -425,7 +427,8 @@ class LogisticsFile(models.Model):
             file.unjustified_advance_total = sum(
                 e.amount for e in file.expense_ids
                 if not e.is_legacy
-                and e.payment_mode == 'advance' and e.state == 'settled')
+                and e.payment_mode == 'advance'
+                and e.state in UNJUSTIFIED_ADVANCE_STATES)
 
     @api.depends('recharge_amount', 'oop_total')
     def _compute_recharge_variance(self):
@@ -1055,7 +1058,8 @@ class LogisticsFile(models.Model):
                     "(%s).", file.name))
             pending = file.expense_ids.filtered(
                 lambda e: not e.is_final
-                and not (e.payment_mode == 'advance' and e.state == 'settled'))
+                and not (e.payment_mode == 'advance'
+                         and e.state in UNJUSTIFIED_ADVANCE_STATES))
             if pending:
                 raise UserError(self.env._(
                     "%(name)s still has %(count)s expense(s) not settled or "

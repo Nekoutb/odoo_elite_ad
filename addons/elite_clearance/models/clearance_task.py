@@ -266,6 +266,8 @@ class ClearanceTask(models.Model):
         self.env['account.journal'].flush_model()
         self.env['logistics.billing.service'].flush_model()
         self.env['account.move'].flush_model(['state'])
+        # the holder's queue joins hr_employee for the user behind it
+        self.env['hr.employee'].flush_model(['user_id'])
         # Narrow every read, so the one screen is a different list for each
         # role and nobody sees a queue they cannot act on.
         domain = [('kind', 'in', self._allowed_kinds())] + list(domain or [])

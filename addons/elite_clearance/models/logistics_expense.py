@@ -18,6 +18,13 @@ FINANCE_GROUP = 'elite_clearance.group_clearance_finance'
 # (owner, 06/09/2026). Finance may still correct it at settlement.
 SETTLEMENT_FIELDS = ('payment_mode', 'journal_id', 'employee_id')
 
+# An advance is the holder's debt until the reclassification is POSTED.
+# Submitting the receipts is not being believed, and the Operations
+# Manager accepting them is not the entry being made: the money sits on
+# 421101 through all three states, so all three block the file.
+UNJUSTIFIED_ADVANCE_STATES = (
+    'settled', 'justification_submitted', 'justification_ops_approved')
+
 
 class LogisticsExpenseCategory(models.Model):
     _name = 'logistics.expense.category'

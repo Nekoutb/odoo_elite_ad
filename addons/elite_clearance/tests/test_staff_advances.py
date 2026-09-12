@@ -208,6 +208,7 @@ class TestStaffAdvances(TransactionCase):
         self._receipt(exp)
         exp.action_submit_justification()
         exp.action_justify()
+        exp.action_justify_finance()
         move = exp.justification_move_id
         debit = move.line_ids.filtered(lambda l: l.debit > 0)
         credit = move.line_ids.filtered(lambda l: l.credit > 0)
@@ -259,6 +260,7 @@ class TestStaffAdvances(TransactionCase):
         self._receipt(justified)
         justified.action_submit_justification()
         justified.action_justify()
+        justified.action_justify_finance()
 
         stranded = self._advance(150000)
         stranded.action_submit()
