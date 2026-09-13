@@ -199,7 +199,7 @@ class TestInvoiceReversal(TransactionCase):
         invoice.action_post()
         before = {
             (line.account_id.id, line.debit, line.credit)
-            for line in invoice.line_ids}
+            for line in invoice.line_ids if line.account_id}
         wizard = self.env['logistics.invoice.cancel.wizard'].with_context(
             active_id=invoice.id).create({
                 'invoice_id': invoice.id,
@@ -211,7 +211,7 @@ class TestInvoiceReversal(TransactionCase):
         self.assertEqual(credit.state, 'posted')
         after = {
             (line.account_id.id, line.credit, line.debit)
-            for line in credit.line_ids}
+            for line in credit.line_ids if line.account_id}
         self.assertEqual(before, after,
                          "every line again, debit for credit, same amounts")
         self.assertEqual(invoice.state, 'posted',

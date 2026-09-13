@@ -581,13 +581,16 @@ class LogisticsFile(models.Model):
             sides = file._bill_sides()
             live = sides.filtered(lambda move: move._clearance_stands())
             whole = len(sides) == (2 if file.billing_split else 1)
-            file.bill_stands = (bool(file.invoice_id) and whole
-                                and len(live) == len(sides))
+            stands = (bool(file.invoice_id) and whole
+                      and len(live) == len(sides))
+            file.bill_stands = stands
             # Posted means EVERY document on the file, not only the last
             # bill: a file billed twice is complete when both are posted.
+            # And the last bill has to be whole first - half a split bill
+            # posted while the other half is cancelled is not a bill.
             standing = file._client_invoices()
             file.invoices_posted = (
-                bool(file.invoice_id) and whole and bool(standing)
+                stands and bool(standing)
                 and all(move.state == 'posted' for move in standing))
             # Partial billing (owner 13/09/2026): the file goes back in the
             # queue whenever something on it is unbilled, not only when it
@@ -1406,8 +1409,19 @@ class LogisticsFile(models.Model):
         # Read off the lines being billed NOW rather than off the file's
         # totals: a file may be billed more than once (owner 13/09/2026),
         # and the second invoice knows nothing of the first one's figures.
+        #
+        # The file-level recharge still decides it when this bill covers
+        # the whole file, because then the two ARE the same figure - and
+        # that is the only figure a bill raised without the billing screen
+        # carries: action_create_invoice reads recharge_amount off the
+        # file, which is what the Operations and General Manager approved.
         adjustment = sum(line.get('charged', line['amount']) - line['amount']
                          for line in debours)
+        engaged_now = sum(line['amount'] for line in debours)
+        if (self.currency_id.is_zero(adjustment)
+                and not self.currency_id.compare_amounts(engaged_now,
+                                                         self.oop_total)):
+            adjustment = self._recharge_total() - self.oop_total
         if not self.currency_id.is_zero(adjustment):
             if adjustment < 0:
                 variance_account = (

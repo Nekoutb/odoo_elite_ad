@@ -308,7 +308,7 @@ class LogisticsBillingWizard(models.TransientModel):
     @api.depends('debours_line_ids.amount_engaged',
                  'debours_line_ids.amount_recharged',
                  'service_line_ids.amount', 'commission_rate',
-                 'customs_fee_amount', 'reissue_kind',
+                 'customs_fee_amount', 'reissue_kind', 'standing_invoice_id',
                  'file_id.recharge_state', 'file_id.recharge_amount')
     def _compute_totals(self):
         for wizard in self:
@@ -317,8 +317,17 @@ class LogisticsBillingWizard(models.TransientModel):
             wizard.debours_engaged_total = engaged
             wizard.debours_recharged_total = recharged
             wizard.debours_variance = recharged - engaged
+            # The commission is charged on what this bill recharges.
+            # When the DISBURSEMENTS half of a split bill already stands
+            # and only the services half is being issued, the screen holds
+            # no disbursement rows - they are billed - so the base is that
+            # standing half, which is exactly what it was issued at.
+            base = recharged
+            standing = wizard.standing_invoice_id
+            if standing and standing.clearance_invoice_kind == 'debours':
+                base = standing.amount_untaxed
             wizard.commission_amount = wizard.currency_id.round(
-                recharged * wizard.commission_rate / 100.0
+                base * wizard.commission_rate / 100.0
             ) if wizard.currency_id else 0.0
             wizard.service_total = (
                 wizard.commission_amount + wizard.customs_fee_amount
