@@ -28,6 +28,13 @@ class LogisticsBillingWizard(models.TransientModel):
     debours_line_ids = fields.One2many(
         'logistics.billing.wizard.debours', 'wizard_id',
         string="Out-of-pocket expenses")
+    # Shown and not billable (owner 13/09/2026). Leaving them out would be
+    # tidier and wrong: the biller needs to see that the file's costs are
+    # accounted for, and which invoice took them, before deciding that
+    # what is left is all that is left.
+    billed_line_ids = fields.One2many(
+        'logistics.billing.wizard.billed', 'wizard_id',
+        string="Already billed")
     service_line_ids = fields.One2many(
         'logistics.billing.wizard.service', 'wizard_id',
         string="Additional services")
@@ -46,7 +53,19 @@ class LogisticsBillingWizard(models.TransientModel):
     customs_fee_amount = fields.Monetary(
         string="Honoraires Agréés en Douane", currency_field='currency_id',
         help="Read from the customs declaration. Keyed here, at billing, "
-             "by the agent who bills it.")
+             "by the agent who bills it. On a further bill it is what is "
+             "LEFT to charge: whatever an earlier invoice already took is "
+             "shown beside it and is not proposed again.")
+    customs_fee_billed = fields.Monetary(
+        compute='_compute_already_billed', currency_field='currency_id',
+        string="Customs fee already billed")
+    commission_billed = fields.Monetary(
+        compute='_compute_already_billed', currency_field='currency_id',
+        string="Commission already billed")
+    billed_before = fields.Boolean(
+        compute='_compute_already_billed',
+        help="The file has been billed before and is being billed again "
+             "for what has been incurred since.")
 
     debours_engaged_total = fields.Monetary(
         compute='_compute_totals', currency_field='currency_id',
@@ -170,9 +189,24 @@ class LogisticsBillingWizard(models.TransientModel):
         # The commission and the customs fee are parameters now, not rows:
         # the agent sets a rate and a figure and watches the total move.
         # The list below is for anything else the job carried.
+        vals['billed_line_ids'] = [
+            fields.Command.create({
+                'expense_id': expense.id,
+                'name': "%s — %s" % (expense.category_id.name,
+                                     expense.description),
+                'amount': expense.amount,
+                'invoice_id': expense.billed_invoice_id.id,
+            })
+            for expense in file.expense_ids.filtered('is_billed')
+        ]
         vals['commission_rate'] = (
             file.billing_commission_rate or file.commission_rate)
-        vals['customs_fee_amount'] = file.customs_fee_amount
+        # What an earlier bill already took is not offered again: the box
+        # opens on the balance of the declaration's fee, which is zero
+        # once it has been charged in full.
+        charged = sum(file._billed_service_lines('customs_fee').mapped(
+            'price_subtotal'))
+        vals['customs_fee_amount'] = max(file.customs_fee_amount - charged, 0.0)
         vals['advance_had_amount'] = file.advance_had_amount
         vals['advance_had_vat_amount'] = file.advance_had_vat_amount
         vals['advance_other_amount'] = file.advance_other_amount
@@ -184,6 +218,23 @@ class LogisticsBillingWizard(models.TransientModel):
         vals['split_invoices'] = bool(file.billing_split or file._standing_half())
         vals['service_line_ids'] = []
         return vals
+
+    @api.depends('file_id', 'file_id.invoice_ids.state')
+    def _compute_already_billed(self):
+        for wizard in self:
+            file = wizard.file_id
+            if not file:
+                wizard.customs_fee_billed = 0.0
+                wizard.commission_billed = 0.0
+                wizard.billed_before = False
+                continue
+            fee = file._billed_service_lines('customs_fee')
+            commission = file._billed_service_lines('commission')
+            wizard.customs_fee_billed = sum(fee.mapped('price_subtotal'))
+            wizard.commission_billed = sum(commission.mapped('price_subtotal'))
+            wizard.billed_before = bool(
+                file._client_invoices().filtered(
+                    lambda move: move.move_type == 'out_invoice'))
 
     @api.depends('file_id')
     def _compute_reissue(self):
@@ -212,6 +263,7 @@ class LogisticsBillingWizard(models.TransientModel):
                 'unit': "Par dossier",
                 'account_id': (company.clearance_commission_account_id
                                or fallback).id,
+                'kind': 'commission',
             })
         if not self.currency_id.is_zero(self.customs_fee_amount):
             services.append({
@@ -222,6 +274,7 @@ class LogisticsBillingWizard(models.TransientModel):
                 'unit': "Par dossier",
                 'account_id': (company.clearance_service_fee_account_id
                                or fallback).id,
+                'kind': 'customs_fee',
             })
         for line in self.service_line_ids:
             if self.currency_id.is_zero(line.amount):
@@ -231,6 +284,7 @@ class LogisticsBillingWizard(models.TransientModel):
                 'amount': line.amount,
                 'unit': line.unit_label or "Par dossier",
                 'account_id': (line.account_id or fallback).id,
+                'kind': 'other',
             })
         return services
 
@@ -331,10 +385,12 @@ class LogisticsBillingWizard(models.TransientModel):
                 'recharge_reason': self.review_reason or False,
             })
         if frozen != 'services':
-            vals.update({
-                'billing_commission_rate': self.commission_rate,
-                'customs_fee_amount': self.customs_fee_amount,
-            })
+            vals['billing_commission_rate'] = self.commission_rate
+            # The file's figure is the fee on the DECLARATION. On a second
+            # bill this box holds what is left of it to charge, so writing
+            # it back would rewrite the declaration.
+            if not self.customs_fee_billed:
+                vals['customs_fee_amount'] = self.customs_fee_amount
         # The shipment details go back in the same write, and only those
         # that changed: the file's constraint wants all three together,
         # and a set left blank must not stop a review from being sent -
@@ -376,7 +432,8 @@ class LogisticsBillingWizard(models.TransientModel):
         invoices = self.file_id._create_client_invoice(
             [{'name': line.name, 'amount': line.amount_engaged,
               'charged': line.amount_recharged,   # the difference is derived
-              'unit': line.unit_label or "Par dossier"}
+              'unit': line.unit_label or "Par dossier",
+              'expense_id': line.expense_id.id}
              for line in self.debours_line_ids],
             services,
             split=self.split_invoices,
@@ -417,6 +474,29 @@ class LogisticsBillingWizardDebours(models.TransientModel):
     def _compute_variance(self):
         for line in self:
             line.variance = line.amount_recharged - line.amount_engaged
+
+
+class LogisticsBillingWizardBilled(models.TransientModel):
+    """A disbursement an earlier invoice already recharged.
+
+    Shown greyed on the billing screen and billable nowhere: it is there
+    so the biller can see that the file's costs are accounted for, and on
+    which invoice, without being able to charge one of them twice.
+    """
+
+    _name = 'logistics.billing.wizard.billed'
+    _description = "Billing Wizard — Already Billed"
+    _order = 'id'
+
+    wizard_id = fields.Many2one(
+        'logistics.billing.wizard', required=True, ondelete='cascade')
+    currency_id = fields.Many2one(related='wizard_id.currency_id')
+    expense_id = fields.Many2one('logistics.expense', readonly=True)
+    name = fields.Char(string="Description", readonly=True)
+    amount = fields.Monetary(
+        string="Disbursed", currency_field='currency_id', readonly=True)
+    invoice_id = fields.Many2one(
+        'account.move', string="Billed On", readonly=True)
 
 
 class LogisticsBillingWizardService(models.TransientModel):

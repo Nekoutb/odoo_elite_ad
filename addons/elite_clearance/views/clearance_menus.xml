@@ -20,6 +20,13 @@
               parent="menu_clearance_root" sequence="30"
               groups="group_clearance_billing,group_clearance_ops_manager"/>
 
+    <!-- Billing and Finance only: reading an account.move needs
+         accounting rights, and an Operations Manager has none. -->
+    <menuitem id="menu_clearance_invoices" name="Invoices"
+              parent="menu_clearance_billing"
+              action="action_clearance_invoices" sequence="5"
+              groups="group_clearance_billing,group_clearance_finance"/>
+
     <menuitem id="menu_clearance_billing_services" name="Billable Services"
               parent="menu_clearance_billing"
               action="action_logistics_billing_service" sequence="10"/>

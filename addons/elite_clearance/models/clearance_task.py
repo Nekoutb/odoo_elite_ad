@@ -216,13 +216,31 @@ class ClearanceTask(models.Model):
             file_task % dict(
                 offset=13, kind='billing',
                 detail="'OK for billing'", amount='f.oop_total',
-                # a cancelled invoice is no invoice: the file is billed
-                # again - and a split bill with one half cancelled has
-                # that half to issue again (logistics.file.bill_stands)
-                where="f.state = 'ops_closed' AND (f.invoice_id IS NULL OR EXISTS ("
-                      "SELECT 1 FROM account_move m "
+                # A cancelled invoice is no invoice: the file is billed
+                # again - and a split bill with one half cancelled has that
+                # half to issue again. Since 13/09/2026 a file is also here
+                # when a disbursement has been incurred that no invoice
+                # standing on the file has recharged: costs are billed as
+                # they land, not once at the end. This is
+                # logistics.file.has_billable, in SQL, because a
+                # _table_query model cannot read a computed field.
+                where="f.state = 'ops_closed' AND ("
+                      "f.invoice_id IS NULL"
+                      " OR EXISTS (SELECT 1 FROM account_move m "
                       "WHERE m.id IN (f.invoice_id, f.debours_invoice_id) "
-                      "AND m.state = 'cancel'))"),
+                      "AND (m.state = 'cancel' "
+                      "OR COALESCE(m.clearance_voided, FALSE)))"
+                      " OR EXISTS (SELECT 1 FROM logistics_expense e "
+                      "LEFT JOIN account_move_line bl ON bl.id = e.billed_line_id "
+                      "LEFT JOIN account_move bm ON bm.id = bl.move_id "
+                      "WHERE e.file_id = f.id "
+                      "AND NOT COALESCE(e.is_legacy, FALSE) "
+                      "AND (e.state = 'justified' OR (e.state = 'settled' "
+                      "AND e.payment_mode <> 'advance')) "
+                      "AND (e.billed_line_id IS NULL "
+                      "OR bm.state = 'cancel' "
+                      "OR COALESCE(bm.clearance_voided, FALSE) "
+                      "OR COALESCE(bl.clearance_credited, FALSE))))"),
             # a proposed revenue line, waiting for Operations to allow it
             """
             SELECT (14 * 10000000 + s.id) AS id,
@@ -265,7 +283,8 @@ class ClearanceTask(models.Model):
         self.env['logistics.expense'].flush_model()
         self.env['account.journal'].flush_model()
         self.env['logistics.billing.service'].flush_model()
-        self.env['account.move'].flush_model(['state'])
+        self.env['account.move'].flush_model(['state', 'clearance_voided'])
+        self.env['account.move.line'].flush_model(['clearance_credited'])
         # the holder's queue joins hr_employee for the user behind it
         self.env['hr.employee'].flush_model(['user_id'])
         # Narrow every read, so the one screen is a different list for each

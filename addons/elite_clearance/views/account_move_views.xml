@@ -40,4 +40,151 @@
         </field>
     </record>
 
+    <!-- ================================================================
+         Withdrawing what was billed (owner spec 13/09/2026)
+         A clearance invoice is credited or cancelled from the invoice
+         itself, by the Billing Agent, with a reason on record. The
+         buttons are gated on the same group as every other billing gate.
+         ================================================================ -->
+    <record id="view_move_form_clearance_reversal" model="ir.ui.view">
+        <field name="name">account.move.form.inherit.clearance.reversal</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='ref']" position="before">
+                <field name="clearance_voided" invisible="1"/>
+            </xpath>
+            <xpath expr="//header" position="inside">
+                <button name="%(action_invoice_credit_wizard)d" type="action"
+                        string="Credit Note" class="btn-secondary"
+                        context="{'default_invoice_id': id}"
+                        groups="elite_clearance.group_clearance_billing"
+                        invisible="not logistics_file_id or move_type != 'out_invoice'
+                                   or state != 'posted' or clearance_voided"/>
+                <button name="%(action_invoice_cancel_wizard)d" type="action"
+                        string="Cancel Invoice" class="btn-secondary"
+                        context="{'default_invoice_id': id}"
+                        groups="elite_clearance.group_clearance_billing"
+                        invisible="not logistics_file_id or move_type != 'out_invoice'
+                                   or state not in ('draft', 'posted') or clearance_voided"/>
+            </xpath>
+            <xpath expr="//sheet" position="inside">
+                <widget name="web_ribbon" title="Cancelled" bg_color="text-bg-danger"
+                        invisible="not clearance_voided"/>
+            </xpath>
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-danger mb-0" role="alert" invisible="not clearance_voided">
+                    This invoice has been cancelled by Billing and the client owes nothing on it.
+                    It stays posted because a posted entry is not unmade — the reversing entry is
+                    the credit note raised against it.
+                    <field name="clearance_void_reason" readonly="1" nolabel="1" class="d-block mt-1"/>
+                    <field name="clearance_voided_by_id" readonly="1" class="me-2"/>
+                    <field name="clearance_void_date" readonly="1"/>
+                </div>
+                <div class="alert alert-info mb-0" role="alert" invisible="not clearance_credit_reason">
+                    Credit note raised by Billing.
+                    <field name="clearance_credit_reason" readonly="1" nolabel="1" class="d-block mt-1"/>
+                </div>
+            </xpath>
+            <xpath expr="//field[@name='invoice_line_ids']/list" position="inside">
+                <field name="clearance_credited" optional="show" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ================================================================
+         Clearance -> Billing -> Invoices: every document the clearance
+         business has issued, in one list.
+         ================================================================ -->
+    <record id="view_clearance_invoice_search" model="ir.ui.view">
+        <field name="name">account.move.search.clearance.invoices</field>
+        <field name="model">account.move</field>
+        <field name="arch" type="xml">
+            <search string="Clearance Invoices">
+                <field name="name" string="Number"/>
+                <field name="partner_id" string="Client"/>
+                <field name="logistics_file_id" string="Clearance File"/>
+                <field name="invoice_date"/>
+                <filter name="clr_invoices" string="Invoices"
+                        domain="[('move_type', '=', 'out_invoice')]"/>
+                <filter name="clr_credit_notes" string="Credit Notes"
+                        domain="[('move_type', '=', 'out_refund')]"/>
+                <separator/>
+                <filter name="clr_draft" string="Draft" domain="[('state', '=', 'draft')]"/>
+                <filter name="clr_posted" string="Posted" domain="[('state', '=', 'posted')]"/>
+                <filter name="clr_unpaid" string="Outstanding"
+                        domain="[('state', '=', 'posted'), ('payment_state', 'in', ('not_paid', 'partial'))]"/>
+                <separator/>
+                <filter name="clr_stands" string="Standing"
+                        domain="[('state', '!=', 'cancel'), ('clearance_voided', '=', False)]"/>
+                <filter name="clr_voided" string="Cancelled or voided"
+                        domain="['|', ('state', '=', 'cancel'), ('clearance_voided', '=', True)]"/>
+                <separator/>
+                <filter name="clr_imported" string="Imported (Teese)"
+                        domain="[('is_legacy', '=', True)]"/>
+                <filter name="clr_issued_here" string="Issued in Odoo"
+                        domain="[('is_legacy', '=', False)]"/>
+                <group>
+                    <filter name="clr_group_partner" string="Client"
+                            context="{'group_by': 'partner_id'}"/>
+                    <filter name="clr_group_file" string="Clearance File"
+                            context="{'group_by': 'logistics_file_id'}"/>
+                    <filter name="clr_group_kind" string="Invoice Kind"
+                            context="{'group_by': 'clearance_invoice_kind'}"/>
+                    <filter name="clr_group_state" string="Status"
+                            context="{'group_by': 'state'}"/>
+                    <filter name="clr_group_month" string="Invoice Date"
+                            context="{'group_by': 'invoice_date'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_clearance_invoice_list" model="ir.ui.view">
+        <field name="name">account.move.list.clearance.invoices</field>
+        <field name="model">account.move</field>
+        <field name="arch" type="xml">
+            <list string="Clearance Invoices" create="0" sample="1"
+                  decoration-muted="state == 'cancel' or clearance_voided"
+                  decoration-info="state == 'draft'">
+                <field name="name" string="Number"/>
+                <field name="invoice_date"/>
+                <field name="logistics_file_id"/>
+                <field name="partner_id" string="Client"/>
+                <field name="move_type" optional="show"/>
+                <field name="clearance_invoice_kind" optional="show"/>
+                <field name="amount_untaxed" sum="Untaxed" optional="show"/>
+                <field name="amount_tax" sum="VAT" optional="hide"/>
+                <field name="amount_total" sum="Total"/>
+                <field name="amount_residual" sum="Due" optional="show"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="clearance_voided" optional="hide"/>
+                <field name="is_legacy" optional="hide"/>
+                <field name="payment_state" widget="badge" optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'draft'"
+                       decoration-success="state == 'posted'"
+                       decoration-danger="state == 'cancel'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_clearance_invoices" model="ir.actions.act_window">
+        <field name="name">Invoices</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="view_clearance_invoice_list"/>
+        <field name="search_view_id" ref="view_clearance_invoice_search"/>
+        <field name="domain">[('logistics_file_id', '!=', False), ('move_type', 'in', ('out_invoice', 'out_refund'))]</field>
+        <field name="context">{'create': False}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Nothing has been billed yet</p>
+            <p>
+                Every invoice and credit note the clearance business has issued shows here,
+                whichever file it came from. Open one to credit part of it or to cancel it
+                outright.
+            </p>
+        </field>
+    </record>
+
 </odoo>

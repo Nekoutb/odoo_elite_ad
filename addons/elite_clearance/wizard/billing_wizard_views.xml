@@ -10,6 +10,12 @@
                 <field name="currency_id" invisible="1"/>
                 <field name="needs_review" invisible="1"/>
                 <field name="reissue_kind" invisible="1"/>
+                <field name="billed_before" invisible="1"/>
+                <div class="alert alert-info" role="alert" invisible="not billed_before">
+                    This file has been billed before. Only what has been incurred since is on
+                    this invoice — everything already recharged is listed below, greyed, and
+                    cannot be charged again.
+                </div>
                 <div class="alert alert-info" role="alert" invisible="not reissue_kind">
                     <field name="standing_invoice_id" readonly="1" class="fw-bold"/>
                     stands and stays as it is. Only the
@@ -70,6 +76,10 @@
                         <field name="commission_rate"/>
                         <field name="commission_amount" readonly="1"/>
                         <field name="customs_fee_amount"/>
+                        <field name="customs_fee_billed" readonly="1"
+                               invisible="not customs_fee_billed"/>
+                        <field name="commission_billed" readonly="1"
+                               invisible="not commission_billed"/>
                         <field name="split_invoices" readonly="reissue_kind"/>
                     </group>
                     <group string="Advances already paid by the client">
@@ -97,6 +107,21 @@
                     The invoice always recharges disbursements at cost, so the out-of-pocket account
                     clears in full. Any difference is billed as one further line — an undercharge is
                     booked as a cost, an overcharge as revenue.
+                </div>
+
+                <separator string="Already billed" invisible="not billed_line_ids"/>
+                <field name="billed_line_ids" invisible="not billed_line_ids" readonly="1">
+                    <list create="0" delete="0" edit="0" decoration-muted="1">
+                        <field name="expense_id" column_invisible="1"/>
+                        <field name="name"/>
+                        <field name="amount" sum="Already billed"/>
+                        <field name="invoice_id"/>
+                        <field name="currency_id" column_invisible="1"/>
+                    </list>
+                </field>
+                <div class="text-muted mt-1 mb-2" invisible="not billed_line_ids">
+                    Recharged on an invoice that stands. To bill one of these again, credit its
+                    line on that invoice first — it then comes back to the section above.
                 </div>
 
                 <separator string="Additional services"/>

@@ -8,8 +8,16 @@
             <form string="Reopen File">
                 <group>
                     <field name="file_id" invisible="1"/>
+                    <field name="file_state" invisible="1"/>
+                    <field name="target_state" widget="radio"
+                           invisible="file_state != 'done'"/>
                     <field name="reason" placeholder="Why must this closed file be reopened? This is posted to the file's audit trail."/>
                 </group>
+                <div class="text-muted" invisible="file_state != 'done'">
+                    Back to billing withdraws nothing: it lets the file be invoiced again for
+                    whatever has not been billed. Back to operations lets new costs on to it,
+                    which are then billed on a further invoice.
+                </div>
                 <footer>
                     <button name="action_reopen" type="object" string="Approve &amp; Reopen" class="btn-primary"/>
                     <button string="Cancel" special="cancel"/>

@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Credit part of an invoice: the reason first, then the lines. -->
+    <record id="invoice_credit_wizard_view_form" model="ir.ui.view">
+        <field name="name">logistics.invoice.credit.wizard.form</field>
+        <field name="model">logistics.invoice.credit.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Credit Note">
+                <field name="currency_id" invisible="1"/>
+                <field name="whole_invoice" invisible="1"/>
+                <div class="alert alert-info" role="alert">
+                    The lines you choose are reversed in the general ledger by a credit note
+                    posted straight away. What they billed becomes billable again, so the file
+                    can be invoiced afresh under the new instructions.
+                </div>
+                <div class="alert alert-warning" role="alert" invisible="not whole_invoice">
+                    Every line that still stands has been chosen. This credit note reverses the
+                    invoice entirely — which is what <b>Cancel Invoice</b> does, and that also
+                    marks the invoice itself as no longer standing.
+                </div>
+                <group>
+                    <group>
+                        <field name="invoice_id" readonly="1"/>
+                        <field name="partner_id" readonly="1"/>
+                    </group>
+                    <group>
+                        <field name="file_id" readonly="1"/>
+                        <field name="invoice_total" readonly="1"/>
+                    </group>
+                </group>
+                <field name="reason" placeholder="What was wrong with what the client was billed? Say what, not that."/>
+
+                <separator string="Lines to reverse"/>
+                <field name="line_ids">
+                    <list editable="bottom" create="0" delete="0"
+                          decoration-muted="already_credited">
+                        <field name="move_line_id" column_invisible="1"/>
+                        <field name="selected" readonly="already_credited"/>
+                        <field name="name" readonly="1" force_save="1"/>
+                        <field name="amount" readonly="1" sum="Amount"/>
+                        <field name="tax_amount" readonly="1" sum="VAT"/>
+                        <field name="already_credited" readonly="1" optional="show"/>
+                        <field name="currency_id" column_invisible="1"/>
+                    </list>
+                </field>
+
+                <group class="oe_subtotal_footer">
+                    <field name="credit_total" readonly="1"/>
+                    <field name="credit_tax_total" readonly="1"/>
+                </group>
+
+                <footer>
+                    <button name="action_create_credit_note" type="object"
+                            string="Issue Credit Note" class="btn-primary"/>
+                    <button string="Cancel" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_invoice_credit_wizard" model="ir.actions.act_window">
+        <field name="name">Credit Note</field>
+        <field name="res_model">logistics.invoice.credit.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Cancel the whole thing: the mirror entry, and a reason on record. -->
+    <record id="invoice_cancel_wizard_view_form" model="ir.ui.view">
+        <field name="name">logistics.invoice.cancel.wizard.form</field>
+        <field name="model">logistics.invoice.cancel.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Cancel Invoice">
+                <field name="currency_id" invisible="1"/>
+                <field name="invoice_state" invisible="1"/>
+                <div class="alert alert-warning" role="alert" invisible="invoice_state != 'posted'">
+                    This invoice is posted, and a posted entry is not unmade. Cancelling it books
+                    that entry again with the signs the other way round — what was debited is
+                    credited, for the same amounts — through a credit note posted straight away
+                    and set against the invoice.
+                </div>
+                <div class="alert alert-info" role="alert" invisible="invoice_state == 'posted'">
+                    This invoice is still a draft, so it has made no entry. Cancelling it simply
+                    withdraws it.
+                </div>
+                <group>
+                    <group>
+                        <field name="invoice_id" readonly="1"/>
+                        <field name="file_id" readonly="1"/>
+                    </group>
+                    <group>
+                        <field name="invoice_total" readonly="1"/>
+                    </group>
+                </group>
+                <field name="reason" placeholder="Why is this invoice being withdrawn?"/>
+                <footer>
+                    <button name="action_cancel_invoice" type="object"
+                            string="Cancel Invoice" class="btn-danger"/>
+                    <button string="Leave it" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_invoice_cancel_wizard" model="ir.actions.act_window">
+        <field name="name">Cancel Invoice</field>
+        <field name="res_model">logistics.invoice.cancel.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

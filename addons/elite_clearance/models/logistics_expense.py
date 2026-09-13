@@ -181,6 +181,43 @@ class LogisticsExpense(models.Model):
              "billing screen so it is known later which disbursement was "
              "discounted and by how much.")
 
+    # --- billed, or still to bill (owner spec 13/09/2026) ---------------
+    # A file is billed as costs are incurred, not once at the end, so the
+    # question "has this disbursement been recharged already?" is asked of
+    # every disbursement and not of the file. The answer is the invoice
+    # LINE: a credit note may reverse one line and leave the rest of the
+    # invoice standing, and then this one disbursement is billable again
+    # while its neighbours are not.
+    billed_line_id = fields.Many2one(
+        'account.move.line', string="Billed On Line", readonly=True,
+        copy=False, ondelete='set null', index=True,
+        help="The invoice line that recharged this disbursement. Never "
+             "shown to an agent without accounting rights - what they see "
+             "is Billed and, if they may read it, the invoice.")
+    billed_invoice_id = fields.Many2one(
+        'account.move', compute='_compute_billed', compute_sudo=True,
+        string="Billed On")
+    is_billed = fields.Boolean(
+        compute='_compute_billed', compute_sudo=True, string="Billed",
+        help="Recharged to the client on an invoice that still stands. "
+             "Cancel that invoice, or credit its line, and this "
+             "disbursement can be billed again.")
+
+    # compute_sudo on both: an Operations, Customer Service or Transit
+    # agent has no accounting rights at all, and a compute that reads
+    # account.move as that user raises AccessError on a screen they open
+    # every day.
+    @api.depends('billed_line_id', 'billed_line_id.clearance_credited',
+                 'billed_line_id.move_id.state',
+                 'billed_line_id.move_id.clearance_voided')
+    def _compute_billed(self):
+        for expense in self:
+            line = expense.billed_line_id
+            stands = bool(line) and not line.clearance_credited \
+                and line.move_id._clearance_stands()
+            expense.is_billed = stands
+            expense.billed_invoice_id = line.move_id if stands else False
+
     # --- legacy (Teese) provenance -------------------------------------
     is_legacy = fields.Boolean(
         string="Legacy", copy=False, index=True,

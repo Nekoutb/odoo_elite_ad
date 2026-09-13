@@ -265,6 +265,58 @@ Customs clearance job files for a logistics/clearance services provider.
    as a Billing-only and a Finance-only user and assert on the arch —
    Odoo strips `groups=`-gated nodes server-side, so that is the one
    ORM-level test that sees what the browser shows.
+- **Owner spec 13/09/2026: many bills, and bills withdrawn.**
+  1. **Clearance -> Billing -> Invoices** (`action_clearance_invoices`) is
+     every `account.move` carrying a `logistics_file_id`, invoices and
+     credit notes alike. Billing and Finance only: an Operations Manager
+     has no `account.*` group and the menu would raise AccessError.
+  2. **A credit note is not a button.** `logistics.invoice.credit.wizard`
+     takes the reason FIRST, then the lines. Only those lines are
+     reversed: `account.move._clearance_raise_credit_note(lines, reason)`
+     builds an `out_refund` carrying copies of them, posts it, and
+     reconciles the two receivables so the invoice's residual is right.
+     Each line brings its share of the recharge adjustment with it - the
+     aggregate `clearance_category='adjustment'` line is NEVER reversed
+     directly and never offered for selection, and the shares add back to
+     it exactly, so one rule covers a single line and the whole invoice.
+     Credit notes take their own series, `AV26IM0001`
+     (`_next_reference('credit', ...)`), and print ODOO's document, not
+     ours: `_get_name_invoice_report` now also tests `move_type ==
+     'out_invoice'`.
+  3. **Cancelling is the mirror entry, never an unposting.**
+     `logistics.invoice.cancel.wizard`: a draft is simply cancelled (it
+     made no entry); a posted one stays posted and gets the same lines
+     reversed, then `clearance_voided=True` with a reason, who and when.
+     `account.move._clearance_stands()` (state != cancel AND not voided)
+     is the ONE answer to "does this bill still stand?" - every gate,
+     every compute and the My Tasks SQL read it.
+  4. **Partial billing.** `logistics.expense.billed_line_id` points at the
+     invoice LINE that recharged it; `is_billed` (compute_sudo - ops
+     agents have no accounting rights) is true while that line stands and
+     is not `clearance_credited`. `_billable_expenses()` excludes billed
+     ones, so a second bill carries only what has landed since, and the
+     billing screen lists the rest in `billed_line_ids`, greyed and
+     unbillable. `has_billable` (not bill_stands OR something unbilled)
+     replaces `bill_stands` on the Billing buttons and in the queue;
+     `bill_stands` still means "the LAST bill is whole and live" and is
+     what `_standing_half()` works from. `invoices_posted` now spans
+     EVERY live document on the file, and Mark Complete also refuses
+     while a disbursement is unbilled. The recharge adjustment is
+     computed over the lines being billed NOW, not off `oop_total`.
+     `clearance_service_kind` on the line ('commission' / 'customs_fee' /
+     'other') is how a second bill knows not to charge the declaration's
+     fee twice; `_billed_service_lines(kind)` deliberately EXCLUDES the
+     standing half of a split bill, which belongs to the bill on screen.
+     `_check_standing_half` no longer checks the disbursements side - the
+     billed flags hold it frozen - only the services side, which is typed.
+     Cancelling an invoice or crediting a line puts a `done` file back to
+     `ops_closed` (`_billing_reopen_after_reversal`): withdrawing a bill
+     is Billing's own act, where letting new COSTS on to a file still
+     needs the manager's reopen. The reopen wizard now asks a completed
+     file which way it is going back.
+     `migrations/19.0.32.0.0/post-migrate.py` rebuilds `billed_line_id`
+     for databases billed under the old build by matching the line
+     description, which billing composes as `<category> - <description>`.
 - **Owner spec 08/09/2026, seven instructions.**
   1. Turnaround targets are **hours** and fractional - 30 minutes is 0.5.
      `clearance.turnaround.target.target_hours` (Float), `is_late` compares

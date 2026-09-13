@@ -53,16 +53,18 @@
                     <!-- Gated on the SAME group as the action, the wizard's access
                          rule and the My Tasks queue. When those disagreed the dialog
                          vanished for Billing and refused Finance (06/09/2026).
-                         bill_stands is the one answer to "is it billed?": a cancelled
-                         invoice does not hide the buttons, nor does a split bill with
-                         one half cancelled - that half is issued again. -->
+                         has_billable is the one answer to "is there anything to
+                         bill?": a cancelled invoice does not hide the buttons, nor
+                         does a split bill with one half cancelled - that half is
+                         issued again - and neither does a disbursement incurred
+                         since the last invoice, which is billed on a further one. -->
                     <button name="action_open_billing" type="object" string="Billing"
                             class="oe_highlight"
-                            invisible="state != 'ops_closed' or bill_stands or recharge_state == 'approved'"
+                            invisible="state != 'ops_closed' or not has_billable or recharge_state == 'approved'"
                             groups="elite_clearance.group_clearance_billing"/>
                     <button name="action_open_billing" type="object" string="Resume Billing"
                             class="oe_highlight"
-                            invisible="state != 'ops_closed' or bill_stands or recharge_state != 'approved'"
+                            invisible="state != 'ops_closed' or not has_billable or recharge_state != 'approved'"
                             groups="elite_clearance.group_clearance_billing"/>
                     <button name="action_preview_invoice" type="object"
                             string="Preview Invoice" invisible="not invoice_id"
@@ -88,6 +90,7 @@
                     <field name="invoice_id" invisible="1"/>
                     <field name="invoice_state" invisible="1"/>
                     <field name="bill_stands" invisible="1"/>
+                    <field name="has_billable" invisible="1"/>
                     <field name="invoices_posted" invisible="1"/>
                     <field name="documents_complete" invisible="1"/>
 
@@ -229,7 +232,7 @@
                              command. Category and description arrived NULL
                              (browser test, 07/09/2026). -->
                         <list open_form_view="1"
-                              decoration-muted="state == 'cancel' or is_legacy">
+                              decoration-muted="state == 'cancel' or is_legacy or is_billed">
                             <field name="name"/>
                             <field name="category_id"/>
                             <field name="description"/>
@@ -240,6 +243,7 @@
                             <field name="amount" sum="Total"/>
                             <field name="currency_id" column_invisible="1"/>
                             <field name="is_legacy" column_invisible="1"/>
+                            <field name="is_billed" optional="show"/>
                             <field name="state" widget="badge" readonly="1"
                                    decoration-info="state in ('draft', 'submitted')"
                                    decoration-warning="state in ('approved', 'settlement_submitted', 'settlement_approved', 'justification_submitted')"

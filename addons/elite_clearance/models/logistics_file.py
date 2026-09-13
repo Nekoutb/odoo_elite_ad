@@ -501,15 +501,22 @@ class LogisticsFile(models.Model):
             file.commission_amount = file.currency_id.round(
                 file.oop_total * (file.service_type_id.commission_rate or 0.0) / 100.0)
 
-    @api.depends('invoice_id.amount_total', 'invoice_id.state',
-                 'debours_invoice_id.amount_total', 'debours_invoice_id.state',
+    @api.depends('invoice_ids.amount_total', 'invoice_ids.state',
+                 'invoice_ids.move_type', 'invoice_ids.clearance_voided',
                  'advance_had_amount', 'advance_had_vat_amount',
                  'advance_other_amount')
     def _compute_invoice_balance_due(self):
-        """What the client still owes once their advances come off - over
-        the one invoice, or the two of a split bill."""
+        """What the client still owes once their advances come off.
+
+        Over every document the file has taken - one invoice, the two of a
+        split bill, several if it was billed as costs came in - and less
+        every credit note raised since.
+        """
         for file in self:
-            total = sum(file._client_invoices().mapped('amount_total'))
+            total = sum(
+                move.amount_total if move.move_type == 'out_invoice'
+                else -move.amount_total
+                for move in file._client_invoices())
             file.invoice_balance_due = total - (
                 file.advance_had_amount + file.advance_had_vat_amount
                 + file.advance_other_amount)
@@ -522,9 +529,15 @@ class LogisticsFile(models.Model):
             lambda move: not move.is_legacy)
 
     def _client_invoices(self):
-        """The same, cancelled ones excluded: what the client is owed on."""
+        """Every clearance document on the file that still stands.
+
+        A file may be billed more than once (owner 13/09/2026), so this is
+        not "the bill" but everything the client has been sent and not had
+        reversed: the invoices, and the credit notes that reduced them.
+        """
         self.ensure_one()
-        return self._bill_sides().filtered(lambda move: move.state != 'cancel')
+        return self.invoice_ids.filtered(
+            lambda move: not move.is_legacy and move._clearance_stands())
 
     def _standing_half(self):
         """The one live half of a split bill whose other half was
@@ -534,7 +547,7 @@ class LogisticsFile(models.Model):
         if not self.billing_split:
             return self.env['account.move']
         live = self._bill_sides().filtered(
-            lambda move: move.state != 'cancel')
+            lambda move: move._clearance_stands())
         return live if len(live) == 1 else self.env['account.move']
 
     # The buttons, the My Tasks queue and the actions all read these two,
@@ -543,22 +556,44 @@ class LogisticsFile(models.Model):
     # form is opened by agents with no accounting rights.
     bill_stands = fields.Boolean(
         compute='_compute_invoice_gates', compute_sudo=True,
-        help="Every invoice of the bill is live (draft or posted): there "
-             "is nothing left to issue.")
+        help="Every invoice of the LAST bill is live (draft or posted): "
+             "there is nothing left to issue of it.")
     invoices_posted = fields.Boolean(
         compute='_compute_invoice_gates', compute_sudo=True,
-        help="Every invoice of the bill is posted - both of a split bill.")
+        help="Every invoice the file has taken is posted - both halves of "
+             "a split bill, and every credit note raised since.")
+    has_billable = fields.Boolean(
+        compute='_compute_invoice_gates', compute_sudo=True,
+        string="Something to bill",
+        help="There is work on this file that has not been invoiced: a "
+             "disbursement nobody has recharged yet, a half of a split "
+             "bill that was cancelled, or no bill at all. This is what "
+             "puts the file in the Billing queue.")
 
-    @api.depends('invoice_id.state', 'debours_invoice_id.state')
+    @api.depends('invoice_id.state', 'invoice_id.clearance_voided',
+                 'debours_invoice_id.state',
+                 'debours_invoice_id.clearance_voided', 'billing_split',
+                 'invoice_ids.state', 'invoice_ids.move_type',
+                 'invoice_ids.clearance_voided', 'expense_ids.state',
+                 'expense_ids.payment_mode', 'expense_ids.is_billed')
     def _compute_invoice_gates(self):
         for file in self:
             sides = file._bill_sides()
-            live = sides.filtered(lambda move: move.state != 'cancel')
+            live = sides.filtered(lambda move: move._clearance_stands())
             whole = len(sides) == (2 if file.billing_split else 1)
             file.bill_stands = (bool(file.invoice_id) and whole
                                 and len(live) == len(sides))
-            file.invoices_posted = (bool(file.invoice_id) and whole and all(
-                move.state == 'posted' for move in sides))
+            # Posted means EVERY document on the file, not only the last
+            # bill: a file billed twice is complete when both are posted.
+            standing = file._client_invoices()
+            file.invoices_posted = (
+                bool(file.invoice_id) and whole and bool(standing)
+                and all(move.state == 'posted' for move in standing))
+            # Partial billing (owner 13/09/2026): the file goes back in the
+            # queue whenever something on it is unbilled, not only when it
+            # has never been billed.
+            file.has_billable = (not file.bill_stands
+                                 or bool(file._billable_expenses()))
 
     @api.depends('documents_complete', 'waiver_state')
     def _compute_can_start(self):
@@ -619,7 +654,12 @@ class LogisticsFile(models.Model):
         seq = Seq.search([('code', '=', seq_code),
                           ('company_id', 'in', [company.id, False])], limit=1)
         if not seq:
-            prefix = ('EL%%(y)s%s' % code) if kind == 'billing' else ('%%(year)s%s' % code)
+            if kind == 'billing':
+                prefix = 'EL%%(y)s%s' % code
+            elif kind == 'credit':
+                prefix = 'AV%%(y)s%s' % code
+            else:
+                prefix = '%%(year)s%s' % code
             seq = Seq.create({
                 'name': "Clearance %s %s" % (kind, code),
                 'code': seq_code,
@@ -1152,11 +1192,14 @@ class LogisticsFile(models.Model):
         """The disbursements this file may recharge.
 
         Engaged means paid direct, or advanced and since justified. Legacy
-        rows were billed in the old system and never appear here.
+        rows were billed in the old system and never appear here - and
+        neither does anything already recharged on an invoice that stands,
+        which is what makes a file billable a second time without billing
+        the same cost twice (owner 13/09/2026).
         """
         self.ensure_one()
         return self.expense_ids.filtered(
-            lambda e: not e.is_legacy and (
+            lambda e: not e.is_legacy and not e.is_billed and (
                 e.state == 'justified'
                 or (e.state == 'settled' and e.payment_mode != 'advance')))
 
@@ -1166,7 +1209,9 @@ class LogisticsFile(models.Model):
         return [
             {'name': "%s — %s" % (expense.category_id.name, expense.description),
              'amount': expense.amount,
-             'charged': expense.recharge_amount or expense.amount}
+             'charged': expense.recharge_amount or expense.amount,
+             'unit': expense.unit_label or "Par dossier",
+             'expense_id': expense.id}
             for expense in self._billable_expenses()
         ]
 
@@ -1184,6 +1229,7 @@ class LogisticsFile(models.Model):
                 'amount': self.commission_amount,
                 'account_id': (
                     self.company_id.clearance_commission_account_id or fee).id,
+                'kind': 'commission',
             })
         if self.customs_fee_amount:
             services.append({
@@ -1193,6 +1239,7 @@ class LogisticsFile(models.Model):
                 'amount': self.customs_fee_amount,
                 'account_id': (
                     self.company_id.clearance_service_fee_account_id or fee).id,
+                'kind': 'customs_fee',
             })
         return services
 
@@ -1203,6 +1250,10 @@ class LogisticsFile(models.Model):
         if self.state != 'ops_closed':
             raise UserError(self.env._(
                 "%s is not OK for billing yet.", self.name))
+        if not self.has_billable:
+            raise UserError(self.env._(
+                "Everything billable on %s has already been invoiced.",
+                self.name))
         return {
             'type': 'ir.actions.act_window',
             'name': self.env._("Billing — %s", self.name),
@@ -1272,15 +1323,22 @@ class LogisticsFile(models.Model):
         if self.state != 'ops_closed':
             raise UserError(self.env._(
                 "Close %s for operations before billing it.", self.name))
-        if self.bill_stands:
+        if not self.has_billable:
             raise UserError(self.env._(
-                "%(file)s already has invoice %(inv)s.",
+                "Everything billable on %(file)s has been invoiced "
+                "(%(inv)s). Reopen the file to add a disbursement, or "
+                "credit a line on an invoice that stands - what is "
+                "credited becomes billable again.",
                 file=self.name,
                 inv=", ".join(move.name or "in draft"
                               for move in self._client_invoices())))
         # One half of a split bill was cancelled and the other stands: only
         # the missing half is issued again. The standing one - posted,
         # perhaps - keeps its number and its lines.
+        # What the file was already carrying, so the chatter can say that
+        # this is a further bill and not the bill.
+        earlier = self._client_invoices().filtered(
+            lambda move: move.move_type == 'out_invoice')
         standing = self._standing_half()
         reissue = False
         if standing:
@@ -1345,7 +1403,11 @@ class LogisticsFile(models.Model):
 
         # 47xx clears in full whatever the client is charged; the difference
         # is the company's own gain or loss and lands in its own account.
-        adjustment = self._recharge_total() - self.oop_total
+        # Read off the lines being billed NOW rather than off the file's
+        # totals: a file may be billed more than once (owner 13/09/2026),
+        # and the second invoice knows nothing of the first one's figures.
+        adjustment = sum(line.get('charged', line['amount']) - line['amount']
+                         for line in debours)
         if not self.currency_id.is_zero(adjustment):
             if adjustment < 0:
                 variance_account = (
@@ -1400,6 +1462,7 @@ class LogisticsFile(models.Model):
                 'tax_ids': [fields.Command.set(service_taxes.ids)],
                 'clearance_category': 'prestation',
                 'clearance_unit': line.get('unit') or "Par dossier",
+                'clearance_service_kind': line.get('kind') or 'other',
                 'analytic_distribution': analytic,
             }))
 
@@ -1446,14 +1509,23 @@ class LogisticsFile(models.Model):
                         'debours_invoice_id': False,
                         'billing_split': False})
             invoices = invoice
+        self._link_billed_expenses(invoices, debours)
         self.date_billed = fields.Datetime.now()
         self.message_post(body=self.env._(
             "Draft invoice%(s)s created (%(names)s): disbursements %(oop)s "
             "recharged at %(charged)s, services %(fees)s.",
             s="s" if len(invoices) > 1 else "",
             names=", ".join(invoices.mapped('name')),
-            oop=self.oop_total, charged=self._recharge_total(),
+            oop=sum(line['amount'] for line in debours),
+            charged=sum(line.get('charged', line['amount'])
+                        for line in debours),
             fees=sum(line['amount'] for line in services)))
+        if earlier and not reissue:
+            self.message_post(body=self.env._(
+                "A further bill on this file. Already issued and untouched: "
+                "%(earlier)s. Only what had not been recharged yet is on "
+                "this one.",
+                earlier=", ".join(earlier.mapped('name'))))
         if reissue:
             self.message_post(body=self.env._(
                 "Only the %(kind)s half of the split bill was issued again; "
@@ -1474,17 +1546,21 @@ class LogisticsFile(models.Model):
 
         Only the missing half is issued again, so anything the biller
         changed on the OTHER side would be recorded on the file and
-        printed nowhere. A disbursements invoice carries no tax, so its
-        untaxed total IS the recharge it was issued at; a services
-        invoice's untaxed total is what its lines came to.
+        printed nowhere.
+
+        When it is the DISBURSEMENTS half that stands, the disbursements
+        themselves hold it frozen: each one it billed is marked billed,
+        is listed on the screen greyed and unbillable, and is not there to
+        change. The services side has no such anchor - the commission rate
+        and the customs fee are typed in - so that is what is checked. A
+        services invoice's untaxed total is what its lines came to.
         """
         self.ensure_one()
-        currency = self.currency_id
         if standing.clearance_invoice_kind == 'debours':
-            now, label = self._recharge_total(), self.env._("disbursements")
-        else:
-            now = sum(line['amount'] for line in services)
-            label = self.env._("services")
+            return
+        currency = self.currency_id
+        now = sum(line['amount'] for line in services)
+        label = self.env._("services")
         if currency.compare_amounts(standing.amount_untaxed, now):
             raise UserError(self.env._(
                 "The %(side)s invoice %(inv)s stands at %(was)s and the "
@@ -1492,6 +1568,76 @@ class LogisticsFile(models.Model):
                 "%(side)s differently, or put the figure back.",
                 side=label, inv=standing.name,
                 was=standing.amount_untaxed, now=now))
+
+    def _billed_service_lines(self, kind):
+        """The service lines of this kind standing on a live invoice.
+
+        What has already been charged for the commission, or for the
+        customs fee, so a second bill on the same file does not propose
+        it again (owner 13/09/2026).
+
+        The standing half of a split bill is left out: it belongs to the
+        bill being issued and not to an earlier one, its figures are
+        frozen, and the screen is still showing them.
+        """
+        self.ensure_one()
+        invoices = self._client_invoices().filtered(
+            lambda move: move.move_type == 'out_invoice')
+        invoices -= self._standing_half()
+        return invoices.invoice_line_ids.filtered(
+            lambda line: line.clearance_service_kind == kind
+            and not line.clearance_credited)
+
+    def _billing_reopen_after_reversal(self, document):
+        """A cancelled invoice, or a credited line, puts the file back in
+        front of Billing.
+
+        Reopening a file for OPERATIONS is a manager's decision, because it
+        lets new costs on to it. Going back to billing is not: the bill has
+        been withdrawn, so the file is where it stood before it was billed,
+        and the person who withdrew it is the person who bills it again.
+        """
+        self.ensure_one()
+        if self.state != 'done':
+            return
+        self.write({'state': 'ops_closed', 'date_closed': False})
+        self.message_post(body=self.env._(
+            "Back to billing: %s reversed what had been billed, so the "
+            "file is no longer complete.", document.name))
+
+    def _link_billed_expenses(self, invoices, debours):
+        """Point each disbursement at the invoice line that recharged it.
+
+        This is what makes a second bill possible: a disbursement already
+        recharged on an invoice that stands is not offered again, and the
+        moment that invoice is cancelled or its line credited, it is.
+
+        The lines were created in the order they were passed, so they are
+        matched in that order - and the count is checked rather than
+        trusted, because a silent mismatch would bill somebody else's
+        disbursement twice.
+        """
+        self.ensure_one()
+        billed = [line for line in debours if line.get('expense_id')]
+        if not billed:
+            return
+        # The disbursements sit on the unsplit invoice, or on the
+        # disbursements half. Reissuing only the services half bills no
+        # disbursement at all, and there is nothing to link.
+        move = invoices.filtered(
+            lambda m: m.clearance_invoice_kind != 'services')[:1]
+        if not move:
+            return
+        rows = move.invoice_line_ids.filtered(
+            lambda line: line.clearance_category == 'debours')
+        if len(rows) != len(billed):
+            raise UserError(self.env._(
+                "%(count)s disbursement(s) were billed on %(inv)s but "
+                "%(rows)s line(s) reached it. Nothing was invoiced.",
+                count=len(billed), inv=move.name or self.name, rows=len(rows)))
+        for line, row in zip(billed, rows):
+            self.env['logistics.expense'].browse(
+                line['expense_id']).billed_line_id = row.id
 
     def _invoices_action(self, invoices):
         """Open what billing produced: the invoice, or the pair."""
@@ -1513,7 +1659,9 @@ class LogisticsFile(models.Model):
     def action_preview_invoice(self):
         """See the document before the client does."""
         self.ensure_one()
-        invoices = self._client_invoices() or self.invoice_id
+        # Credit notes print Odoo's own document, not this one.
+        invoices = self._client_invoices().filtered(
+            lambda move: move.move_type == 'out_invoice') or self.invoice_id
         if not invoices:
             raise UserError(self.env._(
                 "%s has not been billed yet, so there is nothing to "
@@ -1552,6 +1700,14 @@ class LogisticsFile(models.Model):
                     detail=chr(10).join(
                         "%s: %s" % (m.name, states.get(m.state, m.state))
                         for m in sides)))
+            unbilled = file._billable_expenses()
+            if unbilled:
+                raise UserError(self.env._(
+                    "%(file)s carries %(count)s disbursement(s) that have "
+                    "not been billed: %(refs)s. Bill them - or cancel them "
+                    "- before the file is complete.",
+                    file=file.name, count=len(unbilled),
+                    refs=", ".join(unbilled.mapped('name'))))
             file.write({'state': 'done',
                         'date_closed': fields.Date.context_today(file)})
         return True
@@ -1568,12 +1724,13 @@ class LogisticsFile(models.Model):
                 file.state = 'cancel'
                 continue
             file.company_id._clearance_check_approver('waiver')
-            posted = (file.invoice_id | file.debours_invoice_id).filtered(
-                lambda m: m.state == 'posted')
+            posted = file._client_invoices().filtered(
+                lambda m: m.state == 'posted' and m.move_type == 'out_invoice')
             if posted:
                 raise UserError(self.env._(
-                    "%(file)s carries posted invoice %(inv)s. Credit-note the "
-                    "invoice from Accounting before cancelling the file.",
+                    "%(file)s carries posted invoice %(inv)s. Cancel the "
+                    "invoice first - open it and press Cancel Invoice, "
+                    "which reverses its entry - then cancel the file.",
                     file=file.name, inv=", ".join(posted.mapped('name'))))
             unfinished = file.expense_ids.filtered(
                 lambda e: e.state not in ('draft', 'cancel'))

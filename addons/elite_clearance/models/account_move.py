@@ -54,6 +54,32 @@ class AccountMove(models.Model):
          ('services', "Services only")],
         string="Clearance Invoice Kind", copy=False, readonly=True)
 
+    # ------------------------------------------------------------------
+    # Cancelling and crediting a clearance invoice (owner spec 13/09/2026)
+    # ------------------------------------------------------------------
+    # A POSTED invoice is never unposted and never deleted: the entry it
+    # made is the record of what the client was told, and the ledger keeps
+    # it. Cancelling it therefore means raising the same entry with the
+    # signs the other way round - and once that is done the invoice no
+    # longer stands, even though it is still posted. This flag is what "no
+    # longer stands" means to everything in the module that asks whether a
+    # file is billed.
+    clearance_voided = fields.Boolean(
+        string="Voided", copy=False, readonly=True,
+        help="Cancelled by Billing: the mirror entry has been raised. The "
+             "invoice itself stays posted, because a posted entry is not "
+             "unmade, but the client owes nothing on it.")
+    clearance_void_reason = fields.Text(
+        string="Why it was cancelled", copy=False, readonly=True)
+    clearance_voided_by_id = fields.Many2one(
+        'res.users', string="Cancelled By", copy=False, readonly=True)
+    clearance_void_date = fields.Datetime(
+        string="Cancelled On", copy=False, readonly=True)
+    clearance_credit_reason = fields.Text(
+        string="Why this credit note was issued", copy=False, readonly=True,
+        help="On the credit note itself: what the billing agent gave as "
+             "the reason before a single line was reversed.")
+
     @api.ondelete(at_uninstall=False)
     def _clearance_keep_billed_invoices(self):
         """A file's invoice is cancelled, never deleted.
@@ -145,7 +171,7 @@ class AccountMove(models.Model):
         report, so ordinary invoicing is untouched.
         """
         self.ensure_one()
-        if self.logistics_file_id:
+        if self.logistics_file_id and self.move_type == 'out_invoice':
             return 'elite_clearance.report_clearance_invoice_document'
         return super()._get_name_invoice_report()
 
@@ -249,6 +275,154 @@ class AccountMove(models.Model):
         self.ensure_one()
         return (self.clearance_invoice_kind or 'full') != 'debours'
 
+    # ------------------------------------------------------------------
+    # Cancelling and crediting (owner spec 13/09/2026)
+    # ------------------------------------------------------------------
+    def _clearance_stands(self):
+        """Is this still a bill the client owes?
+
+        Draft or posted, and not voided. Everything that asks "is the file
+        billed?", "is there anything left to bill?" or "is this
+        disbursement already recharged?" comes through here, so there is
+        one answer and not four.
+        """
+        self.ensure_one()
+        return self.state != 'cancel' and not self.clearance_voided
+
+    def _clearance_credit_note_name(self):
+        """AV26IM0001 - credit notes have their own series, per service
+        type, so a credit note is never mistaken for an invoice."""
+        self.ensure_one()
+        file = self.logistics_file_id
+        if not file:
+            return False
+        return self.env['logistics.file']._next_reference(
+            'credit', file.service_type_id, self.company_id)
+
+    def _clearance_adjustment_account(self, amount):
+        """Where the share of a recharge adjustment goes when one
+        disbursement line is credited on its own."""
+        self.ensure_one()
+        existing = self.invoice_line_ids.filtered(
+            lambda line: line.clearance_category == 'adjustment')
+        if existing:
+            return existing[0].account_id
+        company = self.company_id
+        account = (company.clearance_oop_overcharge_account_id if amount > 0
+                   else company.clearance_oop_undercharge_account_id)
+        if not account:
+            raise UserError(self.env._(
+                "Configure the disbursement over/undercharge accounts under "
+                "Clearance - Configuration - Settings before crediting a "
+                "line that was recharged at other than cost."))
+        return account
+
+    def _clearance_creditable_lines(self, standing_only=False):
+        """The lines a credit note may reverse.
+
+        The product lines, and never the aggregate recharge adjustment:
+        that line carries the difference between what the disbursements
+        cost and what the client was charged, is printed nowhere, and on
+        its own means nothing to anybody. It is reversed through the lines
+        it belongs to instead - each takes its own share with it, and the
+        shares add back to the aggregate exactly.
+        """
+        self.ensure_one()
+        lines = self.invoice_line_ids.filtered(
+            lambda line: line.display_type == 'product'
+            and line.clearance_category != 'adjustment')
+        if standing_only:
+            lines = lines.filtered(lambda line: not line.clearance_credited)
+        return lines
+
+    def _clearance_credit_line_vals(self, line):
+        """One line of the credit note, mirroring one line of the invoice."""
+        return {
+            'name': line.name,
+            'quantity': line.quantity,
+            'price_unit': line.price_unit,
+            'discount': line.discount,
+            'product_id': line.product_id.id or False,
+            'account_id': line.account_id.id,
+            'tax_ids': [fields.Command.set(line.tax_ids.ids)],
+            'analytic_distribution': line.analytic_distribution,
+            'clearance_category': line.clearance_category,
+            'clearance_unit': line.clearance_unit,
+            'clearance_service_kind': line.clearance_service_kind,
+            # The share of the recharge adjustment is a posting of its own,
+            # added beside this line, so the copy carries none of it.
+            'clearance_adjustment': 0.0,
+        }
+
+    def _clearance_raise_credit_note(self, lines, reason):
+        """Raise the reversing entry for `lines`, post it, and match it off.
+
+        The owner's rule of 13/09/2026: cancelling an invoice books the
+        original entry again with the signs the other way round - debit
+        what was credited, credit what was debited, for the same amounts.
+        A customer credit note carrying the same lines produces exactly
+        that, so the credit note IS the reversing entry rather than a
+        document standing beside one. It is posted straight away: an
+        unposted reversal reverses nothing.
+
+        Each line brings its share of the recharge adjustment with it.
+        The aggregate adjustment line is never reversed directly and is
+        never offered for selection: on its own it means nothing to
+        anybody, and the shares add back to it exactly.
+        """
+        self.ensure_one()
+        if self.state != 'posted':
+            raise UserError(self.env._(
+                "%s is not posted, so there is no entry to reverse.",
+                self.name))
+        if not lines:
+            raise UserError(self.env._(
+                "Choose at least one line to credit on %s.", self.name))
+        commands = []
+        for line in lines:
+            commands.append(fields.Command.create(
+                self._clearance_credit_line_vals(line)))
+            share = line.clearance_adjustment
+            if share and line.clearance_category == 'debours':
+                commands.append(fields.Command.create({
+                    'name': self.env._("Ajustement sur débours - %s", line.name),
+                    'quantity': 1.0,
+                    'price_unit': share,
+                    'account_id': self._clearance_adjustment_account(share).id,
+                    'tax_ids': [fields.Command.clear()],
+                    'clearance_category': 'adjustment',
+                    'analytic_distribution': line.analytic_distribution,
+                }))
+        credit = self.env['account.move'].create({
+            'move_type': 'out_refund',
+            'journal_id': self.journal_id.id,
+            'company_id': self.company_id.id,
+            'partner_id': self.partner_id.id,
+            'currency_id': self.currency_id.id,
+            'invoice_date': fields.Date.context_today(self),
+            'logistics_file_id': self.logistics_file_id.id,
+            'clearance_invoice_kind': self.clearance_invoice_kind,
+            'clearance_credit_reason': reason,
+            'reversed_entry_id': self.id,
+            'invoice_origin': self.name,
+            'ref': self.env._("Reversal of %s", self.name),
+            'name': self._clearance_credit_note_name() or '/',
+            'invoice_line_ids': commands,
+        })
+        credit.action_post()
+        self._clearance_match_credit_note(credit)
+        return credit
+
+    def _clearance_match_credit_note(self, credit):
+        """Set the credit note against the invoice, so the receivable shows
+        what is really still due rather than both documents in full."""
+        self.ensure_one()
+        lines = (self | credit).line_ids.filtered(
+            lambda line: line.display_type == 'payment_term'
+            and not line.reconciled and line.account_id.reconcile)
+        if len(lines) > 1 and len(lines.mapped('account_id')) == 1:
+            lines.reconcile()
+
 
 class AccountMoveLine(models.Model):
     _inherit = 'account.move.line'
@@ -271,3 +445,20 @@ class AccountMoveLine(models.Model):
     clearance_unit = fields.Char(
         string="Unit", copy=False,
         help="Printed as Unité, e.g. Par dossier or Par Conteneur.")
+    # A line that has been credit-noted is spent: the disbursement behind
+    # it is billable again, and the service on it may be charged again.
+    # The credit note is the record of the reversal; this is what the rest
+    # of the module reads, because it answers per LINE and a credit note
+    # may cover only some of them.
+    clearance_credited = fields.Boolean(
+        string="Credited", copy=False, readonly=True,
+        help="This line has been reversed by a credit note. What it "
+             "billed can be billed again.")
+    clearance_service_kind = fields.Selection(
+        [('commission', "Commission on disbursements"),
+         ('customs_fee', "Honoraires Agréés en Douane"),
+         ('other', "Other billable service")],
+        string="Clearance Service", copy=False,
+        help="Which standing service line this is, so the billing screen "
+             "knows what has already been charged on an earlier invoice "
+             "and does not propose it twice.")

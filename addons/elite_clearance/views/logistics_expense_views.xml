@@ -170,7 +170,7 @@
         <field name="model">logistics.expense</field>
         <field name="arch" type="xml">
             <list string="Out-of-Pocket Expenses" sample="1"
-                  decoration-muted="state == 'cancel'">
+                  decoration-muted="state == 'cancel' or is_billed">
                 <field name="name"/>
                 <field name="file_id"/>
                 <field name="category_id"/>
@@ -185,6 +185,9 @@
                 <field name="date_settled" optional="hide"/>
                 <field name="date_justified" optional="hide"/>
                 <field name="is_legacy" optional="hide"/>
+                <field name="is_billed" optional="show"/>
+                <field name="billed_invoice_id" optional="hide"
+                       groups="account.group_account_invoice,account.group_account_readonly"/>
                 <field name="state" widget="badge"
                        decoration-info="state in ('draft', 'submitted')"
                        decoration-warning="state in ('approved', 'settlement_submitted', 'settlement_approved', 'justification_submitted', 'justification_ops_approved')"
