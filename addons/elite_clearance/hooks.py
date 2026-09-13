@@ -4,6 +4,20 @@ def seed_clearance_master_data(env):
     installs AND on databases that already carry demo or manual records."""
     company = env.company
 
+    # Cancelling an invoice books the original entry again NEGATED, in the
+    # same columns, rather than debiting what was credited (owner spec
+    # 13/09/2026). Odoo calls this storno accounting and switches it on by
+    # itself only for the countries that mandate it; Cameroon is not one,
+    # so it is asked for here. It is a company policy and the owner can
+    # turn it off under Clearance -> Configuration -> Settings.
+    #
+    # Careful: account_storno is a STORED compute over
+    # account_fiscal_country_id. Changing the company's fiscal country
+    # recomputes it and switches this back off - put it back from
+    # Settings if that ever happens.
+    if not company.account_storno:
+        company.account_storno = True
+
     DOC_TYPES = [
         ('BL', "BL (Bill of Lading)"),
         ('INV', "Facture commerciale (Invoice)"),

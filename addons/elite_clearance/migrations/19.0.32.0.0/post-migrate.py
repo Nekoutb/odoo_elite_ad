@@ -86,3 +86,19 @@ def migrate(cr, version):
         "19.0.32.0.0: %s disbursement(s) linked to the invoice line that "
         "billed them, %s left unlinked and so billable again, %s service "
         "line(s) classified.", linked, unmatched, len(services))
+
+    _storno(env)
+
+
+def _storno(env):
+    """Cancellations are negated, not swapped (owner spec 13/09/2026).
+
+    Odoo switches storno accounting on by itself only for the countries
+    that mandate it, and Cameroon is not one of them - so it is asked for
+    here, for every company that carries clearance work. Entries already
+    posted keep the form they were posted in; this decides the ones still
+    to come.
+    """
+    for company in env['res.company'].sudo().search([]):
+        if not company.account_storno:
+            company.account_storno = True

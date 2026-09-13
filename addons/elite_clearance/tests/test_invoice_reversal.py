@@ -147,11 +147,16 @@ class TestInvoiceReversal(TransactionCase):
         self.assertEqual(credit.logistics_file_id, self.file)
         self.assertEqual(credit.amount_total, 60000)
         self.assertTrue(credit.name.startswith("AV"), credit.name)
-        # the general ledger: what the invoice credited, the note debits
+        # the general ledger: what the invoice credited, the note
+        # credits again with a minus sign
+        self.assertEqual(
+            sum(credit.line_ids.filtered(
+                lambda l: l.account_id == self.engaged).mapped('credit')),
+            -60000)
         self.assertEqual(
             sum(credit.line_ids.filtered(
                 lambda l: l.account_id == self.engaged).mapped('debit')),
-            60000)
+            0, "it stays on the side the invoice put it")
         self.assertEqual(
             sum(invoice.line_ids.filtered(
                 lambda l: l.account_id == self.engaged).mapped('credit')),
@@ -194,7 +199,11 @@ class TestInvoiceReversal(TransactionCase):
     # =================================================================
     # 3. cancelling: the same entry, the other way round
     # =================================================================
-    def test_05_cancelling_a_posted_invoice_books_the_mirror_entry(self):
+    def test_05_cancelling_a_posted_invoice_books_the_negated_entry(self):
+        """The same entry again in the SAME columns, with a minus sign -
+        not debiting what was credited (owner 13/09/2026)."""
+        self.assertTrue(self.env.company.account_storno,
+                        "storno accounting is what negates a reversal")
         invoice = self._bill()
         invoice.action_post()
         before = {
@@ -210,10 +219,26 @@ class TestInvoiceReversal(TransactionCase):
         self.assertTrue(credit)
         self.assertEqual(credit.state, 'posted')
         after = {
-            (line.account_id.id, line.credit, line.debit)
+            (line.account_id.id, -line.debit, -line.credit)
             for line in credit.line_ids if line.account_id}
         self.assertEqual(before, after,
-                         "every line again, debit for credit, same amounts")
+                         "every line again, same column, negated")
+        # read the other way round: the revenue stays a credit, in red,
+        # and the customer stays a debit, in red
+        revenue = credit.line_ids.filtered(
+            lambda line: line.account_id == self.commission)
+        self.assertEqual(revenue.debit, 0)
+        self.assertLess(revenue.credit, 0, "negated, not moved to the debit")
+        receivable = credit.line_ids.filtered(
+            lambda line: line.display_type == 'payment_term')
+        self.assertEqual(receivable.credit, 0)
+        self.assertLess(receivable.debit, 0)
+        # the balances are what they always were, whichever column shows
+        self.assertEqual(sum(credit.line_ids.mapped('balance')), 0)
+        self.assertEqual(
+            sum(invoice.line_ids.mapped('balance'))
+            + sum(credit.line_ids.mapped('balance')), 0,
+            "the two together come to nothing, which is the point")
         self.assertEqual(invoice.state, 'posted',
                          "a posted entry is not unmade")
         self.assertTrue(invoice.clearance_voided)

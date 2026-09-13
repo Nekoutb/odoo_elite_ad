@@ -48,6 +48,17 @@
                     </block>
 
                     <block title="Billing">
+                        <setting string="Cancellations are negated, not swapped"
+                                 help="A cancellation or credit note books the original
+                                       entry again in the SAME columns with a minus sign,
+                                       rather than debiting what was credited. The balances
+                                       are identical either way; what changes is that the
+                                       revenue account's turnover is not inflated by a
+                                       billing that was withdrawn. Odoo calls this storno
+                                       accounting, and it applies to every credit note the
+                                       company issues, not only clearance ones.">
+                            <field name="account_storno"/>
+                        </setting>
                         <setting string="VAT on Service Fees"
                                  help="Applied to commission, customs fees and any other
                                        service line. Disbursements are never taxed here:

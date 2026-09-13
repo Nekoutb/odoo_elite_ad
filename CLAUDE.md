@@ -283,13 +283,33 @@ Customs clearance job files for a logistics/clearance services provider.
      (`_next_reference('credit', ...)`), and print ODOO's document, not
      ours: `_get_name_invoice_report` now also tests `move_type ==
      'out_invoice'`.
-  3. **Cancelling is the mirror entry, never an unposting.**
+  3. **Cancelling is the mirror entry, never an unposting - and the
+     mirror is NEGATED, not swapped.**
      `logistics.invoice.cancel.wizard`: a draft is simply cancelled (it
      made no entry); a posted one stays posted and gets the same lines
      reversed, then `clearance_voided=True` with a reason, who and when.
      `account.move._clearance_stands()` (state != cancel AND not voided)
      is the ONE answer to "does this bill still stand?" - every gate,
      every compute and the My Tasks SQL read it.
+     The owner's correction of 13/09/2026: the reversal must show the
+     original columns with a minus sign, not debit what was credited.
+     That is Odoo's own **storno accounting**, and it is a switch, not
+     code: `res.company.account_storno`. `account.move.line.is_storno`
+     then makes `_compute_debit_credit` put a positive balance in the
+     CREDIT column as a negative, so a reversal keeps the side the
+     invoice put it on. Odoo turns it on by itself only for
+     `STORNO_MANDATORY_COUNTRIES` (CM is not one), so the post-init hook
+     and the 32.0.0 migration set it, and it is a checkbox under
+     Clearance -> Configuration -> Settings -> Billing.
+     **Two traps.** It is a STORED COMPUTE over
+     `account_fiscal_country_id`, so loading a chart of accounts or
+     changing the fiscal country RESETS IT - check the box again after
+     installing `l10n_cm`. And it is company-wide: every credit note the
+     company issues is negated, supplier ones included. Entries already
+     posted keep the form they were posted in. A side effect worth
+     knowing: a below-cost adjustment line on an ordinary invoice has a
+     negative price_unit, so it too is stored as a negative credit
+     instead of a debit - the same balance, the other column.
   4. **Partial billing.** `logistics.expense.billed_line_id` points at the
      invoice LINE that recharged it; `is_billed` (compute_sudo - ops
      agents have no accounting rights) is true while that line stands and
