@@ -70,7 +70,7 @@
                             string="Preview Invoice" invisible="not invoice_id"
                             groups="account.group_account_invoice,account.group_account_readonly"/>
                     <!-- both invoices of a split bill: a file is completed whole -->
-                    <button name="action_mark_complete" type="object" string="Mark Complete"
+                    <button name="action_mark_complete" type="object" string="Close the File"
                             invisible="state != 'ops_closed' or not invoices_posted"
                             groups="elite_clearance.group_clearance_billing"/>
                     <button name="%(action_logistics_reopen_wizard)d" type="action" string="Reopen (Approval)"
@@ -93,6 +93,20 @@
                     <field name="has_billable" invisible="1"/>
                     <field name="invoices_posted" invisible="1"/>
                     <field name="documents_complete" invisible="1"/>
+
+                    <!-- Where it sits, and with whom. The statusbar above
+                         says "In Progress" while what is actually happening
+                         is that Finance has not keyed a settlement; this
+                         says so, at the top, to whoever has to chase it. -->
+                    <div class="alert alert-info d-flex flex-wrap align-items-baseline mb-3"
+                         role="alert" invisible="state in ('cancel', 'imported')">
+                        <span class="me-2">Sitting with</span>
+                        <field name="stage_owner" nolabel="1" readonly="1"
+                               class="fw-bold me-2 oe_inline"/>
+                        <span class="me-2">—</span>
+                        <field name="stage_detail" nolabel="1" readonly="1"
+                               class="oe_inline"/>
+                    </div>
 
                     <div class="alert alert-warning" role="alert"
                          invisible="state != 'draft' or documents_complete or waiver_state == 'approved'">
@@ -423,6 +437,8 @@
                 <field name="create_date" string="Created On" optional="show"/>
                 <field name="date_target" optional="show"/>
                 <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="stage_owner" optional="show"/>
+                <field name="stage_detail" optional="hide"/>
                 <field name="missing_mandatory_count" string="Missing docs"/>
                 <field name="waiver_state" optional="hide"/>
                 <field name="unjustified_advance_total" optional="hide" sum="Unjustified"/>

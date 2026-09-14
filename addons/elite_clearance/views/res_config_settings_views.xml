@@ -134,6 +134,10 @@
                                  help="Who may raise client invoices and mark files complete. Empty = any Billing Agent. A name here replaces the group.">
                             <field name="clearance_billing_approver_ids" widget="many2many_tags"/>
                         </setting>
+                        <setting string="Reopening Approvers"
+                                 help="Who may reopen a file that has been closed - for more billing, a credit note or any other adjustment. Empty = any Clearance Operations Manager.">
+                            <field name="clearance_reopen_approver_ids" widget="many2many_tags"/>
+                        </setting>
                         <setting string="Operations Close Approvers"
                                  help="Who may close a file for operations. Empty = any Clearance Operations Manager.">
                             <field name="clearance_ops_close_approver_ids" widget="many2many_tags"/>

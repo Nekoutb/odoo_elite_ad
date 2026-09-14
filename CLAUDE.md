@@ -345,6 +345,44 @@ Customs clearance job files for a logistics/clearance services provider.
      `migrations/19.0.32.0.0/post-migrate.py` rebuilds `billed_line_id`
      for databases billed under the old build by matching the line
      description, which billing composes as `<category> - <description>`.
+- **Owner spec 14/09/2026: closing for good, whose desk it is on, and a bell.**
+  1. **A billed file is CLOSED, and reopening is what is controlled.**
+     `done` now reads "Closed" and the button is "Close the File".
+     Closing costs nothing and is the Billing Agent's own call; getting
+     back in is the Operations Manager's, through the new `reopen`
+     approval kind (`clearance_reopen_approver_ids`, Settings). The
+     reopen wizard asks a closed file WHICH WAY it comes back - to
+     billing, or to operations for more cost.
+     `_check_open_for_billing()` refuses a credit note or a cancellation
+     on a `done` file and says to reopen it first; it REPLACED
+     `_billing_reopen_after_reversal`, which used to reopen a closed file
+     by itself and would now be a reopening nobody approved.
+  2. **The file says whose desk it is on.** `stage_owner` / `stage_detail`
+     (non-stored, compute_sudo) in a banner at the top of the form and as
+     columns in the list. `_stage()` reads the first thing actually
+     BLOCKING, which is not what the statusbar says: a file reads "In
+     Progress" while the only thing outstanding is a settlement Finance
+     has not keyed, and `_stage_blocked_by_expense()` walks the
+     disbursement states in the order the money moves so the answer is
+     the step that is genuinely next.
+  3. **A bell, a toast and a beep.** `clearance.task._notify_assignment()`
+     pushes a landed task down the bus (`bus.bus._sendone` to the user's
+     partner, type `elite_clearance.task`); the systray component in
+     `static/src/task_alerts/` counts, lists and clicks THROUGH TO THE
+     RECORD, and plays a ~0.2s WebAudio tone. Recipients come from
+     `KIND_GROUPS` via `res.users.all_group_ids` (searchable), minus the
+     person who caused it - a beep for your own click teaches people to
+     ignore beeps. The hook is `write()` on `logistics.expense` and
+     `logistics.file`, ONE place each, because there are eight actions and
+     a ninth will be written one day. `clearance.task.kind_label` exists
+     for the bell, which cannot render a Selection.
+     **Testing it:** bus rows are queued on
+     `cr.precommit.data["bus.bus.values"]` and only created at commit,
+     which a TransactionCase never reaches - so the queue is what a test
+     reads, filtered by message type because a chatter post queues its
+     own. The systray itself has a tour
+     (`test_task_systray_tour`), because a systray component that throws
+     takes the top of everybody's screen with it.
 - **Owner spec 08/09/2026, seven instructions.**
   1. Turnaround targets are **hours** and fractional - 30 minutes is 0.5.
      `clearance.turnaround.target.target_hours` (Float), `is_late` compares

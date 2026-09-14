@@ -3,8 +3,12 @@ from odoo.exceptions import UserError
 
 
 class LogisticsFileReopenWizard(models.TransientModel):
-    """Reopening a closed file is an exception and must be approved: only a
-    Clearance Manager can run this, and the reason is posted to the file."""
+    """Reopening a closed file is an exception and must be approved.
+
+    The Operations Manager signs it (owner spec 14/09/2026): closing a
+    billed file is the Billing Agent's own decision, but going back into
+    a closed one - for more billing, a credit note, any adjustment - is
+    an operational judgement. The reason is posted to the file."""
 
     _name = 'logistics.file.reopen.wizard'
     _description = "Reopen Clearance File"
@@ -25,10 +29,8 @@ class LogisticsFileReopenWizard(models.TransientModel):
 
     def action_reopen(self):
         self.ensure_one()
-        if not self.env.user.has_group('elite_clearance.group_clearance_manager'):
-            raise UserError(self.env._(
-                "Only a Clearance Manager can approve reopening a file."))
         file = self.file_id
+        file.company_id._clearance_check_approver('reopen')
         if file.state == 'ops_closed':
             target = 'in_progress'
         elif file.state == 'done':

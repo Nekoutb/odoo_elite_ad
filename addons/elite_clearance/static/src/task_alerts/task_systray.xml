@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="elite_clearance.TaskSystray">
+        <div class="o_clearance_tasks dropdown">
+            <button class="btn btn-link o_nav_entry d-flex align-items-center"
+                    t-on-click="toggle" title="My clearance tasks"
+                    aria-label="My clearance tasks">
+                <i class="fa fa-bell" role="img"/>
+                <span t-if="state.count"
+                      class="o_clearance_tasks_count badge rounded-pill text-bg-danger ms-1"
+                      t-esc="state.count"/>
+            </button>
+            <div class="dropdown-menu dropdown-menu-end p-0 o_clearance_tasks_menu"
+                 t-att-class="{ show: state.open }">
+                <div class="px-3 py-2 fw-bold border-bottom">My clearance tasks</div>
+                <div t-if="!state.tasks.length" class="px-3 py-3 text-muted">
+                    Nothing is waiting on you.
+                </div>
+                <t t-foreach="state.tasks" t-as="task" t-key="task.id">
+                    <div class="o_clearance_task_row dropdown-item d-flex flex-column py-2"
+                         t-on-click="() => this.openTask(task)">
+                        <span class="fw-bold" t-esc="task.kind_label"/>
+                        <span t-esc="task.name"/>
+                        <small class="text-muted" t-esc="task.detail"/>
+                    </div>
+                </t>
+                <div class="o_clearance_tasks_all border-top px-3 py-2 text-center"
+                     t-on-click="openAll">
+                    <span class="text-primary">See all my tasks</span>
+                </div>
+            </div>
+        </div>
+    </t>
+
+</templates>

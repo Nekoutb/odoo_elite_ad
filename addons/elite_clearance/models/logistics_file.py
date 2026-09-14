@@ -153,7 +153,7 @@ class LogisticsFile(models.Model):
             ('draft', "Draft"),
             ('in_progress', "In Progress"),
             ('ops_closed', "OK for Billing"),
-            ('done', "Complete"),
+            ('done', "Closed"),
             ('imported', "Imported"),
             ('cancel', "Cancelled"),
         ],
@@ -353,6 +353,16 @@ class LogisticsFile(models.Model):
              "what was billed can be read together.")
     reopen_count = fields.Integer(readonly=True, copy=False)
 
+    # Where the file actually sits, and with whom (owner spec 14/09/2026).
+    # Shown at the top of the file so that it can be chased without
+    # anybody opening it up: the state says "In Progress" while what is
+    # really happening is that Finance has not keyed a settlement since
+    # Tuesday, and the state cannot say so.
+    stage_owner = fields.Char(
+        compute='_compute_stage', compute_sudo=True, string="Sitting With")
+    stage_detail = fields.Char(
+        compute='_compute_stage', compute_sudo=True, string="Waiting For")
+
     _name_company_uniq = models.Constraint(
         'UNIQUE(name, company_id)',
         "A clearance file with this reference already exists.",
@@ -451,7 +461,41 @@ class LogisticsFile(models.Model):
         res = super().write(vals)
         for file in resync:
             file._sync_recharge_state()
+        if not self.env.context.get('clearance_no_notify'):
+            for file in self:
+                file._notify_landed(vals)
         return res
+
+    def _notify_landed(self, vals):
+        """Tell whoever the file has just landed on.
+
+        Read off the write rather than bolted on to each action, for the
+        same reason as on the expense: the actions are many and the
+        queues are few.
+        """
+        self.ensure_one()
+        Task = self.env['clearance.task']
+        if vals.get('state') == 'ops_closed':
+            Task._notify_assignment('billing', self,
+                                    detail=self.env._("OK for billing"))
+        if vals.get('state') == 'in_progress' and self.reopen_count:
+            Task._notify_assignment('ops_close', self,
+                                    detail=self.env._("Reopened for work"))
+        if vals.get('waiver_state') == 'requested':
+            Task._notify_assignment('doc_waiver', self,
+                                    detail=self.env._("Document waiver"))
+        if vals.get('advance_waiver_state') == 'requested':
+            Task._notify_assignment('advance_waiver', self,
+                                    detail=self.env._("Advance waiver"))
+        if vals.get('reopen_request_state') == 'requested':
+            Task._notify_assignment('reopen_imported', self,
+                                    detail=self.env._("Reopening requested"))
+        if vals.get('recharge_state') == 'requested':
+            Task._notify_assignment('recharge_ops', self,
+                                    detail=self.env._("Recharge adjustment"))
+        if vals.get('recharge_state') == 'ops_approved':
+            Task._notify_assignment('recharge_gm', self,
+                                    detail=self.env._("Recharge below cost"))
 
     def _sync_recharge_state(self):
         """Changing the figure IS the request.
@@ -602,6 +646,126 @@ class LogisticsFile(models.Model):
     def _compute_can_start(self):
         for file in self:
             file.can_start = file.documents_complete or file.waiver_state == 'approved'
+
+    # =====================================================================
+    # Where it sits, and with whom
+    # =====================================================================
+    @api.depends('state', 'user_id', 'create_uid', 'waiver_state',
+                 'advance_waiver_state', 'reopen_request_state',
+                 'recharge_state', 'expense_ids.state',
+                 'expense_ids.payment_mode', 'expense_ids.is_legacy',
+                 'expense_ids.employee_id', 'expense_ids.journal_id',
+                 'has_billable', 'invoices_posted')
+    def _compute_stage(self):
+        for file in self:
+            owner, detail = file._stage()
+            file.stage_owner = owner
+            file.stage_detail = detail
+
+    def _stage(self):
+        """(who is holding the file, what they are holding it for).
+
+        Reads the first thing actually BLOCKING, which is not always what
+        the state says - a file reads "In Progress" while the only thing
+        outstanding is a settlement Finance has not keyed - because the
+        point of it is to be chased, and you cannot chase a state.
+        """
+        self.ensure_one()
+        if self.state == 'cancel':
+            return self.env._("Nobody"), self.env._("Cancelled.")
+        if self.state == 'imported':
+            return self.env._("Nobody"), self.env._(
+                "Imported from the legacy system and kept as a record.")
+        if self.state == 'done':
+            return self.env._("Nobody"), self.env._(
+                "Closed. An Operations Manager can reopen it for more "
+                "billing, a credit note or any other adjustment.")
+        if self.state == 'draft':
+            if self.waiver_state == 'requested':
+                return self.env._("Manager"), self.env._(
+                    "A document waiver is waiting to be signed.")
+            return (self.create_uid.name or self.env._("Operations"),
+                    self.env._("Being opened. Nobody else can see it until "
+                               "Start Work is pressed."))
+        blocking = self._stage_blocked_by_expense()
+        if blocking:
+            return blocking
+        if self.reopen_request_state == 'requested':
+            return self.env._("Operations Manager"), self.env._(
+                "A request to reopen an imported file is waiting.")
+        if self.advance_waiver_state == 'requested':
+            return self.env._("Operations Manager"), self.env._(
+                "A waiver for unjustified staff advances is waiting.")
+        if self.state == 'ops_closed':
+            if self.recharge_state == 'requested':
+                return self.env._("Operations Manager"), self.env._(
+                    "A recharge other than at cost is waiting for approval.")
+            if self.recharge_state == 'ops_approved':
+                return self.env._("General Manager"), self.env._(
+                    "A recharge BELOW cost is waiting for approval.")
+            if self.has_billable:
+                return self.env._("Billing"), self.env._(
+                    "OK for billing. The invoice has not been raised yet.")
+            if not self.invoices_posted:
+                return self.env._("Billing"), self.env._(
+                    "The invoice is raised and waiting to be posted.")
+            return self.env._("Billing"), self.env._(
+                "Billed and posted. The file can be closed.")
+        return (self.user_id.name or self.env._("Operations"),
+                self.env._("Work in progress."))
+
+    def _stage_blocked_by_expense(self):
+        """The first disbursement step that is waiting on somebody, or None.
+
+        In the order the money moves, so the answer is the step that is
+        actually next and not merely one of several open at once.
+        """
+        self.ensure_one()
+        live = self.expense_ids.filtered(lambda e: not e.is_legacy)
+
+        def waiting(state):
+            return live.filtered(lambda e: e.state == state)
+
+        rows = waiting('submitted')
+        if rows:
+            return (self.env._("Team Manager"),
+                    self.env._("%s disbursement(s) to approve.", len(rows)))
+        rows = waiting('approved')
+        if rows:
+            return (self.env._("Finance"),
+                    self.env._("%s disbursement(s) waiting for a payment "
+                               "method and a journal.", len(rows)))
+        rows = waiting('settlement_submitted')
+        if rows:
+            return (self.env._("Finance Manager"),
+                    self.env._("%s settlement(s) to sign.", len(rows)))
+        rows = waiting('settlement_approved')
+        if rows:
+            cash = rows.filtered(lambda e: e.journal_id.type == 'cash')
+            if len(cash) == len(rows):
+                who = self.env._("Cashier")
+            elif not cash:
+                who = self.env._("Treasury")
+            else:
+                who = self.env._("Cashier / Treasury")
+            return who, self.env._("%s disbursement(s) to pay out.", len(rows))
+        rows = waiting('justification_submitted')
+        if rows:
+            return (self.env._("Operations Manager"),
+                    self.env._("%s advance justification(s) to accept.",
+                               len(rows)))
+        rows = waiting('justification_ops_approved')
+        if rows:
+            return (self.env._("Finance Manager"),
+                    self.env._("%s advance justification(s) to sign.",
+                               len(rows)))
+        held = live.filtered(lambda e: e.state == 'settled'
+                             and e.payment_mode == 'advance')
+        if held and self.advance_waiver_state != 'approved':
+            names = ", ".join(sorted(set(held.mapped('employee_id.name'))))
+            return (names or self.env._("The advance holder"),
+                    self.env._("%s cash advance(s) to justify.", len(held)))
+        return None
 
     # =====================================================================
     # Onchange
@@ -1602,22 +1766,25 @@ class LogisticsFile(models.Model):
             lambda line: line.clearance_service_kind == kind
             and not line.clearance_credited)
 
-    def _billing_reopen_after_reversal(self, document):
-        """A cancelled invoice, or a credited line, puts the file back in
-        front of Billing.
+    def _check_open_for_billing(self):
+        """A closed file is not billed, credited or adjusted until it is
+        reopened.
 
-        Reopening a file for OPERATIONS is a manager's decision, because it
-        lets new costs on to it. Going back to billing is not: the bill has
-        been withdrawn, so the file is where it stood before it was billed,
-        and the person who withdrew it is the person who bills it again.
+        Closing a billed file is the Billing Agent's own decision and
+        costs nothing - which is why it is reopening that is controlled
+        (owner spec 14/09/2026). A closed file is the record of a
+        finished job: it can be opened again at any time, for more
+        billing, for a credit note, for any other adjustment, but an
+        Operations Manager signs for it and the reopening says which way
+        the file comes back.
         """
         self.ensure_one()
-        if self.state != 'done':
-            return
-        self.write({'state': 'ops_closed', 'date_closed': False})
-        self.message_post(body=self.env._(
-            "Back to billing: %s reversed what had been billed, so the "
-            "file is no longer complete.", document.name))
+        if self.state == 'done':
+            raise UserError(self.env._(
+                "%s is closed. Reopen it first - an Operations Manager "
+                "approves that, and says whether it comes back for "
+                "billing or for more work - and its invoices can then be "
+                "credited, cancelled or added to.", self.name))
 
     def _link_billed_expenses(self, invoices, debours):
         """Point each disbursement at the invoice line that recharged it.
@@ -1724,6 +1891,10 @@ class LogisticsFile(models.Model):
                     refs=", ".join(unbilled.mapped('name'))))
             file.write({'state': 'done',
                         'date_closed': fields.Date.context_today(file)})
+            file.message_post(body=self.env._(
+                "File closed by %s. It can be reopened later - for more "
+                "billing, a credit note or any other adjustment - with an "
+                "Operations Manager's approval.", self.env.user.name))
         return True
 
     def action_cancel(self):

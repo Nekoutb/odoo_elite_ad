@@ -61,6 +61,10 @@ class ClearanceTask(models.Model):
 
     name = fields.Char(readonly=True)
     kind = fields.Selection(KINDS, readonly=True)
+    kind_label = fields.Char(
+        compute='_compute_kind_label', string="Action Needed",
+        help="The kind in words, for screens that cannot render a "
+             "selection - the systray bell above all.")
     res_model = fields.Char(readonly=True)
     res_id = fields.Integer(readonly=True)
     file_id = fields.Many2one('logistics.file', readonly=True)
@@ -262,6 +266,64 @@ class ClearanceTask(models.Model):
             """,
         ]
         return selects
+
+    # ------------------------------------------------------------------
+    # Telling somebody a task has just landed on them
+    # ------------------------------------------------------------------
+    # Odoo's systray counters refresh when the page does, which is no use
+    # to somebody who has had the same screen open for an hour. The row is
+    # pushed down the bus the moment it exists, so the bell counts up, a
+    # toast offers the record and a short beep says to look (owner spec
+    # 14/09/2026).
+    @api.depends('kind')
+    def _compute_kind_label(self):
+        labels = dict(KINDS)
+        for task in self:
+            task.kind_label = labels.get(task.kind, task.kind)
+
+    @api.model
+    def _kind_users(self, kind, company=None):
+        """Everybody who could act on this kind of task."""
+        groups = self.env['res.groups']
+        for xmlid in KIND_GROUPS.get(kind, ()):
+            group = self.env.ref(xmlid, raise_if_not_found=False)
+            if group:
+                groups |= group
+        if not groups:
+            return self.env['res.users']
+        domain = [('all_group_ids', 'in', groups.ids), ('share', '=', False),
+                  ('active', '=', True)]
+        if company:
+            domain.append(('company_ids', 'in', company.ids))
+        return self.env['res.users'].sudo().search(domain)
+
+    @api.model
+    def _notify_assignment(self, kind, record, users=None, detail=None):
+        """Push one task to whoever it now belongs to.
+
+        The person who caused it is never told - they have just done it,
+        and a beep for your own click teaches people to ignore beeps.
+        """
+        if not record or self.env.context.get('clearance_no_notify'):
+            return
+        company = record.company_id if 'company_id' in record._fields else None
+        recipients = (users if users is not None
+                      else self._kind_users(kind, company))
+        recipients = recipients.filtered(
+            lambda user: user.active and user != self.env.user)
+        if not recipients:
+            return
+        payload = {
+            'kind': kind,
+            'title': dict(KINDS).get(kind, kind),
+            'name': record.display_name,
+            'detail': detail or "",
+            'res_model': record._name,
+            'res_id': record.id,
+        }
+        bus = self.env['bus.bus'].sudo()
+        for user in recipients:
+            bus._sendone(user.partner_id, 'elite_clearance.task', payload)
 
     # ------------------------------------------------------------------
     def _allowed_kinds(self):

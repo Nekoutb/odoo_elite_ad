@@ -186,15 +186,28 @@ class TestInvoiceReversal(TransactionCase):
                          "the one that still stands, greyed and unbillable")
         self.assertEqual(wizard.billed_line_ids.amount, 40000)
 
-    def test_04_crediting_a_completed_file_puts_it_back_in_billing(self):
+    def test_04_a_closed_file_is_reopened_before_it_is_credited(self):
+        """Closing is the biller's own decision and costs nothing, so it
+        is REOPENING that is controlled (owner 14/09/2026)."""
         invoice = self._bill()
         invoice.action_post()
         self.file.action_mark_complete()
         self.assertEqual(self.file.state, 'done')
-        self._credit(invoice, lambda line: line.amount == 60000)
-        self.assertEqual(self.file.state, 'ops_closed',
-                         "a withdrawn bill is a file waiting to be billed")
+        with self.assertRaises(UserError, msg="closed is closed"):
+            self._credit(invoice, lambda line: line.amount == 60000)
+        with self.assertRaises(UserError, msg="and nothing else gets in either"):
+            self.env['logistics.invoice.cancel.wizard'].create({
+                'invoice_id': invoice.id,
+                'reason': "Too late."}).action_cancel_invoice()
+        self.env['logistics.file.reopen.wizard'].create({
+            'file_id': self.file.id, 'target_state': 'ops_closed',
+            'reason': "The client disputed the terminal charge."
+        }).action_reopen()
+        self.assertEqual(self.file.state, 'ops_closed')
         self.assertFalse(self.file.date_closed)
+        self.assertEqual(self.file.reopen_count, 1)
+        credit = self._credit(invoice, lambda line: line.amount == 60000)
+        self.assertTrue(credit, "and then it can be credited")
 
     # =================================================================
     # 3. cancelling: the same entry, the other way round
@@ -249,7 +262,6 @@ class TestInvoiceReversal(TransactionCase):
     def test_06_a_cancelled_invoice_is_no_invoice(self):
         invoice = self._bill()
         invoice.action_post()
-        self.file.action_mark_complete()
         self.env['logistics.invoice.cancel.wizard'].create({
             'invoice_id': invoice.id,
             'reason': "Cancelled at the client's request."}).action_cancel_invoice()

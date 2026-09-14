@@ -83,6 +83,8 @@ class LogisticsInvoiceCreditWizard(models.TransientModel):
             raise UserError(self.env._(
                 "Say why %s is being credited before any line is reversed.",
                 invoice.name))
+        if invoice.logistics_file_id:
+            invoice.logistics_file_id._check_open_for_billing()
         chosen = self.line_ids.filtered('selected')
         if not chosen:
             raise UserError(self.env._(
@@ -108,7 +110,6 @@ class LogisticsInvoiceCreditWizard(models.TransientModel):
                 count=len(lines), inv=invoice.name, credit=credit.name,
                 user=self.env.user.name, reason=self.reason,
                 gap=chr(10) * 2))
-            file._billing_reopen_after_reversal(credit)
         return {
             'type': 'ir.actions.act_window',
             'res_model': 'account.move',
@@ -174,6 +175,8 @@ class LogisticsInvoiceCancelWizard(models.TransientModel):
         if not invoice._clearance_stands():
             raise UserError(self.env._(
                 "%s has been cancelled already.", invoice.name))
+        if invoice.logistics_file_id:
+            invoice.logistics_file_id._check_open_for_billing()
         credit = self.env['account.move']
         if invoice.state == 'posted':
             credit = invoice._clearance_raise_credit_note(
@@ -201,7 +204,6 @@ class LogisticsInvoiceCancelWizard(models.TransientModel):
                 "is billable again.",
                 inv=invoice.name, user=self.env.user.name,
                 reason=self.reason, gap=chr(10) * 2))
-            file._billing_reopen_after_reversal(credit or invoice)
         if credit:
             return {
                 'type': 'ir.actions.act_window',

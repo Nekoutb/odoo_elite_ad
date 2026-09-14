@@ -39,7 +39,7 @@ where no explicit approver list is set, the security groups apply.
     'author': "Elite Advisors",
     'website': "https://eliteadvisors.cm-ea.com",
     'category': 'Services/Clearance',
-    'version': '19.0.32.0.0',
+    'version': '19.0.33.0.0',
     'license': 'LGPL-3',
     'depends': ['base', 'mail', 'analytic', 'account', 'hr'],
     'data': [
@@ -85,6 +85,9 @@ where no explicit approver list is set, the security groups apply.
         # whichever area of the screen the documents belong to
         'web.assets_backend': [
             'elite_clearance/static/src/documents/**/*',
+            # the bell at the top right: what is waiting on you, pushed
+            # down the bus the moment it lands
+            'elite_clearance/static/src/task_alerts/**/*',
         ],
         # browser tests, loaded only when the server runs with --test-enable
         'web.assets_tests': [

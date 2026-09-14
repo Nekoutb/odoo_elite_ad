@@ -1,0 +1,16 @@
+.o_clearance_tasks {
+    .o_clearance_tasks_menu {
+        min-width: 340px;
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+
+    .o_clearance_task_row {
+        cursor: pointer;
+        white-space: normal;
+    }
+
+    .o_clearance_tasks_all {
+        cursor: pointer;
+    }
+}

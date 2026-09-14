@@ -41,6 +41,8 @@ class ResConfigSettings(models.TransientModel):
         related='company_id.clearance_settlement_approver_ids', readonly=False)
     clearance_ops_close_approver_ids = fields.Many2many(
         related='company_id.clearance_ops_close_approver_ids', readonly=False)
+    clearance_reopen_approver_ids = fields.Many2many(
+        related='company_id.clearance_reopen_approver_ids', readonly=False)
     clearance_oop_undercharge_account_id = fields.Many2one(
         related='company_id.clearance_oop_undercharge_account_id', readonly=False)
     clearance_oop_overcharge_account_id = fields.Many2one(

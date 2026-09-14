@@ -393,9 +393,48 @@ class LogisticsExpense(models.Model):
                     "progress (%s).", exp.file_id.name))
         return records
 
+    # Which queue a state lands the expense in. Read in write() rather
+    # than bolted on to each action: there are eight actions and a ninth
+    # will be written one day, and a queue nobody is told about is worse
+    # than no queue.
+    NOTIFY_KIND = {
+        'submitted': 'expense_approve',
+        'approved': 'settlement_key',
+        'settlement_submitted': 'settlement_approve',
+        'justification_submitted': 'justification_approve',
+        'justification_ops_approved': 'justification_finance',
+    }
+
     def write(self, vals):
         self._check_settlement_fields(vals)
-        return super().write(vals)
+        res = super().write(vals)
+        if 'state' in vals:
+            for expense in self:
+                expense._notify_landed()
+        return res
+
+    def _notify_landed(self):
+        """Tell whoever the expense has just landed on."""
+        self.ensure_one()
+        Task = self.env['clearance.task']
+        kind = self.NOTIFY_KIND.get(self.state)
+        if kind:
+            Task._notify_assignment(kind, self, detail=self.description)
+            return
+        if self.state == 'settlement_approved':
+            # the money leaves through the till or through the bank, and
+            # they are different people
+            kind = ('disburse_cash' if self.journal_id.type == 'cash'
+                    else 'disburse_bank')
+            Task._notify_assignment(kind, self, detail=self.description)
+            return
+        if self.state == 'settled' and self.payment_mode == 'advance':
+            # an advance is one person's debt, not a department's queue
+            holder = self.employee_id.user_id
+            if holder:
+                Task._notify_assignment(
+                    'advance_justify', self, users=holder,
+                    detail=self.description)
 
     def unlink(self):
         if any(exp.state not in ('draft', 'cancel') for exp in self):

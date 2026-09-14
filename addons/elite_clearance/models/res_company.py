@@ -61,6 +61,14 @@ APPROVAL_KINDS = {
     'recharge_gm': ("clearance_recharge_gm_approver_ids",
                     ('elite_clearance.group_clearance_manager',),
                     "approve recharging the client BELOW cost"),
+    # Closing a billed file is the Billing Agent's own decision and costs
+    # nothing. REOPENING one is not: a closed file is the record of a
+    # finished job, and going back into it - for more billing, a credit
+    # note, any adjustment at all - is the Operations Manager's call
+    # (owner spec 14/09/2026).
+    'reopen': ("clearance_reopen_approver_ids",
+               ('elite_clearance.group_clearance_ops_manager',),
+               "reopen a closed file"),
     'ops_close': ("clearance_ops_close_approver_ids",
                   ('elite_clearance.group_clearance_ops_manager',),
                   "close a file for operations"),
@@ -192,6 +200,11 @@ class ResCompany(models.Model):
         help="Who may approve how an expense is paid once Finance has set "
              "the payment mode, vendor, holder and journal. Empty = any "
              "Clearance Finance Manager.")
+    clearance_reopen_approver_ids = fields.Many2many(
+        'res.users', 'clearance_reopen_approver_rel',
+        string="Reopening Approvers",
+        help="Who may reopen a file that has been closed. Empty = any "
+             "Clearance Operations Manager.")
     clearance_ops_close_approver_ids = fields.Many2many(
         'res.users', 'clearance_ops_close_approver_rel',
         string="Operations Close Approvers",
