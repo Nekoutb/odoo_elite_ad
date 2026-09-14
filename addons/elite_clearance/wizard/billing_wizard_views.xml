@@ -78,11 +78,16 @@
                         <field name="customs_fee_amount"/>
                         <field name="customs_fee_billed" readonly="1"
                                invisible="not customs_fee_billed"/>
+                        <field name="file_fee_amount"/>
+                        <field name="file_fee_billed" readonly="1"
+                               invisible="not file_fee_billed"/>
                         <field name="commission_billed" readonly="1"
                                invisible="not commission_billed"/>
                         <field name="split_invoices" readonly="reissue_kind"/>
                     </group>
                     <group string="Advances already paid by the client">
+                        <field name="client_advance_total" readonly="1"
+                               invisible="not client_advance_total"/>
                         <field name="advance_had_amount"/>
                         <field name="advance_had_vat_amount"/>
                         <field name="advance_other_amount"/>

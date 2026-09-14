@@ -4,6 +4,7 @@ from . import res_config_settings
 from . import hr_employee
 from . import res_partner
 from . import account_move
+from . import account_payment
 from . import account_analytic_account
 from . import ir_attachment
 from . import clearance_documents

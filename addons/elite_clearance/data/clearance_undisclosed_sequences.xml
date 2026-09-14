@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- An undisclosed client's files and invoices are numbered from
+             their own series rather than from the per-service-type
+             numbering (owner spec 15/09/2026). One of each for the whole
+             company: the owner sets the prefix and the next number once,
+             so the series can carry on from wherever the numbering already
+             stands, and it never resets by service or by year unless they
+             ask it to. noupdate, because the next number is theirs. -->
+
+        <record id="seq_clearance_undisclosed_file" model="ir.sequence">
+            <field name="name">Clearance File (undisclosed)</field>
+            <field name="code">logistics.file.undisclosed</field>
+            <field name="prefix">UD%(year)s</field>
+            <field name="padding">4</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="seq_clearance_undisclosed_invoice" model="ir.sequence">
+            <field name="name">Clearance Invoice (undisclosed)</field>
+            <field name="code">logistics.billing.undisclosed</field>
+            <field name="prefix">UD%(y)s</field>
+            <field name="padding">4</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+    </data>
+</odoo>

@@ -35,6 +35,19 @@ class LogisticsExpenseCategory(models.Model):
     code = fields.Char(required=True)
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
+    # Some costs come back with a receipt and some never will - a tip at
+    # the gate, an extra-legal fee, a phone call. Advancing cash for one
+    # of those and then waiting for paperwork that cannot exist is how a
+    # file stops moving for nothing (owner spec 15/09/2026).
+    justification = fields.Selection(
+        [('justifiable', "Justifiable"),
+         ('non_justifiable', "Non justifiable")],
+        string="Justification", default='justifiable', required=True,
+        help="Justifiable: an advance for this is the holder's debt until "
+             "they produce the documents. Non justifiable: there will "
+             "never be a document, so the money is spent the moment it is "
+             "handed over - it goes straight to the engaged-disbursements "
+             "account, is billable at once, and holds nothing up.")
     company_id = fields.Many2one(
         'res.company', default=lambda self: self.env.company, index=True)
 
@@ -174,6 +187,20 @@ class LogisticsExpense(models.Model):
         help="When the advance was justified and reclassified from 421101 "
              "to the engaged-disbursements account.")
     is_final = fields.Boolean(compute='_compute_is_final', store=True)
+    justification_required = fields.Boolean(
+        compute='_compute_justification_required', store=True,
+        string="Justifiable",
+        help="Read from the expense category. False means no document "
+             "will ever exist for this cost, so an advance for it needs "
+             "no justification and blocks nothing.")
+
+    # Stored, because the My Tasks queue is raw SQL over this table and
+    # cannot call a method to find out.
+    @api.depends('category_id.justification')
+    def _compute_justification_required(self):
+        for expense in self:
+            expense.justification_required = (
+                expense.category_id.justification != 'non_justifiable')
     recharge_amount = fields.Monetary(
         string="To Recharge", currency_field='currency_id', copy=False,
         help="What the client is charged for this disbursement, when the "
@@ -428,7 +455,8 @@ class LogisticsExpense(models.Model):
                     else 'disburse_bank')
             Task._notify_assignment(kind, self, detail=self.description)
             return
-        if self.state == 'settled' and self.payment_mode == 'advance':
+        if (self.state == 'settled' and self.payment_mode == 'advance'
+                and self.justification_required):
             # an advance is one person's debt, not a department's queue
             holder = self.employee_id.user_id
             if holder:
@@ -595,11 +623,17 @@ class LogisticsExpense(models.Model):
                 raise UserError(self.env._(
                     "Choose the settlement journal on %s — Cash, Bank, "
                     "Mobile Money or Maviance.", exp.name))
-            if exp.payment_mode != 'advance':
+            direct = exp.payment_mode != 'advance'
+            # A NON-JUSTIFIABLE advance is spent the moment it is handed
+            # over: no document will ever exist for it, so it never sits
+            # on 421101 as the holder's debt and it is billable at once
+            # (owner spec 15/09/2026). The holder still goes on the line,
+            # because who was given the money is worth knowing.
+            if direct or not exp.justification_required:
                 debit_account = exp._get_company_account(
                     'clearance_oop_account_id', "Out-of-Pocket Expenses account")
-                partner = exp.vendor_id
-                analytic = exp._analytic_distribution()
+                partner = (exp.vendor_id if direct
+                           else exp.employee_id._clearance_auxiliary_partner())
             else:
                 debit_account = exp._get_company_account(
                     'clearance_advance_account_id', "Employee Advances account")
@@ -607,10 +641,10 @@ class LogisticsExpense(models.Model):
                 # refused, because hr only makes the work contact as a side
                 # effect of writing a work e-mail or phone.
                 partner = exp.employee_id._clearance_auxiliary_partner()
-                # Tagged like every other line: the file number goes on
-                # everything that reaches the ledger, including the advance
-                # sitting on 421101 before it is justified.
-                analytic = exp._analytic_distribution()
+            # Tagged like every other line: the file number goes on
+            # everything that reaches the ledger, including an advance
+            # sitting on 421101 before it is justified.
+            analytic = exp._analytic_distribution()
             credit_account = exp.journal_id.default_account_id
             if not credit_account:
                 raise UserError(self.env._(
@@ -669,6 +703,13 @@ class LogisticsExpense(models.Model):
         it is approved twice - Operations, then the Finance Manager.
         """
         for exp in self:
+            if not exp.justification_required:
+                raise UserError(self.env._(
+                    "%(exp)s is a %(cat)s cost: there is no document to "
+                    "produce for it, and none is waited on. It was "
+                    "charged to the engaged-disbursements account when it "
+                    "was paid.",
+                    exp=exp.name, cat=exp.category_id.name))
             if not exp._is_held_by_current_user():
                 exp._check_finance()
         for exp in self:
@@ -687,6 +728,20 @@ class LogisticsExpense(models.Model):
                 "Justification submitted with %(count)s supporting "
                 "document(s), for the Operations Manager and then the "
                 "Finance Manager to review.", count=attachments))
+
+    def _is_engaged(self):
+        """Has this cost reached the engaged-disbursements account?
+
+        Justified, or paid direct - and since 15/09/2026 a settled advance
+        for a NON-JUSTIFIABLE category too, because that one went straight
+        to 47xx when it was paid and there is nothing further to wait for.
+        """
+        self.ensure_one()
+        if self.state == 'justified':
+            return True
+        if self.state != 'settled':
+            return False
+        return self.payment_mode != 'advance' or not self.justification_required
 
     def _is_held_by_current_user(self):
         """The advance stands against this person, so it is theirs to

@@ -41,6 +41,17 @@ class ResPartner(models.Model):
              "the top of their invoice. The short name above stays as it "
              "is for searching and for the file references.")
 
+    # Some clearance work is done on an account the business does not
+    # show beside the rest of it (owner spec 15/09/2026). An undisclosed
+    # account's files and invoices are numbered from their own series, set
+    # up once and continuing from wherever the numbering already stands.
+    clearance_disclosure = fields.Selection(
+        [('disclosed', "Disclosed"), ('undisclosed', "Undisclosed")],
+        string="Clearance Account", default='disclosed', required=True,
+        help="Undisclosed: files and invoices for this client take their "
+             "references from the undisclosed series configured under "
+             "Clearance -> Configuration -> Settings, not from the "
+             "ordinary per-service-type numbering.")
     clearance_slug = fields.Char(
         string="Clearance Slug", size=3, index=True, copy=False, tracking=True,
         help="Three letters standing for this client in clearance analytic "

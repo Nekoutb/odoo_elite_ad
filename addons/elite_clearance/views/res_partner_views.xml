@@ -20,6 +20,8 @@
                        invisible="not is_company"
                        groups="elite_clearance.group_clearance_user"
                        placeholder="the full legal name, as it prints on an invoice"/>
+                <field name="clearance_disclosure"
+                       groups="elite_clearance.group_clearance_manager"/>
             </xpath>
             <xpath expr="//field[@name='ref']" position="after">
                 <!-- Readonly for everyone: the slug is assigned by the system

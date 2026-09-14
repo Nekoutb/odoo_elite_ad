@@ -37,9 +37,17 @@
                                  help="Where the customs service fee keyed from the declaration is credited. Also a subdivision of 706, kept apart from the commission so the two revenue streams are reportable.">
                             <field name="clearance_service_fee_account_id"/>
                         </setting>
+                        <setting string="Frais de Dossier Income Account (706x)"
+                                 help="Where the file-opening fee is credited. The third revenue line beside the commission and the customs fee, kept on its own account so all three are reportable apart.">
+                            <field name="clearance_file_fee_account_id"/>
+                        </setting>
                         <setting string="Miscellaneous Journal"
                                  help="Used for advance justification entries.">
                             <field name="clearance_misc_journal_id"/>
+                        </setting>
+                        <setting string="Client Advance Journal"
+                                 help="Proposed when a client advance is recorded against a file - the till or the account the money usually arrives in. Whoever records it can choose another.">
+                            <field name="clearance_advance_receipt_journal_id"/>
                         </setting>
                         <setting string="Sales Journal"
                                  help="Journal the client clearance invoice is raised in. Empty = the company's first sales journal.">
@@ -58,6 +66,14 @@
                                        accounting, and it applies to every credit note the
                                        company issues, not only clearance ones.">
                             <field name="account_storno"/>
+                        </setting>
+                        <setting string="Undisclosed File Numbering"
+                                 help="Where a file's reference comes from when its client is an undisclosed account. Open the sequence to set its prefix and its next number - once - and it carries on from there.">
+                            <field name="clearance_undisclosed_file_sequence_id"/>
+                        </setting>
+                        <setting string="Undisclosed Invoice Numbering"
+                                 help="The same, for the invoices of an undisclosed account. Credit notes keep their own AV series either way.">
+                            <field name="clearance_undisclosed_invoice_sequence_id"/>
                         </setting>
                         <setting string="VAT on Service Fees"
                                  help="Applied to commission, customs fees and any other

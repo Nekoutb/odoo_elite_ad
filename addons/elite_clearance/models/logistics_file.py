@@ -351,6 +351,70 @@ class LogisticsFile(models.Model):
         help="Advances the legacy system disbursed on this file, excluding "
              "reversals. Not posted here; shown so that what was spent and "
              "what was billed can be read together.")
+    file_fee_amount = fields.Monetary(
+        string="Frais de dossier", currency_field='currency_id', copy=False,
+        help="The file-opening fee charged to the client. Keyed at "
+             "billing, freely, and credited to its own revenue account "
+             "(owner spec 15/09/2026).")
+    # What the client has actually paid on this file, as posted receipts
+    # against their own account - not a figure typed on the invoice
+    # (owner spec 15/09/2026). compute_sudo: the file form is opened by
+    # agents with no accounting rights at all.
+    client_advance_ids = fields.One2many(
+        'account.payment', 'logistics_file_id', string="Client Advances")
+    client_advance_total = fields.Monetary(
+        compute='_compute_client_advances', compute_sudo=True,
+        currency_field='currency_id', string="Advances Received",
+        help="Posted receipts from the client against this file. Deducted "
+             "on the face of the invoice to show what is left to pay.")
+    client_advance_count = fields.Integer(
+        compute='_compute_client_advances', compute_sudo=True)
+
+    @api.depends('client_advance_ids.state', 'client_advance_ids.amount',
+                 'client_advance_ids.payment_type',
+                 'client_advance_ids.move_id.state')
+    def _compute_client_advances(self):
+        # POSTED is the test, not 'paid': a payment into a bank journal
+        # stays 'in_process' until the statement is matched, and the
+        # client has still paid us. What counts is that the receipt is in
+        # the ledger against their account.
+        for file in self:
+            received = file.client_advance_ids.filtered(
+                lambda payment: payment.payment_type == 'inbound'
+                and payment.move_id.state == 'posted'
+                and payment.state not in ('canceled', 'rejected'))
+            file.client_advance_total = sum(received.mapped('amount'))
+            file.client_advance_count = len(received)
+
+    def action_record_client_advance(self):
+        """Money in, against this file, with this file's analytic tag."""
+        self.ensure_one()
+        if not self.partner_id:
+            raise UserError(self.env._(
+                "%s has no client, so there is nobody to credit.", self.name))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': self.env._("Client Advance — %s", self.name),
+            'res_model': 'logistics.client.advance.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'active_id': self.id, 'default_file_id': self.id},
+        }
+
+    def action_open_client_advances(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': self.env._("Client Advances — %s", self.name),
+            'res_model': 'account.payment',
+            'view_mode': 'list,form',
+            'domain': [('logistics_file_id', '=', self.id)],
+        }
+
+    partner_disclosure = fields.Selection(
+        related='partner_id.clearance_disclosure', string="Client Account",
+        help="Undisclosed clients' files and invoices are numbered from "
+             "their own series.")
     reopen_count = fields.Integer(readonly=True, copy=False)
 
     # Where the file actually sits, and with whom (owner spec 14/09/2026).
@@ -395,16 +459,15 @@ class LogisticsFile(models.Model):
             file.expense_count = counts.get(file, 0)
 
     @api.depends('expense_ids.state', 'expense_ids.amount',
-                 'expense_ids.payment_mode', 'expense_ids.is_legacy')
+                 'expense_ids.payment_mode', 'expense_ids.is_legacy',
+                 'expense_ids.justification_required')
     def _compute_oop_total(self):
         # Legacy expenses were billed in the old system and carry no posting
         # here: they never feed a new invoice.
         for file in self:
             file.oop_total = sum(
                 e.amount for e in file.expense_ids
-                if not e.is_legacy and (
-                    e.state == 'justified'
-                    or (e.state == 'settled' and e.payment_mode != 'advance')))
+                if not e.is_legacy and e._is_engaged())
 
     # compute_sudo on every figure read off the invoices: an Operations,
     # Customer Service or Transit agent has no accounting rights, so a
@@ -431,13 +494,17 @@ class LogisticsFile(models.Model):
                 if e.is_legacy and e.state != 'cancel')
 
     @api.depends('expense_ids.state', 'expense_ids.amount',
-                 'expense_ids.payment_mode')
+                 'expense_ids.payment_mode',
+                 'expense_ids.justification_required')
     def _compute_unjustified_advance_total(self):
+        # A non-justifiable advance is never unjustified: there is no
+        # document to wait for, so it holds nothing up (owner 15/09/2026).
         for file in self:
             file.unjustified_advance_total = sum(
                 e.amount for e in file.expense_ids
                 if not e.is_legacy
                 and e.payment_mode == 'advance'
+                and e.justification_required
                 and e.state in UNJUSTIFIED_ADVANCE_STATES)
 
     @api.depends('recharge_amount', 'oop_total')
@@ -548,7 +615,7 @@ class LogisticsFile(models.Model):
     @api.depends('invoice_ids.amount_total', 'invoice_ids.state',
                  'invoice_ids.move_type', 'invoice_ids.clearance_voided',
                  'advance_had_amount', 'advance_had_vat_amount',
-                 'advance_other_amount')
+                 'advance_other_amount', 'client_advance_total')
     def _compute_invoice_balance_due(self):
         """What the client still owes once their advances come off.
 
@@ -563,7 +630,7 @@ class LogisticsFile(models.Model):
                 for move in file._client_invoices())
             file.invoice_balance_due = total - (
                 file.advance_had_amount + file.advance_had_vat_amount
-                + file.advance_other_amount)
+                + file.advance_other_amount + file.client_advance_total)
 
     def _bill_sides(self):
         """The invoice(s) the current billing issued, cancelled or not:
@@ -760,7 +827,8 @@ class LogisticsFile(models.Model):
                     self.env._("%s advance justification(s) to sign.",
                                len(rows)))
         held = live.filtered(lambda e: e.state == 'settled'
-                             and e.payment_mode == 'advance')
+                             and e.payment_mode == 'advance'
+                             and e.justification_required)
         if held and self.advance_waiver_state != 'approved':
             names = ", ".join(sorted(set(held.mapped('employee_id.name'))))
             return (names or self.env._("The advance holder"),
@@ -801,13 +869,40 @@ class LogisticsFile(models.Model):
     # =====================================================================
     # CRUD
     # =====================================================================
+    UNDISCLOSED_SEQUENCE = {
+        'file': 'clearance_undisclosed_file_sequence_id',
+        'billing': 'clearance_undisclosed_invoice_sequence_id',
+    }
+
     @api.model
-    def _next_reference(self, kind, service_type, company):
+    def _next_reference(self, kind, service_type, company, partner=None):
         """Structured references per service type, yearly:
         files:   2026IM0009  = %(year)s + type code + 4-digit sequence
         billing: EL26IM0001  = EL + %(y)s + type code + 4-digit sequence
         The sequence per (kind, type, company) is created on first use and
-        resets each year; ir.sequence guarantees no duplicates."""
+        resets each year; ir.sequence guarantees no duplicates.
+
+        An UNDISCLOSED client's files and invoices come from their own
+        series instead (owner spec 15/09/2026) - one for files and one for
+        invoices, for the whole company, set up once and continuing from
+        whatever number the owner starts them at. Credit notes keep their
+        own AV series either way: they are numbered apart already.
+        """
+        undisclosed = (partner
+                       and partner.clearance_disclosure == 'undisclosed'
+                       and kind in self.UNDISCLOSED_SEQUENCE)
+        if undisclosed:
+            sequence = company[self.UNDISCLOSED_SEQUENCE[kind]]
+            if not sequence:
+                raise UserError(self.env._(
+                    "%(client)s is an undisclosed account, and the "
+                    "undisclosed %(what)s numbering has not been set up. "
+                    "Set it once under Clearance -> Configuration -> "
+                    "Settings.",
+                    client=partner.display_name,
+                    what=self.env._("invoice") if kind == 'billing'
+                    else self.env._("file")))
+            return sequence.sudo().next_by_id()
         return self._get_reference_sequence(kind, service_type, company).next_by_id()
 
     @api.model
@@ -845,7 +940,10 @@ class LogisticsFile(models.Model):
                     vals.get('company_id') or self.env.company.id)
                 service_type = self.env['logistics.service.type'].browse(
                     vals['service_type_id'])
-                vals['name'] = self._next_reference('file', service_type, company)
+                partner = self.env['res.partner'].browse(
+                    vals.get('partner_id')) or None
+                vals['name'] = self._next_reference(
+                    'file', service_type, company, partner=partner)
         files = super().create(vals_list)
         skip_checklist = self.env.context.get('skip_checklist')
         for file in files:
@@ -1366,9 +1464,7 @@ class LogisticsFile(models.Model):
         """
         self.ensure_one()
         return self.expense_ids.filtered(
-            lambda e: not e.is_legacy and not e.is_billed and (
-                e.state == 'justified'
-                or (e.state == 'settled' and e.payment_mode != 'advance')))
+            lambda e: not e.is_legacy and not e.is_billed and e._is_engaged())
 
     def _billing_debours_lines(self):
         """What the billing screen proposes for the disbursement section."""
@@ -1407,6 +1503,14 @@ class LogisticsFile(models.Model):
                 'account_id': (
                     self.company_id.clearance_service_fee_account_id or fee).id,
                 'kind': 'customs_fee',
+            })
+        if self.file_fee_amount:
+            services.append({
+                'name': self.env._("Frais de dossier"),
+                'amount': self.file_fee_amount,
+                'account_id': (
+                    self.company_id.clearance_file_fee_account_id or fee).id,
+                'kind': 'file_fee',
             })
         return services
 
@@ -1655,7 +1759,8 @@ class LogisticsFile(models.Model):
                 # service type (EL26IM0001). A split bill takes two numbers,
                 # one after the other.
                 'name': self._next_reference('billing', self.service_type_id,
-                                             self.company_id),
+                                             self.company_id,
+                                             partner=self.partner_id),
                 'partner_id': self.partner_id.id,
                 'invoice_origin': self.name,
                 'ref': self.name,

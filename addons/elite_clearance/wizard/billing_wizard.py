@@ -56,9 +56,17 @@ class LogisticsBillingWizard(models.TransientModel):
              "by the agent who bills it. On a further bill it is what is "
              "LEFT to charge: whatever an earlier invoice already took is "
              "shown beside it and is not proposed again.")
+    file_fee_amount = fields.Monetary(
+        string="Frais de dossier", currency_field='currency_id',
+        help="The file-opening fee, keyed freely and credited to its own "
+             "revenue account. On a further bill it is what is LEFT to "
+             "charge, as the customs fee is.")
     customs_fee_billed = fields.Monetary(
         compute='_compute_already_billed', currency_field='currency_id',
         string="Customs fee already billed")
+    file_fee_billed = fields.Monetary(
+        compute='_compute_already_billed', currency_field='currency_id',
+        string="Frais de dossier already billed")
     commission_billed = fields.Monetary(
         compute='_compute_already_billed', currency_field='currency_id',
         string="Commission already billed")
@@ -126,6 +134,12 @@ class LogisticsBillingWizard(models.TransientModel):
         compute='_compute_shipment_details_missing',
         help="True while the invoice would print a blank shipment box.")
 
+    client_advance_total = fields.Monetary(
+        related='file_id.client_advance_total', currency_field='currency_id',
+        string="Advances received (posted)",
+        help="Receipts actually posted against the client's account for "
+             "this file. They come off the invoice on their own; do not "
+             "type them again in the boxes below.")
     advance_had_amount = fields.Monetary(
         string="Advance HAD/DAU", currency_field='currency_id',
         help="Already advanced by the client against the customs fee. "
@@ -207,6 +221,9 @@ class LogisticsBillingWizard(models.TransientModel):
         charged = sum(file._billed_service_lines('customs_fee').mapped(
             'price_subtotal'))
         vals['customs_fee_amount'] = max(file.customs_fee_amount - charged, 0.0)
+        charged = sum(file._billed_service_lines('file_fee').mapped(
+            'price_subtotal'))
+        vals['file_fee_amount'] = max(file.file_fee_amount - charged, 0.0)
         vals['advance_had_amount'] = file.advance_had_amount
         vals['advance_had_vat_amount'] = file.advance_had_vat_amount
         vals['advance_other_amount'] = file.advance_other_amount
@@ -226,12 +243,15 @@ class LogisticsBillingWizard(models.TransientModel):
             if not file:
                 wizard.customs_fee_billed = 0.0
                 wizard.commission_billed = 0.0
+                wizard.file_fee_billed = 0.0
                 wizard.billed_before = False
                 continue
             fee = file._billed_service_lines('customs_fee')
             commission = file._billed_service_lines('commission')
+            opening = file._billed_service_lines('file_fee')
             wizard.customs_fee_billed = sum(fee.mapped('price_subtotal'))
             wizard.commission_billed = sum(commission.mapped('price_subtotal'))
+            wizard.file_fee_billed = sum(opening.mapped('price_subtotal'))
             wizard.billed_before = bool(
                 file._client_invoices().filtered(
                     lambda move: move.move_type == 'out_invoice'))
@@ -276,6 +296,15 @@ class LogisticsBillingWizard(models.TransientModel):
                                or fallback).id,
                 'kind': 'customs_fee',
             })
+        if not self.currency_id.is_zero(self.file_fee_amount):
+            services.append({
+                'name': self.env._("Frais de dossier"),
+                'amount': self.file_fee_amount,
+                'unit': "Par dossier",
+                'account_id': (company.clearance_file_fee_account_id
+                               or fallback).id,
+                'kind': 'file_fee',
+            })
         for line in self.service_line_ids:
             if self.currency_id.is_zero(line.amount):
                 continue
@@ -308,7 +337,8 @@ class LogisticsBillingWizard(models.TransientModel):
     @api.depends('debours_line_ids.amount_engaged',
                  'debours_line_ids.amount_recharged',
                  'service_line_ids.amount', 'commission_rate',
-                 'customs_fee_amount', 'reissue_kind', 'standing_invoice_id',
+                 'customs_fee_amount', 'file_fee_amount',
+                 'reissue_kind', 'standing_invoice_id',
                  'file_id.recharge_state', 'file_id.recharge_amount')
     def _compute_totals(self):
         for wizard in self:
@@ -331,6 +361,7 @@ class LogisticsBillingWizard(models.TransientModel):
             ) if wizard.currency_id else 0.0
             wizard.service_total = (
                 wizard.commission_amount + wizard.customs_fee_amount
+                + wizard.file_fee_amount
                 + sum(wizard.service_line_ids.mapped('amount')))
             # VAT rides on the services and never on the disbursements, so
             # the biller sees the same split the invoice will carry.
@@ -400,6 +431,8 @@ class LogisticsBillingWizard(models.TransientModel):
             # it back would rewrite the declaration.
             if not self.customs_fee_billed:
                 vals['customs_fee_amount'] = self.customs_fee_amount
+            if not self.file_fee_billed:
+                vals['file_fee_amount'] = self.file_fee_amount
         # The shipment details go back in the same write, and only those
         # that changed: the file's constraint wants all three together,
         # and a set left blank must not stop a review from being sent -

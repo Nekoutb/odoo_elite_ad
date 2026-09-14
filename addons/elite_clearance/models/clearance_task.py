@@ -205,6 +205,7 @@ class ClearanceTask(models.Model):
               JOIN hr_employee emp ON emp.id = e.employee_id
              WHERE e.state = 'settled'
                AND e.payment_mode = 'advance'
+               AND COALESCE(e.justification_required, TRUE)
                AND emp.user_id IS NOT NULL
             """ % self._text('e.name'),
             expense % dict(offset=16, kind='justification_finance',
@@ -240,7 +241,8 @@ class ClearanceTask(models.Model):
                       "WHERE e.file_id = f.id "
                       "AND NOT COALESCE(e.is_legacy, FALSE) "
                       "AND (e.state = 'justified' OR (e.state = 'settled' "
-                      "AND e.payment_mode <> 'advance')) "
+                      "AND (e.payment_mode <> 'advance' "
+                      "OR NOT COALESCE(e.justification_required, TRUE)))) "
                       "AND (e.billed_line_id IS NULL "
                       "OR bm.state = 'cancel' "
                       "OR COALESCE(bm.clearance_voided, FALSE) "

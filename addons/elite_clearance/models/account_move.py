@@ -252,17 +252,28 @@ class AccountMove(models.Model):
 
         An advance on the HAD/DAU - and the VAT on it - is an advance on the
         SERVICES; "other advances" are funds the client put up for the
-        disbursements. An unsplit invoice deducts all three, rows printed
+        disbursements. An unsplit invoice deducts all four, rows printed
         even at zero as the model document does; a split invoice deducts
         its own side's and omits the other rows.
+
+        The fourth is different in kind from the first three: those are
+        figures the biller types on the face of the document, while this
+        one is the sum of receipts actually posted against the client's
+        account for this file (owner spec 15/09/2026). It follows "other
+        advances" to the disbursements side of a split bill, because that
+        is what a client puts money up for. It prints only when there is
+        one, so an invoice for a client who has paid nothing in advance
+        reads exactly as it did before.
         """
         self.ensure_one()
         file = self.logistics_file_id
         kind = self.clearance_invoice_kind or 'full'
+        received = file.client_advance_total
         return (
             file.advance_had_amount if kind != 'debours' else None,
             file.advance_had_vat_amount if kind != 'debours' else None,
             file.advance_other_amount if kind != 'services' else None,
+            received if (received and kind != 'services') else None,
         )
 
     def _clearance_advance_total(self):
@@ -492,6 +503,7 @@ class AccountMoveLine(models.Model):
     clearance_service_kind = fields.Selection(
         [('commission', "Commission on disbursements"),
          ('customs_fee', "Honoraires Agréés en Douane"),
+         ('file_fee', "Frais de dossier"),
          ('other', "Other billable service")],
         string="Clearance Service", copy=False,
         help="Which standing service line this is, so the billing screen "

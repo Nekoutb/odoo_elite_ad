@@ -18,6 +18,19 @@ def seed_clearance_master_data(env):
     if not company.account_storno:
         company.account_storno = True
 
+    # The undisclosed series exist as data; the company is pointed at them
+    # here so the setting is filled in rather than blank, and the owner
+    # only has to set the prefix and the next number (owner 15/09/2026).
+    for field, xmlid in (
+            ('clearance_undisclosed_file_sequence_id',
+             'elite_clearance.seq_clearance_undisclosed_file'),
+            ('clearance_undisclosed_invoice_sequence_id',
+             'elite_clearance.seq_clearance_undisclosed_invoice')):
+        if not company[field]:
+            sequence = env.ref(xmlid, raise_if_not_found=False)
+            if sequence:
+                company[field] = sequence.id
+
     DOC_TYPES = [
         ('BL', "BL (Bill of Lading)"),
         ('INV', "Facture commerciale (Invoice)"),

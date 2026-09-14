@@ -126,6 +126,31 @@ class ResCompany(models.Model):
              "credited. Also a subdivision of 706, kept apart from the "
              "commission so the two revenue streams are reportable.",
     )
+    # The undisclosed series: ONE for files and ONE for invoices, for the
+    # whole company rather than per service type, because the owner sets
+    # them up once and they carry on from a number already in use
+    # (owner spec 15/09/2026).
+    clearance_advance_receipt_journal_id = fields.Many2one(
+        'account.journal', string="Client Advance Journal",
+        domain="[('type', 'in', ('bank', 'cash'))]",
+        help="Proposed when a client advance is recorded against a file. "
+             "The person recording it can choose another.")
+    clearance_undisclosed_file_sequence_id = fields.Many2one(
+        'ir.sequence', string="Undisclosed File Numbering",
+        help="Where a file's reference comes from when its client is an "
+             "undisclosed account. Set the prefix and the next number on "
+             "the sequence itself, once, and it carries on from there.")
+    clearance_undisclosed_invoice_sequence_id = fields.Many2one(
+        'ir.sequence', string="Undisclosed Invoice Numbering",
+        help="Where an invoice's reference comes from when its client is "
+             "an undisclosed account.")
+    clearance_file_fee_account_id = fields.Many2one(
+        'account.account', string="Frais de Dossier Income Account (706x)",
+        help="Where the file-opening fee is credited. A third subdivision "
+             "of 706 beside the commission and the customs fee, so the "
+             "three revenue streams are reportable apart (owner spec "
+             "15/09/2026).",
+    )
     # --- what the printed invoice says -----------------------------
     # ONLY the strings Odoo has nowhere else to keep. The logo, NIU, RC,
     # address and bank accounts are read from the company and its bank

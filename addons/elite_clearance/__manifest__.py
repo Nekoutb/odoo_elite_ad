@@ -39,7 +39,7 @@ where no explicit approver list is set, the security groups apply.
     'author': "Elite Advisors",
     'website': "https://eliteadvisors.cm-ea.com",
     'category': 'Services/Clearance',
-    'version': '19.0.33.0.0',
+    'version': '19.0.34.0.0',
     'license': 'LGPL-3',
     'depends': ['base', 'mail', 'analytic', 'account', 'hr'],
     'data': [
@@ -50,6 +50,7 @@ where no explicit approver list is set, the security groups apply.
         'security/clearance_record_rules.xml',
         # master data
         'data/ir_sequence_data.xml',
+        'data/clearance_undisclosed_sequences.xml',
         'data/analytic_plan_data.xml',
         # Wizards before logistics_file_views.xml: the file's header buttons
         # resolve %(action_...)d at load time, so those actions must already
@@ -58,6 +59,7 @@ where no explicit approver list is set, the security groups apply.
         'wizard/reopen_wizard_views.xml',
         'wizard/billing_wizard_views.xml',
         'wizard/invoice_reversal_wizard_views.xml',
+        'wizard/client_advance_wizard_views.xml',
         'views/logistics_port_views.xml',
         'views/logistics_document_type_views.xml',
         'views/logistics_service_type_views.xml',

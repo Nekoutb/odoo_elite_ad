@@ -66,6 +66,10 @@
                             class="oe_highlight"
                             invisible="state != 'ops_closed' or not has_billable or recharge_state != 'approved'"
                             groups="elite_clearance.group_clearance_billing"/>
+                    <button name="action_record_client_advance" type="object"
+                            string="Record Client Advance"
+                            invisible="state in ('draft', 'cancel', 'imported')"
+                            groups="elite_clearance.group_clearance_billing,elite_clearance.group_clearance_finance"/>
                     <button name="action_preview_invoice" type="object"
                             string="Preview Invoice" invisible="not invoice_id"
                             groups="account.group_account_invoice,account.group_account_readonly"/>
@@ -86,6 +90,9 @@
                 <sheet>
                     <widget name="web_ribbon" title="Imported" bg_color="text-bg-secondary"
                             invisible="not legacy_id"/>
+                    <widget name="web_ribbon" title="Undisclosed" bg_color="text-bg-dark"
+                            invisible="partner_disclosure != 'undisclosed'"/>
+                    <field name="partner_disclosure" invisible="1"/>
                     <field name="can_start" invisible="1"/>
                     <field name="invoice_id" invisible="1"/>
                     <field name="invoice_state" invisible="1"/>
