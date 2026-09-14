@@ -357,6 +357,30 @@ class TestInvoiceReversal(TransactionCase):
         self.assertEqual(self.file.invoice_balance_due, total - 60000,
                          "a credit note reduces what the client owes")
 
+    def test_14_a_cancellation_is_negated_even_when_the_switch_was_off(self):
+        """The switch is a stored compute over the fiscal country, so
+        loading a chart of accounts turns it off by itself. A reversal
+        asserts it rather than trusting it."""
+        self.env.company.account_storno = False
+        invoice = self._bill()
+        invoice.action_post()
+        self.env['logistics.invoice.cancel.wizard'].create({
+            'invoice_id': invoice.id,
+            'reason': "Cancelled after the chart was loaded."
+        }).action_cancel_invoice()
+        self.assertTrue(self.env.company.account_storno,
+                        "put back where the owner set it")
+        credit = self.env['account.move'].search(
+            [('reversed_entry_id', '=', invoice.id)], limit=1)
+        revenue = credit.line_ids.filtered(
+            lambda line: line.account_id == self.commission)
+        self.assertEqual(revenue.debit, 0)
+        self.assertLess(revenue.credit, 0, "negated, not moved to the debit")
+        receivable = credit.line_ids.filtered(
+            lambda line: line.display_type == 'payment_term')
+        self.assertLess(receivable.debit, 0,
+                        "the line Odoo generates is negated too")
+
     # =================================================================
     # the printed document
     # =================================================================
