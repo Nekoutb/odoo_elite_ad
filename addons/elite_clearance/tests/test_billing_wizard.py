@@ -602,8 +602,10 @@ class TestBillingWizard(TransactionCase):
         wizard.advance_other_amount = 20000
         wizard.action_create_invoice()
         debours, services = self.file.debours_invoice_id, self.file.invoice_id
-        self.assertEqual(debours._clearance_advances(), (None, None, 20000))
-        self.assertEqual(services._clearance_advances(), (5000, 0.0, None))
+        self.assertEqual(debours._clearance_advances(),
+                         (None, None, 20000, None))
+        self.assertEqual(services._clearance_advances(),
+                         (5000, 0.0, None, None))
         self.assertEqual(debours._clearance_advance_total(), 20000)
         self.assertEqual(services._clearance_advance_total(), 5000)
         self.assertFalse(debours._clearance_prints_vat())

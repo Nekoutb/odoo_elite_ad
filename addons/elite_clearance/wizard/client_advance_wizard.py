@@ -68,12 +68,21 @@ class LogisticsClientAdvanceWizard(models.TransientModel):
             'journal_id': self.journal_id.id,
             'memo': self.memo or file.name,
         })
-        # Set BEFORE posting: _post stamps every line of the entry with the
-        # file's analytic account, the receivable and the bank line
-        # included, which is the whole point of doing this on the file
-        # rather than in Accounting.
-        payment.move_id.logistics_file_id = file.id
+        # Odoo 19 does not make the journal entry until the payment is
+        # posted - account.payment.move_id is empty before that, and
+        # writing the file on it beforehand writes on nothing at all. So
+        # post first, then name the file and tag the lines by hand, since
+        # _post has already been and gone.
         payment.action_post()
+        move = payment.move_id
+        if not move:
+            raise UserError(self.env._(
+                "%s made no journal entry, which means it has no "
+                "outstanding receipts account configured. Set one on the "
+                "journal, or on the payment method, before recording "
+                "advances into it.", self.journal_id.display_name))
+        move.logistics_file_id = file.id
+        move._clearance_stamp_analytic()
         file.message_post(body=self.env._(
             "Client advance of %(amount)s received on %(date)s into "
             "%(journal)s (%(payment)s). It comes off the invoice.",
