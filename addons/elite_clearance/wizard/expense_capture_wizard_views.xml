@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="expense_capture_wizard_view_form" model="ir.ui.view">
+        <field name="name">logistics.expense.capture.wizard.form</field>
+        <field name="model">logistics.expense.capture.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Add a Disbursement">
+                <field name="file_id" invisible="1"/>
+                <field name="currency_id" invisible="1"/>
+                <group>
+                    <group>
+                        <field name="category_id" options="{'no_create': True}"/>
+                        <field name="description"
+                               placeholder="What the money was spent on"/>
+                        <field name="vendor_id" placeholder="who is paid, if known"
+                               options="{'no_create': True}"/>
+                    </group>
+                    <group>
+                        <field name="amount"/>
+                        <field name="date_requested"/>
+                    </group>
+                </group>
+                <separator string="Documents"/>
+                <!-- The widget makes the whole dialog a drop target: a receipt
+                     dragged anywhere onto it is uploaded and listed here, and
+                     follows the disbursement when it is created. -->
+                <field name="attachment_ids" widget="clearance_documents"
+                       nolabel="1" colspan="2"/>
+                <div class="text-muted mt-2">
+                    Submitting sends it straight for approval. How it gets paid — the
+                    payment mode, the journal or the advance holder — is keyed by Finance
+                    afterwards, on the disbursement's own page.
+                </div>
+                <footer>
+                    <button name="action_submit_close" type="object"
+                            string="Submit" class="btn-primary"/>
+                    <button name="action_submit_new" type="object"
+                            string="Submit &amp; Add New" class="btn-secondary"/>
+                    <button string="Cancel" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_expense_capture_wizard" model="ir.actions.act_window">
+        <field name="name">Add a Disbursement</field>
+        <field name="res_model">logistics.expense.capture.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

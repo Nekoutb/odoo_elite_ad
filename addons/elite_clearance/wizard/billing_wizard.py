@@ -134,21 +134,42 @@ class LogisticsBillingWizard(models.TransientModel):
         compute='_compute_shipment_details_missing',
         help="True while the invoice would print a blank shipment box.")
 
-    client_advance_total = fields.Monetary(
-        related='file_id.client_advance_total', currency_field='currency_id',
-        string="Advances received (posted)",
-        help="Receipts actually posted against the client's account for "
-             "this file. They come off the invoice on their own; do not "
-             "type them again in the boxes below.")
+    # None of the three is typed any more (owner spec 19/09/2026).
+    # The HAD advance and its VAT follow the customs fee being billed,
+    # because the client pays that fee up front and the invoice shows it
+    # charged and then deducted. "Other advances" is read out of the
+    # ledger, where Accounting recorded it.
     advance_had_amount = fields.Monetary(
-        string="Advance HAD/DAU", currency_field='currency_id',
-        help="Already advanced by the client against the customs fee. "
-             "Deducted on the face of the invoice, not from the total due "
-             "in the accounts.")
+        compute='_compute_advances', currency_field='currency_id',
+        string="Advance HAD/DAU",
+        help="Follows the Honoraires Agréés en Douane above: the client "
+             "advances that fee, so the invoice charges it and deducts it.")
     advance_had_vat_amount = fields.Monetary(
-        string="Advance VAT on HAD/DAU", currency_field='currency_id')
+        compute='_compute_advances', currency_field='currency_id',
+        string="Advance VAT on HAD/DAU",
+        help="The VAT on that fee, at the rate configured in Settings.")
     advance_other_amount = fields.Monetary(
-        string="Other Advances", currency_field='currency_id')
+        compute='_compute_advances', currency_field='currency_id',
+        string="Other Advances",
+        help="Every posting that credits this client's account carrying "
+             "this file's analytic - which is how Accounting records an "
+             "advance. Nothing to type: record it there and it appears "
+             "here.")
+
+    @api.depends('customs_fee_amount', 'file_id')
+    def _compute_advances(self):
+        for wizard in self:
+            fee = wizard.customs_fee_amount
+            wizard.advance_had_amount = fee
+            taxes = wizard.file_id.company_id.clearance_service_tax_ids
+            vat = 0.0
+            if taxes and fee:
+                vat = sum(step['amount'] for step in taxes.compute_all(
+                    fee, currency=wizard.currency_id)['taxes'])
+            wizard.advance_had_vat_amount = vat
+            wizard.advance_other_amount = (
+                wizard.file_id._client_advances_in_the_ledger()
+                if wizard.file_id else 0.0)
 
     # The bill in two (owner 07/09/2026): the disbursements on one invoice,
     # without VAT, the commission and fees on another, with it. A choice
@@ -224,9 +245,6 @@ class LogisticsBillingWizard(models.TransientModel):
         charged = sum(file._billed_service_lines('file_fee').mapped(
             'price_subtotal'))
         vals['file_fee_amount'] = max(file.file_fee_amount - charged, 0.0)
-        vals['advance_had_amount'] = file.advance_had_amount
-        vals['advance_had_vat_amount'] = file.advance_had_vat_amount
-        vals['advance_other_amount'] = file.advance_other_amount
         vals['shipment_bl_awb_ref'] = file.bl_awb_ref
         vals['shipment_goods'] = file.goods_description
         vals['shipment_cargo_value'] = file.cargo_value

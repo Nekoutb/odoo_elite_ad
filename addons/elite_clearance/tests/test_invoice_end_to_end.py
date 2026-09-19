@@ -144,9 +144,9 @@ class TestInvoiceEndToEnd(TransactionCase):
 
         wizard = env['logistics.billing.wizard'].with_context(
             active_id=file.id).create({})
+        # The HAD advance and its VAT follow the fee itself now
+        # (owner 19/09/2026): the client advances what is charged.
         wizard.customs_fee_amount = HAD
-        wizard.advance_had_amount = HAD
-        wizard.advance_had_vat_amount = 49467
         wizard.service_line_ids = [(0, 0, {
             'service_id': self.opening.id,
             'name': self.opening.name,

@@ -3,10 +3,11 @@ import { registry } from "@web/core/registry";
 /**
  * The expense capture dialog, driven the way an Operations agent drives it:
  * open it from the file, pick the category, type the amount, name the
- * vendor, drop a receipt anywhere on the dialog, save. Run by
- * tests/test_expense_dialog_tour.py in a real Chromium, because a form's
- * readonly marks, a widget's drop zone and a dialog's save path are things
- * an ORM-level test never sees.
+ * vendor, drop a receipt anywhere on the dialog, press Submit. ONE press
+ * (owner 19/09/2026): no saving the dialog, then the file, then finding
+ * the row again to submit it. Run by tests/test_expense_dialog_tour.py in
+ * a real Chromium, because a widget's drop zone and a wizard's save path
+ * are things an ORM-level test never sees.
  *
  * The drag is simulated with the same DataTransfer at dragenter and at
  * drop: the page reads the file off that object, so it must be one and
@@ -27,8 +28,8 @@ function aReceipt() {
 registry.category("web_tour.tours").add("elite_clearance_expense_dialog", {
     steps: () => [
         {
-            content: "Add an expense from the file's list",
-            trigger: ".o_field_widget[name='expense_ids'] .o_field_x2many_list_row_add a",
+            content: "Add a disbursement from the file",
+            trigger: "button[name='action_add_expense']",
             run: "click",
         },
         {
@@ -92,22 +93,17 @@ registry.category("web_tour.tours").add("elite_clearance_expense_dialog", {
             trigger: ".modal .o_attachment:contains('receipt.txt')",
         },
         {
-            content: "Save & Close",
-            trigger: ".modal .o_form_button_save",
+            content: "One press keys it and submits it",
+            trigger: ".modal footer button[name='action_submit_close']",
             run: "click",
         },
         {
-            content: "The expense is a row on the file",
+            content: "It is on the file, already submitted",
             trigger: ".o_field_widget[name='expense_ids'] .o_data_row:contains('Terminal handling')",
         },
         {
-            content: "Save the file",
-            trigger: ".o_form_button_save:enabled",
-            run: "click",
-        },
-        {
-            content: "Saved",
-            trigger: "body .o_form_saved",
+            content: "and the file needed no saving of its own",
+            trigger: ".o_form_view:not(:has(.o_form_button_save:enabled))",
         },
     ],
 });

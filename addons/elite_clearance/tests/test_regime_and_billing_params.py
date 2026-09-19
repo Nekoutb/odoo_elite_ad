@@ -193,13 +193,15 @@ class TestRegimeAndBillingParams(TransactionCase):
     def test_12_advances_come_off_the_balance_due(self):
         file = self._billable_file()
         wizard = self._wizard(file)
-        wizard.advance_had_amount = 20000
-        wizard.advance_had_vat_amount = 3850
+        wizard.customs_fee_amount = 20000
+        self.assertEqual(wizard.advance_had_amount, 20000,
+                         "the fee charged is the advance taken")
+        vat = wizard.advance_had_vat_amount
         wizard.action_create_invoice()
         self.assertEqual(file.advance_had_amount, 20000)
         self.assertEqual(
             file.invoice_balance_due,
-            file.invoice_id.amount_total - 23850)
+            file.invoice_id.amount_total - 20000 - vat)
 
     # --- a new revenue line is Operations' decision ---------------------
     def test_13_a_new_service_cannot_be_billed_until_approved(self):

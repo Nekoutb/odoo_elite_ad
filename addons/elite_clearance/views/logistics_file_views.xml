@@ -66,10 +66,6 @@
                             class="oe_highlight"
                             invisible="state != 'ops_closed' or not has_billable or recharge_state != 'approved'"
                             groups="elite_clearance.group_clearance_billing"/>
-                    <button name="action_record_client_advance" type="object"
-                            string="Record Client Advance"
-                            invisible="state in ('draft', 'cancel', 'imported')"
-                            groups="elite_clearance.group_clearance_billing,elite_clearance.group_clearance_finance"/>
                     <button name="action_preview_invoice" type="object"
                             string="Preview Invoice" invisible="not invoice_id"
                             groups="account.group_account_invoice,account.group_account_readonly"/>
@@ -232,6 +228,14 @@
                     </div>
 
                     <separator string="Out-of-Pocket Expenses"/>
+                    <!-- Keyed through a wizard, not the list's own dialog: a
+                         row keyed in an x2many dialog has no database id until
+                         the file is saved, so a Submit button there would have
+                         nothing to submit (owner 19/09/2026). One press keys it
+                         AND submits it. -->
+                    <button name="action_add_expense" type="object"
+                            string="Add a Disbursement" class="btn-primary mb-2"
+                            invisible="state != 'in_progress'"/>
                     <!-- editable inline, and open_form_view for the arrow that
                          opens the record full-page. Deliberately NOT a dialog:
                          this form carries nine conditionally-visible header
@@ -252,7 +256,7 @@
                              every readonly column from the new row's create
                              command. Category and description arrived NULL
                              (browser test, 07/09/2026). -->
-                        <list open_form_view="1"
+                        <list open_form_view="1" create="0"
                               decoration-muted="state == 'cancel' or is_legacy or is_billed">
                             <field name="name"/>
                             <field name="category_id"/>

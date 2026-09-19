@@ -86,11 +86,15 @@
                         <field name="split_invoices" readonly="reissue_kind"/>
                     </group>
                     <group string="Advances already paid by the client">
-                        <field name="client_advance_total" readonly="1"
-                               invisible="not client_advance_total"/>
-                        <field name="advance_had_amount"/>
-                        <field name="advance_had_vat_amount"/>
-                        <field name="advance_other_amount"/>
+                        <field name="advance_had_amount" readonly="1"/>
+                        <field name="advance_had_vat_amount" readonly="1"/>
+                        <field name="advance_other_amount" readonly="1"/>
+                        <div class="text-muted" colspan="2">
+                            None of these is typed. The first two follow the Honoraires Agréés
+                            en Douane above; the third is every posting that credits this
+                            client's account carrying this file's analytic — record the advance
+                            in Accounting and it appears here.
+                        </div>
                     </group>
                 </group>
 

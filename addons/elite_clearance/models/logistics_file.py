@@ -356,61 +356,6 @@ class LogisticsFile(models.Model):
         help="The file-opening fee charged to the client. Keyed at "
              "billing, freely, and credited to its own revenue account "
              "(owner spec 15/09/2026).")
-    # What the client has actually paid on this file, as posted receipts
-    # against their own account - not a figure typed on the invoice
-    # (owner spec 15/09/2026). compute_sudo: the file form is opened by
-    # agents with no accounting rights at all.
-    client_advance_ids = fields.One2many(
-        'account.payment', 'logistics_file_id', string="Client Advances")
-    client_advance_total = fields.Monetary(
-        compute='_compute_client_advances', compute_sudo=True,
-        currency_field='currency_id', string="Advances Received",
-        help="Posted receipts from the client against this file. Deducted "
-             "on the face of the invoice to show what is left to pay.")
-    client_advance_count = fields.Integer(
-        compute='_compute_client_advances', compute_sudo=True)
-
-    @api.depends('client_advance_ids.state', 'client_advance_ids.amount',
-                 'client_advance_ids.payment_type',
-                 'client_advance_ids.move_id.state')
-    def _compute_client_advances(self):
-        # POSTED is the test, not 'paid': a payment into a bank journal
-        # stays 'in_process' until the statement is matched, and the
-        # client has still paid us. What counts is that the receipt is in
-        # the ledger against their account.
-        for file in self:
-            received = file.client_advance_ids.filtered(
-                lambda payment: payment.payment_type == 'inbound'
-                and payment.move_id.state == 'posted'
-                and payment.state not in ('canceled', 'rejected'))
-            file.client_advance_total = sum(received.mapped('amount'))
-            file.client_advance_count = len(received)
-
-    def action_record_client_advance(self):
-        """Money in, against this file, with this file's analytic tag."""
-        self.ensure_one()
-        if not self.partner_id:
-            raise UserError(self.env._(
-                "%s has no client, so there is nobody to credit.", self.name))
-        return {
-            'type': 'ir.actions.act_window',
-            'name': self.env._("Client Advance — %s", self.name),
-            'res_model': 'logistics.client.advance.wizard',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {'active_id': self.id, 'default_file_id': self.id},
-        }
-
-    def action_open_client_advances(self):
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': self.env._("Client Advances — %s", self.name),
-            'res_model': 'account.payment',
-            'view_mode': 'list,form',
-            'domain': [('logistics_file_id', '=', self.id)],
-        }
-
     partner_disclosure = fields.Selection(
         related='partner_id.clearance_disclosure', string="Client Account",
         help="Undisclosed clients' files and invoices are numbered from "
@@ -615,7 +560,7 @@ class LogisticsFile(models.Model):
     @api.depends('invoice_ids.amount_total', 'invoice_ids.state',
                  'invoice_ids.move_type', 'invoice_ids.clearance_voided',
                  'advance_had_amount', 'advance_had_vat_amount',
-                 'advance_other_amount', 'client_advance_total')
+                 'advance_other_amount')
     def _compute_invoice_balance_due(self):
         """What the client still owes once their advances come off.
 
@@ -630,7 +575,7 @@ class LogisticsFile(models.Model):
                 for move in file._client_invoices())
             file.invoice_balance_due = total - (
                 file.advance_had_amount + file.advance_had_vat_amount
-                + file.advance_other_amount + file.client_advance_total)
+                + file.advance_other_amount)
 
     def _bill_sides(self):
         """The invoice(s) the current billing issued, cancelled or not:
@@ -1851,6 +1796,53 @@ class LogisticsFile(models.Model):
                 "%(side)s differently, or put the figure back.",
                 side=label, inv=standing.name,
                 was=standing.amount_untaxed, now=now))
+
+    def _client_advances_in_the_ledger(self):
+        """What the client has put up on this file, read off the ledger.
+
+        Advances are NOT recorded at billing (owner spec 19/09/2026):
+        Accounting books them, debit bank and credit the client's own
+        account, tagged with this file's analytic. Billing reads them
+        back from there, so there is one record of the money and it is
+        the one the accountant keeps.
+
+        Invoices and credit notes are excluded by their move type: an
+        invoice debits the receivable, but a credit note credits it, and
+        without that exclusion every credit note would read as an advance.
+        """
+        self.ensure_one()
+        analytic = self.analytic_account_id
+        if not analytic:
+            return 0.0
+        lines = self.env['account.move.line'].sudo().search([
+            ('parent_state', '=', 'posted'),
+            ('move_id.move_type', '=', 'entry'),
+            ('account_id.account_type', '=', 'asset_receivable'),
+            ('credit', '>', 0.0),
+            ('analytic_distribution', 'in', [analytic.id]),
+        ])
+        return sum(lines.mapped('credit'))
+
+    def action_add_expense(self):
+        """Key a disbursement and submit it, in one press.
+
+        A wizard and not the list's own dialog: a row keyed in an x2many
+        dialog has no database id until the file is saved, so a Submit
+        button there would have nothing to submit (owner 19/09/2026).
+        """
+        self.ensure_one()
+        if self.state != 'in_progress':
+            raise UserError(self.env._(
+                "Disbursements are keyed on a file that is in progress. "
+                "%s is not.", self.name))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': self.env._("Add a Disbursement — %s", self.name),
+            'res_model': 'logistics.expense.capture.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'active_id': self.id, 'default_file_id': self.id},
+        }
 
     def _billed_service_lines(self, kind):
         """The service lines of this kind standing on a live invoice.

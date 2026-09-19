@@ -37,6 +37,10 @@
                                  help="Where the customs service fee keyed from the declaration is credited. Also a subdivision of 706, kept apart from the commission so the two revenue streams are reportable.">
                             <field name="clearance_service_fee_account_id"/>
                         </setting>
+                        <setting string="Credit note title"
+                                 help="Printed where the invoice says 'Facture doit N°'. A credit note is the same document as the invoice; this is one of the three things that differ on it.">
+                            <field name="clearance_credit_note_title"/>
+                        </setting>
                         <setting string="Frais de Dossier Income Account (706x)"
                                  help="Where the file-opening fee is credited. The third revenue line beside the commission and the customs fee, kept on its own account so all three are reportable apart.">
                             <field name="clearance_file_fee_account_id"/>
@@ -45,10 +49,6 @@
                                  help="Used for advance justification entries.">
                             <field name="clearance_misc_journal_id"/>
                         </setting>
-                        <setting string="Client Advance Journal"
-                                 help="Proposed when a client advance is recorded against a file - the till or the account the money usually arrives in. Whoever records it can choose another.">
-                            <field name="clearance_advance_receipt_journal_id"/>
-                        </setting>
                         <setting string="Sales Journal"
                                  help="Journal the client clearance invoice is raised in. Empty = the company's first sales journal.">
                             <field name="clearance_sale_journal_id"/>
@@ -56,15 +56,16 @@
                     </block>
 
                     <block title="Billing">
-                        <setting string="Cancellations are negated, not swapped"
-                                 help="A cancellation or credit note books the original
-                                       entry again in the SAME columns with a minus sign,
-                                       rather than debiting what was credited. The balances
-                                       are identical either way; what changes is that the
-                                       revenue account's turnover is not inflated by a
-                                       billing that was withdrawn. Odoo calls this storno
-                                       accounting, and it applies to every credit note the
-                                       company issues, not only clearance ones.">
+                        <setting string="Cancellations are negated instead of swapped"
+                                 help="OFF, which is the owner's instruction of 19/09/2026:
+                                       a credit note debits what the invoice credited - debit
+                                       sales, credit receivables. ON: the same entry is booked
+                                       again in the SAME columns with a minus sign, which is
+                                       Odoo's storno accounting. The balances are identical
+                                       either way; what changes is whether the revenue
+                                       account's turnover carries both movements. It applies
+                                       to every credit note the company issues, not only
+                                       clearance ones.">
                             <field name="account_storno"/>
                         </setting>
                         <setting string="Undisclosed File Numbering"

@@ -7,7 +7,8 @@ class TestExpenseDialogTour(HttpCase):
 
     Drives static/tests/tours/expense_dialog_tour.js as an Operations
     agent: open the dialog from the file, type the amount, pick the
-    vendor, drop a receipt on the dialog, save. Then checks what reached
+    vendor, drop a receipt on the dialog, press Submit - one press, which
+    keys it AND submits it (owner 19/09/2026). Then checks what reached
     the database. Needs Chromium on the machine running the suite; CI
     installs it and refuses a run in which this test was skipped.
     """
@@ -48,7 +49,8 @@ class TestExpenseDialogTour(HttpCase):
         self.assertEqual(expense.category_id, category)
         self.assertEqual(expense.vendor_id, vendor,
                          "the vendor was picked in the dialog")
-        self.assertEqual(expense.state, 'draft')
+        self.assertEqual(expense.state, 'submitted',
+                         "one press keys it and submits it")
         self.assertEqual(expense.unit_label, "Par dossier")
         receipts = env['ir.attachment'].search([
             ('res_model', '=', 'logistics.expense'),

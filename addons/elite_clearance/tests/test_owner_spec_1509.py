@@ -1,7 +1,7 @@
-"""Owner spec 15/09/2026, four instructions.
+"""Owner spec 15/09/2026, and its correction of the 19th.
 
-Frais de dossier as a third revenue line; client advances recorded as
-real receipts against the client's account and shown on the invoice;
+Frais de dossier as a third revenue line; client advances recorded in
+Accounting against the client's own account and surfaced at billing;
 undisclosed client accounts numbered from their own series; and expense
 categories that can never be justified, so an advance for one of them
 holds nothing up.
@@ -159,62 +159,95 @@ class TestOwnerSpec1509(TransactionCase):
                          "already charged, so not proposed again")
 
     # =================================================================
-    # 2. A client advance, recorded and shown
+    # 2. A client advance, recorded in Accounting and surfaced at billing
     # =================================================================
-    def test_03_a_client_advance_is_a_receipt_on_the_clients_account(self):
-        file = self._file()
-        wizard = self.env['logistics.client.advance.wizard'].with_context(
-            active_id=file.id).create({
-                'amount': 250000, 'journal_id': self.bank.id,
-                'memo': "TRF-0099"})
-        wizard.action_record_advance()
+    def _advance_in_the_ledger(self, file, amount):
+        """Money in, the way Accounting records it (owner 19/09/2026):
+        bank debited, the client's own account credited, both lines
+        carrying the file's analytic. Nothing at billing does this."""
+        analytic = {str(file.analytic_account_id.id): 100}
+        move = self.env['account.move'].create({
+            'move_type': 'entry',
+            'journal_id': self.bank.id,
+            'line_ids': [
+                (0, 0, {'account_id': self.bank.default_account_id.id,
+                        'partner_id': file.partner_id.id,
+                        'debit': amount, 'credit': 0.0,
+                        'analytic_distribution': analytic}),
+                (0, 0, {'account_id':
+                        file.partner_id.property_account_receivable_id.id,
+                        'partner_id': file.partner_id.id,
+                        'debit': 0.0, 'credit': amount,
+                        'analytic_distribution': analytic}),
+            ],
+        })
+        move.action_post()
+        return move
 
-        payment = file.client_advance_ids
-        self.assertEqual(len(payment), 1)
-        self.assertEqual(payment.partner_id, self.client)
-        self.assertEqual(payment.amount, 250000)
-        self.assertEqual(payment.move_id.state, 'posted')
-        self.assertEqual(payment.logistics_file_id, file,
-                         "the receipt belongs to the file")
-        self.assertEqual(file.client_advance_total, 250000)
-        # every line of it carries the file, like everything else it touches
-        analytic = str(file.analytic_account_id.id)
-        for line in payment.move_id.line_ids:
-            self.assertIn(analytic, line.analytic_distribution or {})
+    def test_03_an_advance_posted_in_accounting_shows_up_at_billing(self):
+        file = self._file()
+        self._disburse(file)
+        self.assertEqual(file._client_advances_in_the_ledger(), 0)
+        self._advance_in_the_ledger(file, 250000)
+        self.assertEqual(file._client_advances_in_the_ledger(), 250000)
+        file.action_close_operations()
+        wizard = self._wizard(file)
+        self.assertEqual(wizard.advance_other_amount, 250000,
+                         "it appears by itself under other advances")
 
     def test_04_the_advance_comes_off_the_invoice(self):
         file = self._file()
         self._disburse(file)
-        self.env['logistics.client.advance.wizard'].with_context(
-            active_id=file.id).create({
-                'amount': 50000, 'journal_id': self.bank.id
-            }).action_record_advance()
+        self._advance_in_the_ledger(file, 50000)
         file.action_close_operations()
         self._wizard(file).action_create_invoice()
         invoice = file.invoice_id
-
-        advances = invoice._clearance_advances()
-        self.assertEqual(len(advances), 4)
-        self.assertEqual(advances[3], 50000, "the receipts are the fourth row")
-        self.assertEqual(invoice._clearance_advance_total(), 50000)
-        self.assertEqual(file.invoice_balance_due,
-                         invoice.amount_total - 50000)
+        self.assertEqual(file.advance_other_amount, 50000,
+                         "recorded on the file when it was billed")
+        self.assertEqual(invoice._clearance_advances()[2], 50000)
         html = self.env['ir.actions.report']._render_qweb_html(
             'elite_clearance.report_clearance_invoice', invoice.ids)[0]
         html = html.decode() if isinstance(html, bytes) else html
-        self.assertIn("AVANCES ENCAISS", html)
+        self.assertIn("AUTRES AVANCES", html)
         self.assertIn(invoice._clearance_money(50000), html)
 
-    def test_05_an_invoice_with_no_advance_reads_as_it_always_did(self):
+    def test_05_an_invoice_of_ours_is_never_read_as_an_advance(self):
+        """An invoice debits the receivable and a credit note credits it.
+        Without excluding both, every credit note would read as money the
+        client had put up."""
         file = self._file()
         self._disburse(file)
         file.action_close_operations()
         self._wizard(file).action_create_invoice()
-        html = self.env['ir.actions.report']._render_qweb_html(
-            'elite_clearance.report_clearance_invoice',
-            file.invoice_id.ids)[0]
-        html = html.decode() if isinstance(html, bytes) else html
-        self.assertNotIn("AVANCES ENCAISS", html)
+        file.invoice_id.action_post()
+        self.assertEqual(file._client_advances_in_the_ledger(), 0)
+        wizard = self.env['logistics.invoice.credit.wizard'].with_context(
+            active_id=file.invoice_id.id).create({'reason': "Re-agreed."})
+        for line in wizard.line_ids:
+            line.selected = True
+        wizard.action_create_credit_note()
+        self.assertEqual(file._client_advances_in_the_ledger(), 0,
+                         "a credit note is not an advance")
+
+    def test_05b_the_customs_fee_is_replicated_as_the_advance_on_it(self):
+        """Owner 19/09/2026: what is charged as Honoraires Agréés en
+        Douane is what the client advanced for it, VAT included."""
+        tax = self.env['account.tax'].create({
+            'name': "TVA 19.25 (1509)", 'amount': 19.25,
+            'amount_type': 'percent', 'type_tax_use': 'sale'})
+        self.env.company.clearance_service_tax_ids = [(6, 0, tax.ids)]
+        file = self._file()
+        self._disburse(file)
+        file.action_close_operations()
+        wizard = self._wizard(file)
+        wizard.customs_fee_amount = 200000
+        self.assertEqual(wizard.advance_had_amount, 200000)
+        self.assertEqual(wizard.advance_had_vat_amount, 38500)
+        wizard.action_create_invoice()
+        self.assertEqual(file.advance_had_amount, 200000)
+        self.assertEqual(file.advance_had_vat_amount, 38500)
+        invoice = file.invoice_id
+        self.assertEqual(invoice._clearance_advances()[:2], (200000, 38500))
 
     # =================================================================
     # 3. Undisclosed accounts take their own numbering

@@ -592,20 +592,44 @@ class TestBillingWizard(TransactionCase):
         self.assertFalse(self.file.invoice_id)
         self.assertFalse(self.file.debours_invoice_id)
 
+    def _advance_in_the_ledger(self, amount):
+        """Money in, the way Accounting records it (owner 19/09/2026):
+        bank debited, the client's own account credited, both lines
+        carrying the file's analytic."""
+        analytic = {str(self.file.analytic_account_id.id): 100}
+        move = self.env['account.move'].create({
+            'move_type': 'entry',
+            'journal_id': self.cash.id,
+            'line_ids': [
+                (0, 0, {'account_id': self.cash.default_account_id.id,
+                        'partner_id': self.client.id,
+                        'debit': amount, 'credit': 0.0,
+                        'analytic_distribution': analytic}),
+                (0, 0, {'account_id':
+                        self.client.property_account_receivable_id.id,
+                        'partner_id': self.client.id,
+                        'debit': 0.0, 'credit': amount,
+                        'analytic_distribution': analytic}),
+            ],
+        })
+        move.action_post()
+        return move
+
     def test_33_each_document_of_a_split_bill_deducts_its_own_advances(self):
         """An advance on the HAD/DAU is an advance on the services; other
         advances are funds put up for the disbursements. The file's
         balance due still nets everything."""
+        self._advance_in_the_ledger(20000)
         wizard = self._wizard()
         wizard.split_invoices = True
-        wizard.advance_had_amount = 5000
-        wizard.advance_other_amount = 20000
+        wizard.customs_fee_amount = 5000        # replicated as the advance
+        self.assertEqual(wizard.advance_had_amount, 5000)
+        self.assertEqual(wizard.advance_other_amount, 20000,
+                         "read out of the ledger, not typed")
         wizard.action_create_invoice()
         debours, services = self.file.debours_invoice_id, self.file.invoice_id
-        self.assertEqual(debours._clearance_advances(),
-                         (None, None, 20000, None))
-        self.assertEqual(services._clearance_advances(),
-                         (5000, 0.0, None, None))
+        self.assertEqual(debours._clearance_advances(), (None, None, 20000))
+        self.assertEqual(services._clearance_advances(), (5000, 0.0, None))
         self.assertEqual(debours._clearance_advance_total(), 20000)
         self.assertEqual(services._clearance_advance_total(), 5000)
         self.assertFalse(debours._clearance_prints_vat())

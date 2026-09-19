@@ -383,6 +383,50 @@ Customs clearance job files for a logistics/clearance services provider.
      own. The systray itself has a tour
      (`test_task_systray_tour`), because a systray component that throws
      takes the top of everybody's screen with it.
+- **Owner spec 19/09/2026, and two reversals of earlier instructions.**
+  1. **A credit note is SWAPPED again, not negated.** The owner read the
+     14/09 storno presentation and said they meant the words: debit
+     sales, credit receivables. So `account_storno` goes back OFF -
+     `_clearance_ensure_storno()` is deleted, the hook no longer asks for
+     it, and `migrations/19.0.35.0.0` turns it off for every company
+     except one trading in a `STORNO_MANDATORY_COUNTRIES` country. The
+     checkbox stays in Settings, reworded, because the owner has now
+     changed their mind about this twice. Entries already posted keep the
+     form they were posted in.
+  2. **The credit note prints OUR document.** `_get_name_invoice_report`
+     takes `out_refund` too, and the template differs in exactly three
+     places: the title (`res.company.clearance_credit_note_title`,
+     "Avoir N°"), a line naming the invoice it reverses, and the reason.
+     `_clearance_advances()` returns `(None, None, None)` on a refund -
+     deducting the advance again on the document that reverses the
+     invoice would say the client is owed money they were never charged -
+     and the last total reads TOTAL AVOIR instead of RESTE.
+  3. **Disbursements are keyed in a WIZARD now**
+     (`logistics.expense.capture.wizard`), opened by "Add a Disbursement"
+     on the file, with **Submit** and **Submit & Add New** in the footer.
+     The o2m list is `create="0"`. Why a wizard: a row keyed in an x2many
+     dialog HAS NO DATABASE ID until the parent form is saved - Odoo's
+     `X2ManyFieldDialog.save()` commits it to the parent's list in memory
+     - so a `type="object"` footer button there has nothing to act on.
+     (The dialog DOES honour an arch `<footer>`, and
+     `beforeExecuteActionButton` saves first; it is the missing id that
+     rules it out, not the footer.) Documents dropped on the wizard are
+     re-pointed at the expense in `_capture()` through the mixin's own
+     inverse.
+  4. **Advances are not captured at billing at all.** Accounting books
+     them - debit bank, credit the client's account, tagged with the
+     file's analytic - and `_client_advances_in_the_ledger()` reads them
+     back: posted `move_type = 'entry'` lines crediting an
+     `asset_receivable` account carrying that analytic. Invoices and
+     credit notes are excluded BY MOVE TYPE, because a credit note
+     credits the receivable too and would otherwise read as an advance.
+     The billing screen's three advance boxes are all computed and
+     readonly now: "other advances" from that query, and the HAD advance
+     and its VAT REPLICATED from the customs fee being billed (the client
+     advances the fee, so the invoice charges it and deducts it).
+     `_persist()` still writes all three to the file, which is what the
+     printed document reads. The `logistics.client.advance.wizard` built
+     on 15/09 and the `account.payment.logistics_file_id` link are gone.
 - **Owner spec 08/09/2026, seven instructions.**
   1. Turnaround targets are **hours** and fractional - 30 minutes is 0.5.
      `clearance.turnaround.target.target_hours` (Float), `is_late` compares

@@ -73,9 +73,14 @@
                  style="max-height:70px;" alt="Logo"/>
           </td>
           <td style="text-align:right; vertical-align:top;">
-            <div><span t-esc="company.clearance_invoice_title or 'Facture doit N°'"/></div>
+            <div><span t-esc="o._clearance_document_title()"/></div>
             <h2><span t-field="o.name"/></h2>
             <div><span t-field="o.invoice_date"/></div>
+            <!-- the one thing that differs: which invoice it reverses -->
+            <div t-if="o._clearance_is_credit_note() and o.reversed_entry_id"
+                 style="font-style:italic;">
+              Avoir sur facture <span t-field="o.reversed_entry_id.name"/>
+            </div>
           </td>
         </tr>
       </table>
@@ -241,7 +246,7 @@
       <!-- totals, and what the client has already advanced -->
       <!-- A split bill deducts only its own side's advances and, on the
            disbursements invoice, prints no VAT row: there is none. -->
-      <t t-set="adv" t-value="o._clearance_advances() if file else (None, None, None, None)"/>
+      <t t-set="adv" t-value="o._clearance_advances() if file else (None, None, None)"/>
       <t t-set="advances" t-value="o._clearance_advance_total() if file else 0.0"/>
       <t t-set="due" t-value="o.amount_total - advances"/>
       <table style="margin-bottom:8px;">
@@ -273,12 +278,8 @@
                 <td>AUTRES AVANCES</td>
                 <td class="num"><span t-esc="o._clearance_money(adv[2])"/> <span t-field="cur.name"/></td>
               </tr>
-              <tr t-if="file and adv[3] is not None">
-                <td>AVANCES ENCAISSÉES</td>
-                <td class="num"><span t-esc="o._clearance_money(adv[3])"/> <span t-field="cur.name"/></td>
-              </tr>
               <tr t-if="file">
-                <td>RESTE</td>
+                <td><span t-if="o._clearance_is_credit_note()">TOTAL AVOIR</span><span t-else="">RESTE</span></td>
                 <td class="num"><span t-esc="o._clearance_money(due)"/> <span t-field="cur.name"/></td>
               </tr>
             </table>
@@ -287,7 +288,12 @@
       </table>
 
       <p style="font-style:italic; margin-bottom:2px;">
-        Arrêté la présente facture au montant de :
+        <span t-if="o._clearance_is_credit_note()">Arrêté le présent avoir au montant de :</span>
+        <span t-else="">Arrêté la présente facture au montant de :</span>
+      </p>
+      <p t-if="o.clearance_credit_reason" style="margin-bottom:8px;">
+        <span style="font-style:italic;">Motif :</span>
+        <span t-field="o.clearance_credit_reason"/>
       </p>
       <p style="margin-bottom:14px;">
         <span t-esc="o._clearance_amount_in_words(due if file else o.amount_total)"/>

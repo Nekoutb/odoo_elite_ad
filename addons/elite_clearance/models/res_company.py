@@ -130,11 +130,11 @@ class ResCompany(models.Model):
     # whole company rather than per service type, because the owner sets
     # them up once and they carry on from a number already in use
     # (owner spec 15/09/2026).
-    clearance_advance_receipt_journal_id = fields.Many2one(
-        'account.journal', string="Client Advance Journal",
-        domain="[('type', 'in', ('bank', 'cash'))]",
-        help="Proposed when a client advance is recorded against a file. "
-             "The person recording it can choose another.")
+    clearance_credit_note_title = fields.Char(
+        string="Credit note title", default="Avoir N°",
+        help="Printed where the invoice says 'Facture doit N°'. The credit "
+             "note is the same document as the invoice; this is one of the "
+             "three things that differ on it.")
     clearance_undisclosed_file_sequence_id = fields.Many2one(
         'ir.sequence', string="Undisclosed File Numbering",
         help="Where a file's reference comes from when its client is an "

@@ -147,16 +147,11 @@ class TestInvoiceReversal(TransactionCase):
         self.assertEqual(credit.logistics_file_id, self.file)
         self.assertEqual(credit.amount_total, 60000)
         self.assertTrue(credit.name.startswith("AV"), credit.name)
-        # the general ledger: what the invoice credited, the note
-        # credits again with a minus sign
-        self.assertEqual(
-            sum(credit.line_ids.filtered(
-                lambda l: l.account_id == self.engaged).mapped('credit')),
-            -60000)
+        # the general ledger: what the invoice credited, the note debits
         self.assertEqual(
             sum(credit.line_ids.filtered(
                 lambda l: l.account_id == self.engaged).mapped('debit')),
-            0, "it stays on the side the invoice put it")
+            60000)
         self.assertEqual(
             sum(invoice.line_ids.filtered(
                 lambda l: l.account_id == self.engaged).mapped('credit')),
@@ -212,11 +207,11 @@ class TestInvoiceReversal(TransactionCase):
     # =================================================================
     # 3. cancelling: the same entry, the other way round
     # =================================================================
-    def test_05_cancelling_a_posted_invoice_books_the_negated_entry(self):
-        """The same entry again in the SAME columns, with a minus sign -
-        not debiting what was credited (owner 13/09/2026)."""
-        self.assertTrue(self.env.company.account_storno,
-                        "storno accounting is what negates a reversal")
+    def test_05_cancelling_a_posted_invoice_books_the_mirror_entry(self):
+        """The same entry the other way round: debit what was credited
+        (owner 19/09/2026, replacing the storno reading of the 14th)."""
+        self.assertFalse(self.env.company.account_storno,
+                         "a reversal is swapped, not negated")
         invoice = self._bill()
         invoice.action_post()
         before = {
@@ -232,20 +227,19 @@ class TestInvoiceReversal(TransactionCase):
         self.assertTrue(credit)
         self.assertEqual(credit.state, 'posted')
         after = {
-            (line.account_id.id, -line.debit, -line.credit)
+            (line.account_id.id, line.credit, line.debit)
             for line in credit.line_ids if line.account_id}
         self.assertEqual(before, after,
-                         "every line again, same column, negated")
-        # read the other way round: the revenue stays a credit, in red,
-        # and the customer stays a debit, in red
+                         "every line again, debit for credit, same amounts")
+        # read the other way round: sales is debited, the customer credited
         revenue = credit.line_ids.filtered(
             lambda line: line.account_id == self.commission)
-        self.assertEqual(revenue.debit, 0)
-        self.assertLess(revenue.credit, 0, "negated, not moved to the debit")
+        self.assertGreater(revenue.debit, 0, "debit sales")
+        self.assertEqual(revenue.credit, 0)
         receivable = credit.line_ids.filtered(
             lambda line: line.display_type == 'payment_term')
-        self.assertEqual(receivable.credit, 0)
-        self.assertLess(receivable.debit, 0)
+        self.assertGreater(receivable.credit, 0, "credit receivables")
+        self.assertEqual(receivable.debit, 0)
         # the balances are what they always were, whichever column shows
         self.assertEqual(sum(credit.line_ids.mapped('balance')), 0)
         self.assertEqual(
@@ -369,39 +363,31 @@ class TestInvoiceReversal(TransactionCase):
         self.assertEqual(self.file.invoice_balance_due, total - 60000,
                          "a credit note reduces what the client owes")
 
-    def test_14_a_cancellation_is_negated_even_when_the_switch_was_off(self):
-        """The switch is a stored compute over the fiscal country, so
-        loading a chart of accounts turns it off by itself. A reversal
-        asserts it rather than trusting it."""
-        self.env.company.account_storno = False
-        invoice = self._bill()
-        invoice.action_post()
-        self.env['logistics.invoice.cancel.wizard'].create({
-            'invoice_id': invoice.id,
-            'reason': "Cancelled after the chart was loaded."
-        }).action_cancel_invoice()
-        self.assertTrue(self.env.company.account_storno,
-                        "put back where the owner set it")
-        credit = self.env['account.move'].search(
-            [('reversed_entry_id', '=', invoice.id)], limit=1)
-        revenue = credit.line_ids.filtered(
-            lambda line: line.account_id == self.commission)
-        self.assertEqual(revenue.debit, 0)
-        self.assertLess(revenue.credit, 0, "negated, not moved to the debit")
-        receivable = credit.line_ids.filtered(
-            lambda line: line.display_type == 'payment_term')
-        self.assertLess(receivable.debit, 0,
-                        "the line Odoo generates is negated too")
-
     # =================================================================
     # the printed document
     # =================================================================
-    def test_13_a_credit_note_prints_odoos_own_document(self):
+    def test_13_a_credit_note_prints_the_same_document_as_the_invoice(self):
+        """Owner 19/09/2026: same template, same structure - what differs
+        is that it says it is a credit note."""
         invoice = self._bill()
         invoice.action_post()
         credit = self._credit(invoice, lambda line: line.amount == 60000)
         self.assertEqual(invoice._get_name_invoice_report(),
                          'elite_clearance.report_clearance_invoice_document')
         self.assertEqual(credit._get_name_invoice_report(),
-                         'account.report_invoice_document',
-                         "the clearance document is an invoice, not a credit note")
+                         'elite_clearance.report_clearance_invoice_document')
+        self.assertFalse(invoice._clearance_is_credit_note())
+        self.assertTrue(credit._clearance_is_credit_note())
+
+        html = self.env['ir.actions.report']._render_qweb_html(
+            'elite_clearance.report_clearance_invoice', credit.ids)[0]
+        html = html.decode() if isinstance(html, bytes) else html
+        # the three things that differ, and nothing else
+        self.assertIn("Avoir", html)
+        self.assertIn(invoice.name, html, "it names the invoice it reverses")
+        self.assertIn("TOTAL AVOIR", html)
+        self.assertIn("Wrong figure agreed with the client.", html)
+        self.assertNotIn("RESTE", html)
+        # and it is the clearance document, not Odoo's
+        self.assertIn("Debours", html)
+        self.assertIn(credit._clearance_money(60000), html)
