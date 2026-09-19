@@ -99,11 +99,8 @@ registry.category("web_tour.tours").add("elite_clearance_expense_dialog", {
         },
         {
             content: "It is on the file, already submitted",
-            trigger: ".o_field_widget[name='expense_ids'] .o_data_row:contains('Terminal handling')",
-        },
-        {
-            content: "and the file needed no saving of its own",
-            trigger: ".o_form_view:not(:has(.o_form_button_save:enabled))",
+            trigger:
+                ".o_field_widget[name='expense_ids'] .o_data_row:contains('Terminal handling'):contains('Submitted')",
         },
     ],
 });

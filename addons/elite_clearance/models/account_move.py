@@ -1,6 +1,12 @@
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
+try:
+    from odoo.addons.account.models.company import STORNO_MANDATORY_COUNTRIES
+except ImportError:  # pragma: no cover - Odoo moved it
+    STORNO_MANDATORY_COUNTRIES = frozenset({
+        'BA', 'CN', 'CZ', 'HR', 'PL', 'RO', 'RS', 'RU', 'SI', 'SK', 'UA'})
+
 
 class AccountMove(models.Model):
     _inherit = 'account.move'
@@ -383,6 +389,32 @@ class AccountMove(models.Model):
             'clearance_adjustment': 0.0,
         }
 
+    def _clearance_ensure_swapped(self):
+        """A reversal debits what the invoice credited - assert it here.
+
+        What decides between the two presentations is one company switch,
+        `account_storno`, and it is a stored compute over the fiscal
+        country that a chart-of-accounts load flips by itself. The owner
+        has settled this twice in the other direction and once back
+        (13/09 swapped, 14/09 negated, 19/09 swapped), so it is asserted
+        at the moment a reversal is raised rather than trusted to have
+        stayed where a migration put it, and said out loud in the chatter
+        on the one occasion it has to act.
+
+        A company trading where storno is mandatory is never touched.
+        """
+        self.ensure_one()
+        company = self.company_id
+        if not company.account_storno:
+            return
+        if company.account_fiscal_country_id.code in STORNO_MANDATORY_COUNTRIES:
+            return
+        company.sudo().account_storno = False
+        self.message_post(body=self.env._(
+            "Storno accounting was switched off for %s, so this reversal "
+            "debits what the invoice credited instead of booking the same "
+            "columns again with a minus sign.", company.display_name))
+
     def _clearance_raise_credit_note(self, lines, reason):
         """Raise the reversing entry for `lines`, post it, and match it off.
 
@@ -413,6 +445,7 @@ class AccountMove(models.Model):
         if not lines:
             raise UserError(self.env._(
                 "Choose at least one line to credit on %s.", self.name))
+        self._clearance_ensure_swapped()
         commands = []
         for line in lines:
             commands.append(fields.Command.create(

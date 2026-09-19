@@ -634,8 +634,10 @@ class TestBillingWizard(TransactionCase):
         self.assertEqual(services._clearance_advance_total(), 5000)
         self.assertFalse(debours._clearance_prints_vat())
         self.assertTrue(services._clearance_prints_vat())
+        # 100 000 recharged + 2 000 commission + 5 000 HAD, less the
+        # 5 000 advanced against that HAD and the 20 000 in the ledger
         self.assertEqual(self.file.invoice_balance_due,
-                         100000 + 32000 - 25000)
+                         100000 + 7000 - 25000)
         action = self.file.action_preview_invoice()
         self.assertEqual(sorted(action['context']['active_ids']),
                          sorted((debours | services).ids),

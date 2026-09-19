@@ -357,10 +357,15 @@ class TestInvoiceReversal(TransactionCase):
     def test_12_balance_due_is_over_every_document(self):
         invoice = self._bill()
         invoice.action_post()
+        # the 30 000 customs fee is charged and advanced in the same
+        # breath, so it is off the balance from the start
+        advanced = self.file.advance_had_amount
+        self.assertEqual(advanced, 30000)
         total = invoice.amount_total
-        self.assertEqual(self.file.invoice_balance_due, total)
+        self.assertEqual(self.file.invoice_balance_due, total - advanced)
         self._credit(invoice, lambda line: line.amount == 60000)
-        self.assertEqual(self.file.invoice_balance_due, total - 60000,
+        self.assertEqual(self.file.invoice_balance_due,
+                         total - advanced - 60000,
                          "a credit note reduces what the client owes")
 
     # =================================================================

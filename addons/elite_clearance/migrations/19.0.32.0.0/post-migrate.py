@@ -87,18 +87,9 @@ def migrate(cr, version):
         "billed them, %s left unlinked and so billable again, %s service "
         "line(s) classified.", linked, unmatched, len(services))
 
-    _storno(env)
-
-
-def _storno(env):
-    """Cancellations are negated, not swapped (owner spec 13/09/2026).
-
-    Odoo switches storno accounting on by itself only for the countries
-    that mandate it, and Cameroon is not one of them - so it is asked for
-    here, for every company that carries clearance work. Entries already
-    posted keep the form they were posted in; this decides the ones still
-    to come.
-    """
-    for company in env['res.company'].sudo().search([]):
-        if not company.account_storno:
-            company.account_storno = True
+# This script used to switch storno accounting ON here, for the owner's
+# instruction of 13/09/2026 that a cancellation is negated rather than
+# swapped. That instruction was withdrawn on the 19th, and 19.0.35.0.0
+# switches it off again - so an upgrade that crosses both versions had
+# two migrations arguing about one flag. The first one has stopped
+# arguing.

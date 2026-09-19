@@ -204,10 +204,15 @@ class TestInvoiceEndToEnd(TransactionCase):
                          DEBOURS_TOTAL + HAD + OPENING_FEE)
         self.assertAlmostEqual(invoice.amount_tax,
                                (HAD + OPENING_FEE) * 0.1925, places=2)
-        # the client already advanced the customs fee and its VAT
+        # the client already advanced the customs fee and its VAT, and
+        # both follow the fee itself now rather than being typed
+        self.assertEqual(file.advance_had_amount, HAD)
+        self.assertAlmostEqual(file.advance_had_vat_amount,
+                               HAD * 0.1925, places=2)
         self.assertAlmostEqual(
             file.invoice_balance_due,
-            invoice.amount_total - HAD - 49467, places=2)
+            invoice.amount_total - HAD - file.advance_had_vat_amount,
+            places=2)
 
     def test_04_the_file_took_four_days_to_close(self):
         file = self._four_day_transaction()

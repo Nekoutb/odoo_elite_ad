@@ -339,8 +339,7 @@ class TestManualScreenshots(HttpCase):
                  scroll=".o_field_widget[name='expense_ids']")
             shot("08_expense_dialog", form % self.file_work.id,
                  wait=".o_form_view",
-                 clicks=[".o_field_widget[name='expense_ids'] "
-                         ".o_field_x2many_list_row_add a"])
+                 clicks=["button[name='action_add_expense']"])
 
             # 6  approving it, and paying it
             shot("09_expense_submitted", "/odoo/action-%d/%d"
