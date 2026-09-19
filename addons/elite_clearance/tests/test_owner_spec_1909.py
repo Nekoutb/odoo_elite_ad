@@ -117,8 +117,10 @@ class TestOwnerSpec1909(TransactionCase):
         with self.assertRaises(UserError,
                                msg="the spending team does not name it"):
             expense.with_user(self.agent).vendor_id = self.vendor.id
-        # back to the test user, who may approve; the agent may not
-        expense = expense.sudo()
+        # Back to the test's own user, who may approve. sudo() would not
+        # do it: it sets superuser MODE and leaves env.user alone, and
+        # the approver check reads env.user.
+        expense = self.env['logistics.expense'].browse(expense.id)
         expense.action_submit()
         expense.action_approve()
         expense.with_user(self.finance).write({
