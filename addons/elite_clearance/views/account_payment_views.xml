@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- A customer receipt is money on account until somebody says which
+         job it belongs to. The banner asks; the button shows the files. -->
+    <record id="view_account_payment_form_clearance" model="ir.ui.view">
+        <field name="name">account.payment.form.inherit.clearance</field>
+        <field name="model">account.payment</field>
+        <field name="inherit_id" ref="account.view_account_payment_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_clearance_attribute" type="object"
+                        string="Clearance File" class="btn-secondary"
+                        groups="elite_clearance.group_clearance_user"
+                        invisible="payment_type != 'inbound'
+                                   or partner_type != 'customer'
+                                   or state in ('draft', 'canceled', 'rejected')"/>
+            </xpath>
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-info mb-0" role="alert"
+                     groups="elite_clearance.group_clearance_user"
+                     invisible="not clearance_needs_attribution">
+                    This receipt is not against a clearance file yet, so it is money on
+                    account and no file's invoice deducts it. Press <b>Clearance File</b>
+                    above to see this customer's open files and pick one.
+                </div>
+            </xpath>
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="clearance_needs_attribution" invisible="1"/>
+                <field name="logistics_file_id" readonly="1"
+                       groups="elite_clearance.group_clearance_user"
+                       invisible="not logistics_file_id"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

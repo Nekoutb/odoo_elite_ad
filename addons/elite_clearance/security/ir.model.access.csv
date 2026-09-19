@@ -30,3 +30,4 @@ access_invoice_credit_wizard_billing,logistics.invoice.credit.wizard.billing,mod
 access_invoice_credit_wizard_line_billing,logistics.invoice.credit.wizard.line.billing,model_logistics_invoice_credit_wizard_line,group_clearance_billing,1,1,1,1
 access_invoice_cancel_wizard_billing,logistics.invoice.cancel.wizard.billing,model_logistics_invoice_cancel_wizard,group_clearance_billing,1,1,1,1
 access_expense_capture_wizard_user,logistics.expense.capture.wizard.user,model_logistics_expense_capture_wizard,group_clearance_user,1,1,1,1
+access_payment_attribution_wizard_user,logistics.payment.attribution.wizard.user,model_logistics_payment_attribution_wizard,group_clearance_user,1,1,1,1

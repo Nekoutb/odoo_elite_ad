@@ -2,8 +2,8 @@ import { registry } from "@web/core/registry";
 
 /**
  * The expense capture dialog, driven the way an Operations agent drives it:
- * open it from the file, pick the category, type the amount, name the
- * vendor, drop a receipt anywhere on the dialog, press Submit. ONE press
+ * open it from the file, pick the category, type the amount, drop a
+ * receipt anywhere on the dialog, press Submit. ONE press
  * (owner 19/09/2026): no saving the dialog, then the file, then finding
  * the row again to submit it. Run by tests/test_expense_dialog_tour.py in
  * a real Chromium, because a widget's drop zone and a wizard's save path
@@ -53,18 +53,9 @@ registry.category("web_tour.tours").add("elite_clearance_expense_dialog", {
             run: "edit 25000",
         },
         {
-            content: "The vendor is picked in the dialog",
-            trigger: ".modal .o_field_widget[name='vendor_id'] input",
-            run: "edit Douala Terminal Tour",
-        },
-        {
+            content: "Neither the unit nor the third party is asked for here",
             trigger:
-                ".modal .o_field_widget[name='vendor_id'] .o-autocomplete--dropdown-menu li:contains('Douala Terminal Tour') a",
-            run: "click",
-        },
-        {
-            content: "The unit is not asked for",
-            trigger: ".modal .o_form_view:not(:has(.o_field_widget[name='unit_label']))",
+                ".modal .o_form_view:not(:has(.o_field_widget[name='unit_label'])):not(:has(.o_field_widget[name='vendor_id']))",
         },
         {
             content: "Drag a receipt over the dialog",

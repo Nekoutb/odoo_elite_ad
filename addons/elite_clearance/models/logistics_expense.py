@@ -16,7 +16,13 @@ FINANCE_GROUP = 'elite_clearance.group_clearance_finance'
 # not in the list: the team that incurred the cost knows the terminal, the
 # shipping line or the transporter it dealt with, and names it when keying
 # (owner, 06/09/2026). Finance may still correct it at settlement.
-SETTLEMENT_FIELDS = ('payment_mode', 'journal_id', 'employee_id')
+# Who is paid and how - all of it Finance's. `vendor_id` was the
+# spending team's between 06/09 and 19/09/2026, on the reasoning that
+# they know who they handed the money to; the owner has since decided
+# that naming a third party on a payment is a Finance act whoever knew
+# it first, so it is back in this list.
+SETTLEMENT_FIELDS = ('payment_mode', 'journal_id', 'employee_id',
+                     'vendor_id')
 
 # An advance is the holder's debt until the reclassification is POSTED.
 # Submitting the receipts is not being believed, and the Operations
@@ -109,10 +115,11 @@ class LogisticsExpense(models.Model):
         help="How the client is told this was charged - Par dossier, Par "
              "Conteneur, Par tonne. Printed on the invoice.")
     vendor_id = fields.Many2one(
-        'res.partner', string="Paid To (Vendor)", tracking=True,
-        help="The third party ultimately receiving the money — customs, "
-             "terminal, shipping line, transporter. Named by the team that "
-             "keys the expense; Finance may correct it at settlement.")
+        'res.partner', string="Third Party", tracking=True,
+        help="Whoever ultimately receives the money - customs, a "
+             "terminal, a shipping line, a transporter, or a member of "
+             "staff. Named by Finance when the settlement is prepared, "
+             "not by the team that keyed the cost.")
     payment_mode = fields.Selection(
         [('cash', "Cash"),
          ('electronic', "Electronic (bank / mobile money)"),
@@ -398,8 +405,8 @@ class LogisticsExpense(models.Model):
                    if f in vals and self._settlement_value_changes(f, vals[f])]
         if touched and not self.env.user.has_group(FINANCE_GROUP):
             raise UserError(self.env._(
-                "How an expense is paid is decided by Finance, not by the "
-                "team submitting it. Leave %s blank.",
+                "Who is paid, and how, is decided by Finance and not by "
+                "the team submitting the cost. Leave %s blank.",
                 ", ".join(self._fields[f].string for f in touched)))
 
     @api.model_create_multi

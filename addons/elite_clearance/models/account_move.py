@@ -114,7 +114,7 @@ class AccountMove(models.Model):
         account = self.logistics_file_id.analytic_account_id
         return {str(account.id): 100} if account else False
 
-    def _clearance_stamp_analytic(self):
+    def _clearance_stamp_analytic(self, force=False):
         """Tag every line of a clearance move with its file's analytic account.
 
         The owner's rule of 03/09/2026: everything clearance does that
@@ -131,14 +131,16 @@ class AccountMove(models.Model):
         filtered by account type.
 
         Existing distributions are never overwritten: a line that already
-        names an account keeps it.
+        names an account keeps it - unless `force`, which is for a client
+        receipt moved from one file to another, where the whole entry
+        belongs to the new file and the old tag would be a lie.
         """
         for move in self:
             distribution = move._clearance_analytic_distribution()
             if not distribution:
                 continue
             lines = move.line_ids.filtered(
-                lambda line: not line.analytic_distribution
+                lambda line: (force or not line.analytic_distribution)
                 and line.display_type not in ('line_section', 'line_note'))
             if lines:
                 lines.analytic_distribution = distribution

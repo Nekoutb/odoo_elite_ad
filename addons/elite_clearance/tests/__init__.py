@@ -17,3 +17,4 @@ from . import test_invoice_reversal
 from . import test_task_systray_tour
 from . import test_file_stage_and_close
 from . import test_owner_spec_1509
+from . import test_owner_spec_1909

@@ -13,8 +13,6 @@
                         <field name="category_id" options="{'no_create': True}"/>
                         <field name="description"
                                placeholder="What the money was spent on"/>
-                        <field name="vendor_id" placeholder="who is paid, if known"
-                               options="{'no_create': True}"/>
                     </group>
                     <group>
                         <field name="amount"/>
@@ -28,9 +26,9 @@
                 <field name="attachment_ids" widget="clearance_documents"
                        nolabel="1" colspan="2"/>
                 <div class="text-muted mt-2">
-                    Submitting sends it straight for approval. How it gets paid — the
-                    payment mode, the journal or the advance holder — is keyed by Finance
-                    afterwards, on the disbursement's own page.
+                    Submitting sends it straight for approval. Who is paid and how — the
+                    third party, the payment mode, the journal or the advance holder — is
+                    keyed by Finance afterwards, on the disbursement's own page.
                 </div>
                 <footer>
                     <button name="action_submit_close" type="object"

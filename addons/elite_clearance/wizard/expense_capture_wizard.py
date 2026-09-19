@@ -33,10 +33,6 @@ class LogisticsExpenseCaptureWizard(models.TransientModel):
         help="What the money was spent on.")
     amount = fields.Monetary(
         string="Amount", currency_field='currency_id', required=True)
-    vendor_id = fields.Many2one(
-        'res.partner', string="Paid To (Vendor)",
-        help="Who is paid, if it is known. Finance confirms or corrects "
-             "it when the settlement is prepared.")
     date_requested = fields.Date(
         string="Requested On", required=True,
         default=fields.Date.context_today)
@@ -63,7 +59,6 @@ class LogisticsExpenseCaptureWizard(models.TransientModel):
             'category_id': self.category_id.id,
             'description': self.description,
             'amount': self.amount,
-            'vendor_id': self.vendor_id.id or False,
             'date_requested': self.date_requested,
         })
         # The receipts were dropped on the wizard, so they are pointing at

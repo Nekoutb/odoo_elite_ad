@@ -6,8 +6,8 @@ class TestExpenseDialogTour(HttpCase):
     """The expense capture dialog in a real browser.
 
     Drives static/tests/tours/expense_dialog_tour.js as an Operations
-    agent: open the dialog from the file, type the amount, pick the
-    vendor, drop a receipt on the dialog, press Submit - one press, which
+    agent: open the dialog from the file, type the amount, drop a
+    receipt on the dialog, press Submit - one press, which
     keys it AND submits it (owner 19/09/2026). Then checks what reached
     the database. Needs Chromium on the machine running the suite; CI
     installs it and refuses a run in which this test was skipped.
@@ -19,8 +19,6 @@ class TestExpenseDialogTour(HttpCase):
             'name': "Tour Client", 'is_company': True,
             'street': "BP 1234 Douala", 'email': "client@test.cm",
             'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'clearance_invoice_name': "Full Legal Name SARL"})
-        vendor = env['res.partner'].create({
-            'name': "Douala Terminal Tour", 'is_company': True})
         category = env['logistics.expense.category'].create({
             'name': "Tour terminal fees", 'code': "T-TOUR"})
         service = env['logistics.service.type'].create({
@@ -47,8 +45,8 @@ class TestExpenseDialogTour(HttpCase):
         self.assertEqual(expense.description, "Terminal handling")
         self.assertEqual(expense.amount, 25000)
         self.assertEqual(expense.category_id, category)
-        self.assertEqual(expense.vendor_id, vendor,
-                         "the vendor was picked in the dialog")
+        self.assertFalse(expense.vendor_id,
+                         "who is paid is Finance's, keyed at settlement")
         self.assertEqual(expense.state, 'submitted',
                          "one press keys it and submits it")
         self.assertEqual(expense.unit_label, "Par dossier")

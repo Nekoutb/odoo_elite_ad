@@ -138,7 +138,8 @@
               <field name="category_id" readonly="state not in ('draft', 'submitted')"/>
               <field name="description" placeholder="What the money was spent on"
                      readonly="state not in ('draft', 'submitted')"/>
-              <field name="vendor_id" placeholder="who is paid, if known"
+              <field name="vendor_id" placeholder="named by Finance"
+                     groups="elite_clearance.group_clearance_finance"
                      readonly="state not in ('draft', 'submitted') or payment_mode == 'advance' or employee_id"
                      options="{'no_create': True}"/>
             </group>
