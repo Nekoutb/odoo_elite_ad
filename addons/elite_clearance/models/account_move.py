@@ -304,6 +304,20 @@ class AccountMove(models.Model):
             return self.company_id.clearance_credit_note_title or "Avoir N°"
         return self.company_id.clearance_invoice_title or "Facture doit N°"
 
+    def _clearance_designation(self, line):
+        """What the Désignation column prints for one line.
+
+        Every line of a credit note is prefixed (owner 19/09/2026), so
+        that somebody reading a single row - rather than the heading at
+        the top of the page - can see that it reverses a charge and does
+        not make one.
+        """
+        self.ensure_one()
+        name = line.name or ""
+        if self._clearance_is_credit_note():
+            return self.env._("Avoir — %s", name)
+        return name
+
     def _clearance_prints_vat(self):
         """A disbursements-only invoice carries no VAT and shows no VAT
         row; every other clearance invoice shows it, at zero if need be."""

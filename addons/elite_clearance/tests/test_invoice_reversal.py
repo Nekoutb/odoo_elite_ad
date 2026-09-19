@@ -391,6 +391,12 @@ class TestInvoiceReversal(TransactionCase):
         self.assertIn("Avoir", html)
         self.assertIn(invoice.name, html, "it names the invoice it reverses")
         self.assertIn("TOTAL AVOIR", html)
+        # and every line says so too, not only the heading
+        credited = credit.invoice_line_ids.filtered(
+            lambda l: l.display_type == 'product')
+        for line in credited:
+            self.assertIn("Avoir — %s" % line.name, html,
+                          "each designation names itself a credit")
         self.assertIn("Wrong figure agreed with the client.", html)
         self.assertNotIn("RESTE", html)
         # and it is the clearance document, not Odoo's

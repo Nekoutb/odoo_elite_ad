@@ -200,7 +200,7 @@
                says what is being billed, not what it cost us. -->
           <tr t-foreach="debours" t-as="line">
             <td>Debours</td>
-            <td><span t-field="line.name"/></td>
+            <td><span t-esc="o._clearance_designation(line)"/></td>
             <td><span t-field="line.clearance_unit"/></td>
             <td class="ctr"><span t-esc="'{:,.2f}'.format(line.quantity).rstrip('0').rstrip('.').replace(',', ' ')"/></td>
             <td class="num"><span t-esc="o._clearance_money(line.price_subtotal + line.clearance_adjustment)"/></td>
@@ -217,7 +217,7 @@
 
           <tr t-foreach="prestations" t-as="line">
             <td>Prestations</td>
-            <td><span t-field="line.name"/></td>
+            <td><span t-esc="o._clearance_designation(line)"/></td>
             <td><span t-field="line.clearance_unit"/></td>
             <td class="ctr"><span t-esc="'{:,.2f}'.format(line.quantity).rstrip('0').rstrip('.').replace(',', ' ')"/></td>
             <td class="num"><span t-esc="o._clearance_money(line.price_unit)"/></td>
@@ -234,7 +234,7 @@
 
           <tr t-foreach="other" t-as="line">
             <td></td>
-            <td><span t-field="line.name"/></td>
+            <td><span t-esc="o._clearance_designation(line)"/></td>
             <td><span t-field="line.clearance_unit"/></td>
             <td class="ctr"><span t-esc="'{:,.2f}'.format(line.quantity).rstrip('0').rstrip('.').replace(',', ' ')"/></td>
             <td class="num"><span t-esc="o._clearance_money(line.price_unit)"/></td>
