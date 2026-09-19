@@ -37,8 +37,11 @@ class LogisticsPaymentAttributionWizard(models.TransientModel):
         'logistics.file', compute='_compute_candidates',
         string="Open files for this customer")
     candidate_count = fields.Integer(compute='_compute_candidates')
+    # Not `required` on the FIELD: that is a NOT NULL on the transient
+    # table, and the dialog has to exist before anybody has chosen
+    # anything. The view asks for it and action_attribute insists.
     file_id = fields.Many2one(
-        'logistics.file', string="Put it against", required=True,
+        'logistics.file', string="Put it against",
         domain="[('id', 'in', candidate_ids)]")
 
     @api.model
@@ -69,6 +72,9 @@ class LogisticsPaymentAttributionWizard(models.TransientModel):
         self.ensure_one()
         payment = self.payment_id
         file = self.file_id
+        if not file:
+            raise UserError(self.env._(
+                "Choose the file this advance belongs to."))
         if file.partner_id != payment.partner_id:
             raise UserError(self.env._(
                 "%(file)s belongs to %(other)s, and this receipt came from "

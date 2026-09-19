@@ -55,16 +55,15 @@ class TestExpenseDocuments(TransactionCase):
     def test_01_a_receipt_dropped_on_a_new_expense_is_adopted_by_it(self):
         att = self._dropped()
         exp = self.env['logistics.expense'].with_user(self.ops).create(
-            self._vals(vendor_id=self.vendor.id,
-                       attachment_ids=[Command.link(att.id)]))
+            self._vals(attachment_ids=[Command.link(att.id)]))
         self.assertEqual(att.res_model, 'logistics.expense')
         self.assertEqual(att.res_id, exp.id,
                          "the link points the upload at the expense")
         self.assertIn(att, exp.attachment_ids)
         self.assertTrue(exp.date_documents_submitted,
                         "the first document dates its own arrival")
-        self.assertEqual(exp.vendor_id, self.vendor,
-                         "the originator names who is paid")
+        self.assertFalse(exp.vendor_id,
+                         "who is paid is Finance's, keyed at settlement")
         self.assertEqual(exp.unit_label, "Par dossier",
                          "the unit is fixed, not asked for")
         # and the justification count sees it, like a chatter upload

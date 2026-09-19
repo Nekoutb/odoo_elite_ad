@@ -48,7 +48,8 @@
                 </field>
 
                 <group invisible="not candidate_count">
-                    <field name="file_id" options="{'no_create': True}"/>
+                    <field name="file_id" required="1"
+                           options="{'no_create': True}"/>
                 </group>
 
                 <footer>

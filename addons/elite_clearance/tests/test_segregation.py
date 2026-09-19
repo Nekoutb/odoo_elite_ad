@@ -123,26 +123,33 @@ class TestSegregationOfDuties(TransactionCase):
             exp.with_user(self.ops).write({'employee_id': False,
                                            'payment_mode': 'cash'})
 
-    def test_04b_the_originator_names_who_is_paid(self):
-        """Who is paid is the spending team's knowledge; only HOW is
-        Finance's. Owner 06/09/2026: the vendor is picked in the capture
-        dialog."""
+    def test_04b_finance_names_who_is_paid(self):
+        """Owner 19/09/2026, reversing 06/09: naming a third party on a
+        payment is a Finance act, whoever knew it first."""
         vals = self._vals()
         vals['vendor_id'] = self.vendor.id
-        exp = self.env['logistics.expense'].with_user(self.ops).create(vals)
-        self.assertEqual(exp.vendor_id, self.vendor)
-        exp.with_user(self.ops).write({'vendor_id': False})
+        with self.assertRaises(UserError,
+                               msg="the spending team does not name it"):
+            self.env['logistics.expense'].with_user(self.ops).create(vals)
+        exp = self.env['logistics.expense'].with_user(self.ops).create(
+            self._vals())
         self.assertFalse(exp.vendor_id)
+        with self.assertRaises(UserError):
+            exp.with_user(self.ops).write({'vendor_id': self.vendor.id})
+        exp.with_user(self.finance).write({'vendor_id': self.vendor.id})
+        self.assertEqual(exp.vendor_id, self.vendor)
+        self.assertEqual(exp._fields['vendor_id'].string, "Third Party",
+                         "it is as often a member of staff as a supplier")
 
     def test_04c_finance_may_turn_a_vendor_expense_into_an_advance(self):
-        """The originator named a vendor; Finance decides the money goes
+        """Finance named a third party and then decides the money goes
         out as a staff advance after all. The vendor and the holder grey
         each other out on the form, so choosing 'advance' must clear the
         vendor by itself - or Finance is locked between the two."""
         from odoo.tests import Form
-        vals = self._vals()
-        vals['vendor_id'] = self.vendor.id
-        exp = self.env['logistics.expense'].with_user(self.ops).create(vals)
+        exp = self.env['logistics.expense'].with_user(self.ops).create(
+            self._vals())
+        exp.with_user(self.finance).write({'vendor_id': self.vendor.id})
         exp.with_user(self.ops).action_submit()
         exp.with_user(self.cs_manager).action_approve()
         holder = self.env['hr.employee'].create({'name': "Advance Holder S"})
