@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- What Customer Service sends the third party once it has been
+             paid (owner, 01/10/2026). Vendor-facing, so in French. The
+             payment evidence is attached by the action that opens the
+             composer, not by the template. -->
+        <record id="mail_template_payment_evidence" model="mail.template">
+            <field name="name">Clearance: payment evidence to the third party</field>
+            <field name="model_id" ref="model_logistics_expense"/>
+            <field name="subject">Justificatif de paiement - {{ object.file_id.name }} - {{ object.description }}</field>
+            <field name="email_from">{{ (object.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="partner_to">{{ object.vendor_id.id }}</field>
+            <field name="lang">{{ object.vendor_id.lang }}</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px; font-size: 13px;">
+    <p>Bonjour,</p>
+    <p>
+        Veuillez trouver ci-joint le justificatif du règlement effectué en votre faveur
+        au titre du dossier <strong t-out="object.file_id.name or ''"/>
+        (<t t-out="object.description or ''"/>).
+    </p>
+    <p>
+        Montant : <strong t-out="object.amount" t-options="{'widget': 'monetary', 'display_currency': object.currency_id}"/><br/>
+        Réglé le : <t t-out="object.date_settled or ''" t-options="{'widget': 'datetime', 'format': 'dd/MM/yyyy'}"/>
+    </p>
+    <p>
+        Nous vous remercions de bien vouloir en accuser réception.
+    </p>
+    <p>Cordialement,<br/><t t-out="user.name or ''"/><br/><t t-out="object.company_id.name or ''"/></p>
+</div>
+            </field>
+        </record>
+
+    </data>
+</odoo>

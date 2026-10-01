@@ -302,6 +302,7 @@
                             <field name="journal_id" optional="show" groups="elite_clearance.group_clearance_finance"/>
                             <field name="amount" sum="Total"/>
                             <field name="currency_id" column_invisible="1"/>
+                            <field name="date_settled" optional="show"/>
                             <field name="is_legacy" column_invisible="1"/>
                             <field name="is_billed" optional="show"/>
                             <field name="state" widget="badge" readonly="1"

@@ -39,7 +39,7 @@ where no explicit approver list is set, the security groups apply.
     'author': "Elite Advisors",
     'website': "https://eliteadvisors.cm-ea.com",
     'category': 'Services/Clearance',
-    'version': '19.0.40.0.0',
+    'version': '19.0.41.0.0',
     'license': 'LGPL-3',
     'depends': ['base', 'mail', 'analytic', 'account', 'hr'],
     'data': [
@@ -62,6 +62,7 @@ where no explicit approver list is set, the security groups apply.
         'wizard/payment_attribution_wizard_views.xml',
         'wizard/invoice_reversal_wizard_views.xml',
         'wizard/clearance_settings_wizard_views.xml',
+        'wizard/expense_settle_wizard_views.xml',
         'views/logistics_port_views.xml',
         'views/logistics_document_type_views.xml',
         'views/logistics_service_type_views.xml',
@@ -72,6 +73,7 @@ where no explicit approver list is set, the security groups apply.
         'views/res_partner_views.xml',
         'views/hr_employee_views.xml',
         'data/turnaround_targets.xml',
+        'data/mail_template_data.xml',
         'views/logistics_billing_service_views.xml',
         # Reporting BEFORE settings: the settings page links to the
         # turnaround-target action, and %(...)d resolves at load time.

@@ -24,9 +24,16 @@
                     <button name="action_return_settlement" type="object" string="Return to Finance"
                             invisible="state != 'settlement_submitted'"
                             groups="elite_clearance.group_clearance_finance_manager"/>
-                    <button name="action_settle" type="object" string="Disburse / Pay"
+                    <!-- Opens the dialog that demands the payment evidence
+                         (owner, 01/10/2026); action_settle itself refuses
+                         without it. -->
+                    <button name="action_open_settle_wizard" type="object" string="Disburse / Pay"
                             class="oe_highlight" invisible="state != 'settlement_approved'"
                             groups="elite_clearance.group_clearance_cashier,elite_clearance.group_clearance_treasury"/>
+                    <!-- Customer Service tells the third party it has been paid. -->
+                    <button name="action_send_payment_evidence" type="object" string="Send Payment Evidence to Third Party"
+                            invisible="state not in ('settled', 'justification_submitted', 'justification_ops_approved', 'justified') or not vendor_id"
+                            groups="elite_clearance.group_clearance_customer_service"/>
                     <!-- Not Finance-only: the advance stands against the
                          staff member, it sits in their own queue, and a
                          queue whose row cannot be acted on is no queue. -->
@@ -82,8 +89,15 @@
                             <field name="justification_move_id" invisible="not justification_move_id"/>
                         </group>
                     </group>
-                    <group string="Documents">
-                        <field name="attachment_ids" widget="many2many_binary" nolabel="1" colspan="2"/>
+                    <!-- Two boxes, one set of documents: what supported the
+                         request, and what proves the payment (owner,
+                         01/10/2026). -->
+                    <group string="Supporting Documents (at request)">
+                        <field name="request_document_ids" widget="many2many_binary" nolabel="1" colspan="2"/>
+                    </group>
+                    <group string="Payment Evidence">
+                        <field name="payment_evidence_ids" widget="many2many_binary" nolabel="1" colspan="2"
+                               readonly="state not in ('settlement_approved', 'settled', 'justification_submitted', 'justification_ops_approved', 'justified')"/>
                     </group>
                     <group string="Timeline">
                         <group>
@@ -95,6 +109,8 @@
                         <group>
                             <field name="date_settlement_approved"/>
                             <field name="date_settled"/>
+                            <field name="payment_evidence_sent_date" invisible="not payment_evidence_sent_date"/>
+                            <field name="payment_evidence_sent_by_id" invisible="not payment_evidence_sent_date"/>
                             <field name="date_documents_submitted"/>
                             <field name="date_justification_submitted"/>
                             <field name="date_justified"/>
@@ -183,7 +199,7 @@
                 <field name="amount" sum="Total"/>
                 <field name="currency_id" column_invisible="1"/>
                 <field name="date_requested" optional="hide"/>
-                <field name="date_settled" optional="hide"/>
+                <field name="date_settled" optional="show"/>
                 <field name="date_justified" optional="hide"/>
                 <field name="is_legacy" optional="hide"/>
                 <field name="is_billed" optional="show"/>

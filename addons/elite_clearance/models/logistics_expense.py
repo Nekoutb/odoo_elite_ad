@@ -202,6 +202,28 @@ class LogisticsExpense(models.Model):
     date_settlement_approved = fields.Datetime(
         string="Settlement Approved On", readonly=True, copy=False,
         help="When the Head of Service Finance approved how it would be paid.")
+    # The documents, told apart (owner, 01/10/2026): what supported
+    # the request, and what proves the payment. `attachment_ids` on the
+    # mixin stays the union - the justification count and the chatter
+    # see one set.
+    request_document_ids = fields.Many2many(
+        'ir.attachment', 'logistics_expense_request_doc_rel',
+        string="Supporting Documents (request)",
+        compute='_compute_request_document_ids',
+        inverse='_inverse_request_document_ids',
+        help="The receipt, quote or notice the cost was keyed from.")
+    payment_evidence_ids = fields.Many2many(
+        'ir.attachment', 'logistics_expense_payment_doc_rel',
+        string="Payment Evidence",
+        compute='_compute_payment_evidence_ids',
+        inverse='_inverse_payment_evidence_ids',
+        help="What proves the money left: the receipt, the transfer "
+             "advice, the mobile-money confirmation. Demanded at "
+             "Disburse / Pay.")
+    payment_evidence_sent_date = fields.Datetime(
+        string="Evidence Sent to Third Party On", readonly=True, copy=False)
+    payment_evidence_sent_by_id = fields.Many2one(
+        'res.users', string="Evidence Sent By", readonly=True, copy=False)
     date_settled = fields.Datetime(
         string="Paid On", readonly=True, copy=False,
         help="When the Cashier or Treasury actually paid it out and the "
@@ -310,6 +332,21 @@ class LogisticsExpense(models.Model):
     def _clearance_documents_added(self, attachments):
         """A document's arrival dates itself on the expense."""
         self._stamp_documents_received()
+
+    def _compute_request_document_ids(self):
+        self._clearance_compute_documents(
+            'request_document_ids', self.REQUEST_KINDS)
+
+    def _inverse_request_document_ids(self):
+        self._clearance_adopt_documents(
+            'request_document_ids', self.REQUEST_KINDS, kind='request')
+
+    def _compute_payment_evidence_ids(self):
+        self._clearance_compute_documents('payment_evidence_ids', ('payment',))
+
+    def _inverse_payment_evidence_ids(self):
+        self._clearance_adopt_documents(
+            'payment_evidence_ids', ('payment',), kind='payment')
 
     def _stamp_documents_received(self):
         """The first document's arrival dates itself, once."""
@@ -663,6 +700,75 @@ class LogisticsExpense(models.Model):
             "%(why)s", move=move.name, why=why))
         return move
 
+    def action_open_settle_wizard(self):
+        """Disburse / Pay opens a dialog that asks for the evidence."""
+        self.ensure_one()
+        self._check_disburser()
+        if self.state != 'settlement_approved':
+            raise UserError(self.env._(
+                "The settlement of %s has not been approved by the "
+                "Head of Service Finance.", self.name))
+        action = self.env['ir.actions.act_window']._for_xml_id(
+            'elite_clearance.action_expense_settle_wizard')
+        action['context'] = {'default_expense_id': self.id}
+        return action
+
+    def action_send_payment_evidence(self):
+        """Customer Service sends the third party the proof it was paid.
+
+        Opens Odoo's composer on the disbursement with the vendor as
+        recipient and the payment evidence attached; sending posts the
+        message in the chatter and stamps when and by whom
+        (`message_post`, below).
+        """
+        self.ensure_one()
+        if not self.env.user.has_group(
+                'elite_clearance.group_clearance_customer_service'):
+            raise UserError(self.env._(
+                "Payment evidence is sent to the third party by Customer "
+                "Service."))
+        if not self.vendor_id:
+            raise UserError(self.env._(
+                "%s names no third party to send the evidence to.",
+                self.name))
+        if not self.payment_evidence_ids:
+            raise UserError(self.env._(
+                "%s carries no payment evidence yet.", self.name))
+        if not self.vendor_id.email:
+            raise UserError(self.env._(
+                "%(vendor)s has no e-mail address. Add one on the contact "
+                "and try again.", vendor=self.vendor_id.display_name))
+        template = self.env.ref(
+            'elite_clearance.mail_template_payment_evidence',
+            raise_if_not_found=False)
+        return {
+            'type': 'ir.actions.act_window',
+            'name': self.env._("Send Payment Evidence"),
+            'res_model': 'mail.compose.message',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_model': self._name,
+                'default_res_ids': self.ids,
+                'default_composition_mode': 'comment',
+                'default_template_id': template.id if template else False,
+                'default_partner_ids': [(6, 0, self.vendor_id.ids)],
+                'default_attachment_ids': [(6, 0, self.payment_evidence_ids.ids)],
+                'force_email': True,
+                'clearance_payment_evidence': True,
+            },
+        }
+
+    def message_post(self, **kwargs):
+        message = super().message_post(**kwargs)
+        if self.env.context.get('clearance_payment_evidence'):
+            # the system recording a fact, not the sender writing on
+            # a settled disbursement
+            self.sudo().write({
+                'payment_evidence_sent_date': fields.Datetime.now(),
+                'payment_evidence_sent_by_id': self.env.user.id})
+        return message
+
     def _check_disburser(self):
         """Cash leaves through the Cashier, bank money through Treasury."""
         for exp in self:
@@ -829,6 +935,15 @@ class LogisticsExpense(models.Model):
                 raise UserError(self.env._(
                     "Choose the settlement journal on %s — Cash, Bank, "
                     "Mobile Money or Maviance.", exp.name))
+            # No evidence, no payment (owner, 01/10/2026). The button
+            # opens a dialog that asks for it; this is the rule the dialog
+            # enforces, so a call from anywhere else meets it too. su is
+            # exempt: fixtures and the importer are not cashiers.
+            if not self.env.su and not exp.payment_evidence_ids:
+                raise UserError(self.env._(
+                    "Attach the payment evidence for %s - the receipt, "
+                    "the transfer advice or the mobile-money confirmation "
+                    "- before it is paid out.", exp.name))
             direct = exp.payment_mode != 'advance'
             # A NON-JUSTIFIABLE advance is spent the moment it is handed
             # over: no document will ever exist for it, so it never sits

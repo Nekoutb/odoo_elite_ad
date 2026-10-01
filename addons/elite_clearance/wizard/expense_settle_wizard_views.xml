@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="expense_settle_wizard_view_form" model="ir.ui.view">
+        <field name="name">logistics.expense.settle.wizard.form</field>
+        <field name="model">logistics.expense.settle.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Disburse / Pay">
+                <field name="currency_id" invisible="1"/>
+                <group>
+                    <group>
+                        <field name="expense_id"/>
+                        <field name="file_id"/>
+                        <field name="amount"/>
+                    </group>
+                    <group>
+                        <field name="payment_mode"/>
+                        <field name="journal_id"/>
+                        <field name="vendor_id" invisible="not vendor_id"/>
+                        <field name="employee_id" invisible="not employee_id"/>
+                    </group>
+                </group>
+                <separator string="Payment Evidence"/>
+                <!-- The whole dialog is a drop target: the receipt or the
+                     transfer advice dragged anywhere onto it is uploaded,
+                     listed here, and follows the disbursement as its
+                     payment evidence. -->
+                <field name="attachment_ids" widget="clearance_documents"
+                       nolabel="1" colspan="2"/>
+                <div class="alert alert-warning" role="alert">
+                    Nothing is paid out without evidence. Attach the till receipt, the
+                    transfer advice or the mobile-money confirmation, then press
+                    <b>Disburse / Pay</b>: the journal entry is posted and the evidence
+                    stays on the disbursement for Customer Service to send to the third
+                    party.
+                </div>
+                <footer>
+                    <button name="action_pay" type="object"
+                            string="Disburse / Pay" class="btn-primary"/>
+                    <button string="Cancel" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_expense_settle_wizard" model="ir.actions.act_window">
+        <field name="name">Disburse / Pay</field>
+        <field name="res_model">logistics.expense.settle.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>
