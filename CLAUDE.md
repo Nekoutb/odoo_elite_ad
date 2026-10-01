@@ -485,9 +485,21 @@ Customs clearance job files for a logistics/clearance services provider.
      starts**: `opening_state` none/requested/approved/refused +
      `action_request_opening` / `action_approve_opening` /
      `action_refuse_opening` (kind `file_open`, note required to refuse),
-     mirroring the document waiver. `action_start_work` refuses unless
-     approved - **su-exempt**, like the originating-team gate, because
-     hooks, the importer and test fixtures are not people. The requested
+     mirroring the document waiver. **The approval STARTS the work
+     (owner's correction, 01/10/2026):** `action_approve_opening` and
+     `action_approve_waiver` both mark the opening approved and call
+     `action_start_work` in the same transaction, so a file that cannot
+     start refuses the approval and nothing is written. There is NO
+     Start Work button any more. A file with a mandatory document
+     missing is not sent for opening approval (`action_request_opening`
+     refuses) - it asks for a WAIVER, and the waiver is now the Head of
+     Customer Service's (`APPROVAL_KINDS['waiver']`, `KIND_GROUPS
+     ['doc_waiver']`, the two buttons), no longer the General Manager's.
+     Both requests run `_check_ready_to_work()` (regime + cargo figures)
+     so the agent is told at once. `action_start_work` still refuses a
+     real user whose opening is not approved - **su-exempt**, like the
+     originating-team gate, because hooks, the importer and test fixtures
+     are not people. The requested
      draft is readable by the head through two NEW rules
      (`rule_logistics_file_cs_head_sees_all`,
      `rule_logistics_file_document_cs_head`) - new xmlids, because

@@ -24,8 +24,7 @@ KIND_GROUPS = {
     # person it stands against, in _search
     'advance_justify': ('elite_clearance.group_clearance_user',),
     'justification_finance': ('elite_clearance.group_clearance_finance_manager',),
-    'doc_waiver': ('elite_clearance.group_clearance_manager',
-                   'elite_clearance.group_clearance_ops_manager'),
+    'doc_waiver': ('elite_clearance.group_clearance_customer_service_manager',),
     'advance_waiver': ('elite_clearance.group_clearance_ops_manager',),
     'recharge_ops': ('elite_clearance.group_clearance_ops_manager',),
     'recharge_gm': ('elite_clearance.group_clearance_manager',),

@@ -142,8 +142,10 @@ class TestOwnerSpec0210(TransactionCase):
         self.assertEqual(file.opening_state, 'approved')
         self.assertEqual(file.opening_approved_by_id, self.cs_head)
         self.assertFalse(self._tasks(self.cs_head, 'file_open'))
-        file.with_user(self.cs_agent).action_start_work()
-        self.assertEqual(file.state, 'in_progress')
+        self.assertEqual(file.state, 'in_progress',
+                         "the approval IS the start of the work (owner, "
+                         "01/10/2026) - there is no Start Work button")
+        self.assertTrue(file.date_started)
 
     def test_02_a_refusal_says_why_and_the_agent_may_ask_again(self):
         file = self._file(user=self.cs_agent)
@@ -171,6 +173,41 @@ class TestOwnerSpec0210(TransactionCase):
                          "one message per Head of Customer Service and no "
                          "other head - the Head of Service Operations is "
                          "not in that group")
+
+    def test_03b_a_missing_document_goes_through_the_waiver_and_the_same_head(self):
+        """Owner 01/10/2026: with a mandatory document missing the agent
+        asks for a WAIVER, the Head of Customer Service signs it, and
+        that signature starts the work - the General Manager is no
+        longer in it."""
+        bl = self.env['logistics.document.type'].create({
+            'name': "BL roles", 'code': "R-BL"})
+        self.service.write({'document_ids': [
+            (0, 0, {'document_type_id': bl.id, 'is_mandatory': True})]})
+        try:
+            file = self._file(user=self.cs_agent)
+            self.assertFalse(file.documents_complete)
+            with self.assertRaises(UserError) as caught:
+                file.with_user(self.cs_agent).action_request_opening()
+            self.assertIn("waiver", str(caught.exception))
+            file.with_user(self.cs_agent).write(
+                {'waiver_reason': "BL expected from the line on Friday."})
+            file.with_user(self.cs_agent).action_request_waiver()
+            self.assertEqual(file.stage_owner, "Head of Customer Service")
+            self.assertEqual(self._tasks(self.cs_head, 'doc_waiver')
+                             .mapped('res_id'), [file.id])
+            self.assertFalse(self._tasks(self.gm, 'doc_waiver'),
+                             "the General Manager no longer signs these")
+            with self.assertRaises(UserError):
+                file.with_user(self.gm).action_approve_waiver()
+            with self.assertRaises(UserError):
+                file.with_user(self.ops_head).action_approve_waiver()
+            file.with_user(self.cs_head).action_approve_waiver()
+            self.assertEqual(file.waiver_state, 'approved')
+            self.assertEqual(file.opening_state, 'approved')
+            self.assertEqual(file.state, 'in_progress',
+                             "signing the waiver started the work")
+        finally:
+            self.service.write({'document_ids': [(5, 0, 0)]})
 
     def test_04_the_superuser_still_starts_work_without_asking(self):
         """Hooks, the importer and the suite's own fixtures are not
@@ -335,11 +372,18 @@ class TestOwnerSpec0210(TransactionCase):
                 view.id)['arch']
         agent = arch(self.cs_agent)
         self.assertIn('action_request_opening', agent)
+        self.assertIn('action_request_waiver', agent)
         self.assertNotIn('action_approve_opening', agent)
+        self.assertNotIn('action_approve_waiver', agent)
         self.assertNotIn('action_mark_complete', agent)
+        self.assertNotIn('action_start_work', agent,
+                         "no Start Work button: the approval starts it")
         head = arch(self.cs_head)
         self.assertIn('action_approve_opening', head)
         self.assertIn('action_refuse_opening', head)
+        self.assertIn('action_approve_waiver', head)
         self.assertIn('action_mark_complete', head)
+        self.assertNotIn('action_approve_waiver', arch(self.gm),
+                         "the waiver left the General Manager on 01/10/2026")
         self.assertNotIn('action_mark_complete', arch(self.biller))
         self.assertNotIn('action_approve_opening', arch(self.ops_head))

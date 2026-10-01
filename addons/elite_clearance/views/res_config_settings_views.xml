@@ -136,7 +136,7 @@
 
                     <block title="Approvals">
                         <setting string="Waiver Approvers"
-                                 help="Who may approve starting work with incomplete documentation. Empty = any Clearance Manager.">
+                                 help="Who may sign a document waiver - the signature starts the work. Empty = any Head of Customer Service.">
                             <field name="clearance_waiver_approver_ids" widget="many2many_tags"/>
                         </setting>
                         <setting string="Expense Approvers"

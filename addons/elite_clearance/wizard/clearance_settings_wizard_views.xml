@@ -67,7 +67,7 @@
                         </page>
                         <page string="Approvals">
                             <group>
-                            <field name="clearance_waiver_approver_ids" string="Waiver Approvers" help="Who may approve starting work with incomplete documentation. Empty = any Clearance Manager." widget="many2many_tags"/>
+                            <field name="clearance_waiver_approver_ids" string="Waiver Approvers" help="Who may sign a document waiver - the signature starts the work. Empty = any Head of Customer Service." widget="many2many_tags"/>
                             <field name="clearance_expense_approver_ids" string="Expense Approvers" help="Who may approve expenses before disbursement. Empty = any Clearance Manager." widget="many2many_tags"/>
                             <field name="clearance_settlement_approver_ids" string="Settlement Approvers" help="Who may approve the payment mode, vendor, holder and journal Finance has set on an expense. Empty = any Clearance Head of Service Finance." widget="many2many_tags"/>
                             <field name="clearance_finance_approver_ids" string="Disbursement (Finance) Approvers" help="Who may settle disbursements and justify advances. Empty = any Clearance Finance user." widget="many2many_tags"/>

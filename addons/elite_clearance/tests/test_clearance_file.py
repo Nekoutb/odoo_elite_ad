@@ -149,8 +149,10 @@ class TestClearanceFile(TransactionCase):
         file.action_approve_waiver()
         self.assertEqual(file.waiver_state, 'approved')
         self.assertTrue(file.can_start)
-        file.action_start_work()
-        self.assertEqual(file.state, 'in_progress')
+        self.assertEqual(file.state, 'in_progress',
+                         "the signature on the waiver starts the work")
+        self.assertEqual(file.opening_state, 'approved',
+                         "and is the opening's approval too")
         self.assertFalse(file.documents_complete, "Documents are still missing.")
 
     def test_06_non_manager_cannot_approve(self):

@@ -51,7 +51,7 @@ class TestOwnerSpec0809(TransactionCase):
 
     def _opened(self, file):
         """The author asks and the Head of Customer Service approves -
-        what every real user does before Start Work (02/10/2026)."""
+        and the approval starts the work (owner, 01/10/2026)."""
         file.with_user(self.author).action_request_opening()
         file.with_user(self.cs_head).action_approve_opening()
         return file
@@ -181,16 +181,18 @@ class TestOwnerSpec0809(TransactionCase):
         """required= is inert on a number - the web client counts 0 as
         filled in - so the figures are enforced at Start Work."""
         from odoo.exceptions import UserError
-        file = self._opened(self._file(user=self.author))
+        # The gate is the request now: the agent is told at once, and the
+        # head is never handed a file that cannot start.
+        file = self._file(user=self.author)
         with self.assertRaises(UserError) as caught:
-            file.with_user(self.author).action_start_work()
+            file.with_user(self.author).action_request_opening()
         self.assertIn("Packages", str(caught.exception))
         file.write({'package_count': 12, 'weight_kg': 800.0})
         with self.assertRaises(UserError) as caught:
-            file.with_user(self.author).action_start_work()
+            file.with_user(self.author).action_request_opening()
         self.assertIn("Containers", str(caught.exception))
         file.not_containerised = True
-        file.with_user(self.author).action_start_work()
+        self._opened(file)
         self.assertEqual(file.state, 'in_progress')
 
     def test_10_a_queue_never_lists_a_file_it_cannot_open(self):
@@ -226,8 +228,8 @@ class TestOwnerSpec0809(TransactionCase):
         file.write({'package_count': 12, 'weight_kg': 800.0,
                     'not_containerised': True})
         self._opened(file)
-        file.with_user(self.author).action_start_work()
-        self.assertEqual(file.state, 'in_progress')
+        self.assertEqual(file.state, 'in_progress',
+                         "the head's approval started the work")
         self.assertTrue(
             self.env['logistics.file'].with_user(self.other).search(
                 [('id', '=', file.id)]),

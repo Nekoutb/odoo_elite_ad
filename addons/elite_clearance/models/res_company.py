@@ -6,8 +6,11 @@ from odoo.exceptions import UserError
 #            fallback security group when that list is empty,
 #            wording used in the refusal message)
 APPROVAL_KINDS = {
+    # The Head of Customer Service signs a document waiver, and the
+    # signature starts the work (owner, 01/10/2026) - it was the General
+    # Manager's until then.
     'waiver': ("clearance_waiver_approver_ids",
-               ('elite_clearance.group_clearance_manager',),
+               ('elite_clearance.group_clearance_customer_service_manager',),
                "approve documentation waivers"),
     # An expense is approved by the manager of ANY originating team, not by
     # the general manager and never by Finance.

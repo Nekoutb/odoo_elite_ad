@@ -722,15 +722,17 @@ class LogisticsFile(models.Model):
                 return self.env._("Head of Customer Service"), self.env._(
                     "A new file is waiting for approval.")
             if self.waiver_state == 'requested':
-                return self.env._("Manager"), self.env._(
-                    "A document waiver is waiting to be signed.")
+                return self.env._("Head of Customer Service"), self.env._(
+                    "A document waiver is waiting to be signed; signing "
+                    "it starts the work.")
             if self.opening_state == 'refused':
                 return (self.create_uid.name or self.env._("Customer Service"),
                         self.env._("Opening refused: %s",
                                    self.opening_note or ""))
             return (self.create_uid.name or self.env._("Customer Service"),
                     self.env._("Being opened. Nobody else can see it until "
-                               "the opening is approved and work starts."))
+                               "the Head of Customer Service approves it, "
+                               "which starts the work."))
         blocking = self._stage_blocked_by_expense()
         if blocking:
             return blocking
@@ -1034,8 +1036,25 @@ class LogisticsFile(models.Model):
         self._build_checklist()
         return True
 
+    def _check_ready_to_work(self):
+        """What Start Work demands of the file itself: a regime and the
+        cargo figures. Checked when the agent ASKS, so the head is never
+        handed a file that cannot start."""
+        self.ensure_one()
+        if not self.customs_regime:
+            raise UserError(self.env._(
+                "Work cannot start on %s until its customs regime is "
+                "chosen.", self.name))
+        self._check_cargo_described()
+
     def action_request_opening(self):
-        """The agent asks the Head of Customer Service to approve the file."""
+        """The agent asks the Head of Customer Service to approve the file.
+
+        The head's approval starts the work (owner, 01/10/2026), so a
+        file with a mandatory document missing is not sent this way: it
+        asks for a waiver instead, and the head's signature on THAT is
+        what starts it.
+        """
         for file in self:
             if file.state != 'draft':
                 raise UserError(self.env._(
@@ -1043,6 +1062,14 @@ class LogisticsFile(models.Model):
             if file.opening_state == 'approved':
                 raise UserError(self.env._(
                     "The opening of %s is already approved.", file.name))
+            file._check_ready_to_work()
+            if not file.documents_complete:
+                raise UserError(self.env._(
+                    "%(name)s is missing %(count)s mandatory document(s). "
+                    "Receive them, or request a waiver - the Head of "
+                    "Customer Service's signature on the waiver is what "
+                    "starts the work.",
+                    name=file.name, count=file.missing_mandatory_count))
             file.write({
                 'opening_state': 'requested',
                 'opening_requested_by_id': self.env.user.id,
@@ -1053,20 +1080,27 @@ class LogisticsFile(models.Model):
         return True
 
     def action_approve_opening(self):
+        """The head's signature starts the work, in the same breath: if
+        the file cannot start, the approval is refused with the reason
+        and nothing is written."""
         for file in self:
             file.company_id._clearance_check_approver('file_open')
             if file.opening_state != 'requested':
                 raise UserError(self.env._(
                     "No opening is awaiting approval on %s.", file.name))
-            file.write({
-                'opening_state': 'approved',
-                'opening_approved_by_id': self.env.user.id,
-                'opening_date': fields.Datetime.now(),
-            })
+            file._mark_opening_approved()
+            file.action_start_work()
             file.message_post(body=self.env._(
-                "Opening approved by %s. Work can start.",
+                "Opening approved by %s. Work has started.",
                 self.env.user.name))
         return True
+
+    def _mark_opening_approved(self):
+        self.write({
+            'opening_state': 'approved',
+            'opening_approved_by_id': self.env.user.id,
+            'opening_date': fields.Datetime.now(),
+        })
 
     def action_refuse_opening(self):
         for file in self:
@@ -1100,6 +1134,9 @@ class LogisticsFile(models.Model):
                     "Give a justification before requesting a waiver on %s.",
                     file.name,
                 ))
+            if file.state == 'draft':
+                # the head's signature will start the work: make sure it can
+                file._check_ready_to_work()
             file.write({
                 'waiver_state': 'requested',
                 'waiver_requested_date': fields.Datetime.now(),
@@ -1111,6 +1148,9 @@ class LogisticsFile(models.Model):
         return True
 
     def action_approve_waiver(self):
+        """The Head of Customer Service signs the waiver, and that
+        signature is the opening's approval too: work starts at once
+        (owner, 01/10/2026)."""
         self._check_manager()
         for file in self:
             if file.waiver_state != 'requested':
@@ -1122,7 +1162,15 @@ class LogisticsFile(models.Model):
                 'waiver_approved_by_id': self.env.user.id,
                 'waiver_date': fields.Datetime.now(),
             })
-            file.message_post(body=self.env._("Documentation waiver approved."))
+            if file.state == 'draft':
+                file._mark_opening_approved()
+                file.action_start_work()
+                file.message_post(body=self.env._(
+                    "Documentation waiver approved by %s. Work has started.",
+                    self.env.user.name))
+            else:
+                file.message_post(body=self.env._(
+                    "Documentation waiver approved."))
         return True
 
     def action_refuse_waiver(self):
