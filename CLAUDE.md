@@ -488,9 +488,15 @@ Customs clearance job files for a logistics/clearance services provider.
      mirroring the document waiver. `action_start_work` refuses unless
      approved - **su-exempt**, like the originating-team gate, because
      hooks, the importer and test fixtures are not people. The requested
-     draft is readable by the head through
-     `rule_logistics_file_manager_sees_all` (+ the checklist rule), which
-     now names that group too. Queue kind `file_open`.
+     draft is readable by the head through two NEW rules
+     (`rule_logistics_file_cs_head_sees_all`,
+     `rule_logistics_file_document_cs_head`) - new xmlids, because
+     `clearance_record_rules.xml` is `noupdate="1"` and a group added to
+     an existing rule never reaches an upgraded database (cost one CI
+     cycle, 01/10/2026). Root and admin are now seeded into the CS and
+     Transit head groups like every other approving group, because the
+     suite's own user is root and `_clearance_check_approver` reads
+     `env.user`'s groups even under su. Queue kind `file_open`.
   2. **The Head of Customer Service closes the file for good** -
      `action_mark_complete` checks kind `file_close`, the button is on
      that group, queue kind `file_close` lists a file whose every

@@ -308,8 +308,12 @@ class TestOwnerSpec0210(TransactionCase):
         file = self._billed()
         file.invoice_id.action_post()
         self.assertTrue(self._tasks(self.cs_head, 'file_close'))
-        # a cost lands after the bill: the file is Billing's again, not
+        # a cost lands after the bill - through the reopen the Head of
+        # Service Operations grants: the file is Billing's again, not
         # the head's
+        self.env['logistics.file.reopen.wizard'].create({
+            'file_id': file.id, 'target_state': 'in_progress',
+            'reason': "The demurrage invoice arrived late."}).action_reopen()
         late = self._expense(file, self.env.user, 20000)
         late.action_submit()
         late.action_approve()
@@ -318,6 +322,7 @@ class TestOwnerSpec0210(TransactionCase):
         late.action_submit_settlement()
         late.action_approve_settlement()
         late.action_settle()
+        file.action_close_operations()
         self.assertFalse(self._tasks(self.cs_head, 'file_close'))
         with self.assertRaises(UserError):
             file.with_user(self.cs_head).action_mark_complete()
