@@ -4,3 +4,4 @@ from . import billing_wizard
 from . import expense_capture_wizard
 from . import payment_attribution_wizard
 from . import invoice_reversal_wizard
+from . import clearance_settings_wizard

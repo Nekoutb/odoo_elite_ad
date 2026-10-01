@@ -67,7 +67,11 @@
         <field name="name">General Manager</field>
         <field name="sequence">20</field>
         <field name="privilege_id" ref="res_groups_privilege_clearance"/>
-        <field name="implied_ids" eval="[(4, ref('group_clearance_user'))]"/>
+        <!-- Read-only accounting since 01/10/2026: the General Manager
+             maintains the Clearance settings, and the journal and
+             numbering dropdowns on that page read account.journal and
+             ir.sequence, which Odoo opens to accounting users only. -->
+        <field name="implied_ids" eval="[(4, ref('group_clearance_user')), (4, ref('account.group_account_readonly'))]"/>
         <field name="user_ids" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
         <field name="comment">Everything a User can do, plus approving documentation waivers, cancelling live files and maintaining service and document types.</field>
     </record>

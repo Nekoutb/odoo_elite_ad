@@ -513,6 +513,22 @@ Customs clearance job files for a logistics/clearance services provider.
      import) keeps the old rule: any of the three heads. An explicit
      `clearance_expense_approver_ids` list still wins over all of it.
   Tests: `test_owner_spec_0210.py`.
+- **The General Manager's settings page (owner, 01/10/2026).** Odoo's
+  `res.config.settings.execute()` raises for anybody who is not an
+  administrator (core `res_config.py`, never edited), so Clearance ->
+  Configuration -> Settings now opens `clearance.settings.wizard`
+  (`wizard/clearance_settings_wizard.py`): every `clearance_*` company
+  field plus `account_storno` as `related=... readonly=False`, with
+  `create()`/`write()` lifting those values out of `vals` and writing the
+  company under sudo AFTER `has_group(group_clearance_manager)` on
+  `env.user` (so a plain user's `sudo()` is refused). The administrator's
+  Settings -> Clearance tab still exists and writes the same fields. The
+  General Manager group now implies `account.group_account_readonly`,
+  because the journal and numbering dropdowns read `account.journal` and
+  `ir.sequence`, which core opens to accounting users only. Add a new
+  company setting in THREE places: `res_company.py`,
+  `res_config_settings.py` + its view, and this wizard (its field list
+  AND the `SETTINGS` tuple). Tests: `test_clearance_settings.py`.
 - **My Tasks (owner spec, 03/09/2026).** `views/clearance_tasks_views.xml`:
    ten group-restricted actions under a "My Tasks" menu, so each role sees
    only the queue it can act on. No new model — domains over the existing

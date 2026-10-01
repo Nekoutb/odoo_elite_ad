@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- The General Manager's settings page. The same fields as the
+         administrator's Settings -> Clearance tab, which Odoo reserves
+         for administrators; this one is ours and writes the company
+         under sudo once the group is checked (owner, 01/10/2026). -->
+    <record id="clearance_settings_wizard_view_form" model="ir.ui.view">
+        <field name="name">clearance.settings.wizard.form</field>
+        <field name="model">clearance.settings.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Clearance Settings">
+                <header>
+                    <button name="action_save" type="object" string="Save &amp; Close"
+                            class="oe_highlight"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>Clearance Settings</h1>
+                        <field name="company_id" readonly="1"/>
+                    </div>
+                    <p class="text-muted">
+                        Every figure here is the company's. Save writes it to the company
+                        at once; there is no second copy to keep in step. The administrator's
+                        own Settings page shows the same fields.
+                    </p>
+                    <notebook>
+                        <page string="Accounting">
+                            <group>
+                            <field name="clearance_oop_account_id" string="Out-of-Pocket Expenses Account" help="Balance-sheet account holding recoverable client disbursements until the invoice clears them."/>
+                            <field name="clearance_oop_payable_account_id" string="Débours à Engager (471xx)" help="Where an approved disbursement waits between being approved and being paid. Name it and the vendor is credited as soon as the disbursement is approved; paying it moves the debit across to Débours Engagés, which is what billing recharges. Leave it empty and nothing posts until payment."/>
+                            <field name="clearance_advance_account_id" string="Employee Advances Account" help="Where cash advances sit until justified with supporting documents."/>
+                            <field name="clearance_fee_account_id" string="Fee Income Account (default)" help="Fallback for fee lines, used only where the two accounts below are left empty."/>
+                            <field name="clearance_oop_undercharge_account_id" string="Disbursement Undercharge Account" help="Expense account for what was disbursed for the client but deliberately not recharged. 47xx still clears in full; the shortfall is booked here as a cost."/>
+                            <field name="clearance_oop_overcharge_account_id" string="Disbursement Overcharge Account" help="Income account for anything charged above what was actually disbursed, kept apart from the commission and the service fee."/>
+                            <field name="clearance_commission_account_id" string="Commission Income Account (706x)" help="Where the clearance commission is credited — the percentage of the out-of-pocket total set on the service type. A subdivision of 706."/>
+                            <field name="clearance_service_fee_account_id" string="Service Fee Income Account (706x)" help="Where the customs service fee keyed from the declaration is credited. Also a subdivision of 706, kept apart from the commission so the two revenue streams are reportable."/>
+                            <field name="clearance_credit_note_title" string="Credit note title" help="Printed where the invoice says 'Facture doit N°'. A credit note is the same document as the invoice; this is one of the three things that differ on it."/>
+                            <field name="clearance_file_fee_account_id" string="Frais de Dossier Income Account (706x)" help="Where the file-opening fee is credited. The third revenue line beside the commission and the customs fee, kept on its own account so all three are reportable apart."/>
+                            <field name="clearance_misc_journal_id" string="Miscellaneous Journal" help="Used for advance justification entries."/>
+                            <field name="clearance_sale_journal_id" string="Sales Journal" help="Journal the client clearance invoice is raised in. Empty = the company's first sales journal."/>
+                            </group>
+                        </page>
+                        <page string="Billing">
+                            <group>
+                            <field name="account_storno" string="Cancellations are negated instead of swapped" help="OFF, which is the owner's instruction of 19/09/2026: a credit note debits what the invoice credited - debit sales, credit receivables. ON: the same entry is booked again in the SAME columns with a minus sign, which is Odoo's storno accounting. The balances are identical either way; what changes is whether the revenue account's turnover carries both movements. It applies to every credit note the company issues, not only clearance ones."/>
+                            <field name="clearance_undisclosed_file_sequence_id" string="Undisclosed File Numbering" help="Where a file's reference comes from when its client is an undisclosed account. Open the sequence to set its prefix and its next number - once - and it carries on from there."/>
+                            <field name="clearance_undisclosed_invoice_sequence_id" string="Undisclosed Invoice Numbering" help="The same, for the invoices of an undisclosed account. Credit notes keep their own AV series either way."/>
+                            <field name="clearance_service_tax_ids" string="VAT on Service Fees" help="Applied to commission, customs fees and any other service line. Disbursements are never taxed here: they are the client's own liability paid on their behalf, outside the scope of VAT." widget="many2many_tags"/>
+                            </group>
+                        </page>
+                        <page string="Invoice Layout">
+                            <p class="text-muted">Only the wording the printed invoice invents. The logo, NIU, RC, address and bank accounts are read from the company itself, and the client block from the customer - so there is never a second copy to keep in step.</p>
+                            <group>
+                            <field name="clearance_invoice_title" string="Invoice title" help="Printed above the invoice number."/>
+                            <field name="clearance_invoice_vat_label" string="VAT line label" help="The rate is appended automatically from the tax actually charged, e.g. (19,25%)."/>
+                            <field name="clearance_invoice_payment_terms" string="Payment conditions" help="Used when the invoice carries no payment term of its own."/>
+                            <field name="clearance_invoice_complaint_days" string="Complaints window (days)"/>
+                            <field name="clearance_invoice_bank_ids" string="Bank accounts on the invoice" help="Which accounts print, and in what order. Empty prints the first two the company has. Maintain the accounts themselves under Invoicing &gt; Bank Accounts." widget="many2many_tags"/>
+                            </group>
+                        </page>
+                        <page string="Turnaround Targets">
+                            <p class="text-muted">How long each step of the workflow may take before Reporting flags it. An advance requested on Monday and paid on Friday shows as over target, so somebody can chase it.</p>
+                            <group>
+                            <button name="action_open_turnaround_targets" type="object" string="Set Targets" class="btn-link" icon="fa-arrow-right"/>
+                            </group>
+                        </page>
+                        <page string="Approvals">
+                            <group>
+                            <field name="clearance_waiver_approver_ids" string="Waiver Approvers" help="Who may approve starting work with incomplete documentation. Empty = any Clearance Manager." widget="many2many_tags"/>
+                            <field name="clearance_expense_approver_ids" string="Expense Approvers" help="Who may approve expenses before disbursement. Empty = any Clearance Manager." widget="many2many_tags"/>
+                            <field name="clearance_settlement_approver_ids" string="Settlement Approvers" help="Who may approve the payment mode, vendor, holder and journal Finance has set on an expense. Empty = any Clearance Head of Service Finance." widget="many2many_tags"/>
+                            <field name="clearance_finance_approver_ids" string="Disbursement (Finance) Approvers" help="Who may settle disbursements and justify advances. Empty = any Clearance Finance user." widget="many2many_tags"/>
+                            <field name="clearance_billing_approver_ids" string="Billing Approvers" help="Who may raise client invoices and mark files complete. Empty = any Billing Agent. A name here replaces the group." widget="many2many_tags"/>
+                            <field name="clearance_file_open_approver_ids" string="File Opening Approvers" help="Who approves a file a Customer Service Agent has opened, before work can start on it. Empty = any Head of Customer Service." widget="many2many_tags"/>
+                            <field name="clearance_file_close_approver_ids" string="File Closing Approvers" help="Who closes a billed file for good. Empty = any Head of Customer Service." widget="many2many_tags"/>
+                            <field name="clearance_reopen_approver_ids" string="Reopening Approvers" help="Who may reopen a file that has been closed - for more billing, a credit note or any other adjustment. Empty = any Clearance Head of Service Operations." widget="many2many_tags"/>
+                            <field name="clearance_ops_close_approver_ids" string="Operations Close Approvers" help="Who may close a file for operations. Empty = any Clearance Head of Service Operations." widget="many2many_tags"/>
+                            <field name="clearance_justification_approver_ids" string="Justification Approvers" help="Who may approve that the documents attached to a staff advance really justify it. Empty = any Clearance Head of Service Operations." widget="many2many_tags"/>
+                            <field name="clearance_justification_finance_approver_ids" string="Justification Signatories (Head of Service Finance)" help="Who signs the reclassification of a justified advance from 421101 to the billable account. Empty = any Clearance Head of Service Finance." widget="many2many_tags"/>
+                            <field name="clearance_recharge_ops_approver_ids" string="Recharge Adjustment Approvers (Operations)" help="Who may approve recharging the client at other than cost. Empty = any Clearance Head of Service Operations." widget="many2many_tags"/>
+                            <field name="clearance_recharge_gm_approver_ids" string="Below-Cost Recharge Approvers (General Manager)" help="Who must ALSO approve when the recharge is below what was disbursed — the company absorbs the difference. Empty = any Clearance Manager." widget="many2many_tags"/>
+                            <field name="clearance_cashier_approver_ids" string="Cashiers" help="Who may disburse from a cash till once the Head of Service Finance has approved the settlement. Empty = any Clearance Cashier." widget="many2many_tags"/>
+                            <field name="clearance_treasury_approver_ids" string="Treasury" help="Who may pay from a bank or mobile-money journal once the Head of Service Finance has approved the settlement. Empty = any Clearance Treasury user." widget="many2many_tags"/>
+                            <field name="clearance_reopen_imported_approver_ids" string="Imported-File Reopening Approvers" help="Who may approve reopening a file imported from the legacy system so it can be worked and billed again. Empty = any Clearance Head of Service Operations." widget="many2many_tags"/>
+                            <field name="clearance_advance_waiver_approver_ids" string="Unjustified Advance Waiver Approvers" help="Who may allow a file to be billed while a staff advance is still unsupported on 421101. Empty = any Clearance Head of Service Operations." widget="many2many_tags"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_clearance_settings_wizard" model="ir.actions.act_window">
+        <field name="name">Settings</field>
+        <field name="res_model">clearance.settings.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+    </record>
+
+</odoo>

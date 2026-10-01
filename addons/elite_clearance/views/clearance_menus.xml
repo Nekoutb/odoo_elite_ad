@@ -72,8 +72,12 @@
               parent="menu_clearance_config"
               action="action_clearance_turnaround_target" sequence="50"/>
 
+    <!-- The General Manager's page, not Odoo's res.config.settings:
+         that one refuses anybody who is not an administrator, and the
+         owner (01/10/2026) wants the General Manager to maintain these
+         without being made an administrator. -->
     <menuitem id="menu_clearance_settings" name="Settings"
-              parent="menu_clearance_config" action="action_clearance_config_settings"
-              sequence="90" groups="base.group_system"/>
+              parent="menu_clearance_config" action="action_clearance_settings_wizard"
+              sequence="90" groups="group_clearance_manager"/>
 
 </odoo>
