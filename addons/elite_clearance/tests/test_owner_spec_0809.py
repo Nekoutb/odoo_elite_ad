@@ -28,7 +28,9 @@ class TestOwnerSpec0809(TransactionCase):
                 'login': name.lower().replace(' ', '.') + "@spec.test",
                 'group_ids': [(6, 0, [env.ref(
                     'elite_clearance.group_clearance_' + group).id])]})
-        cls.author = user("Spec Author", 'operations')
+        # Opening a file is Customer Service's alone since 02/10/2026,
+        # so the author of every file in this suite is one of theirs.
+        cls.author = user("Spec Author", 'customer_service')
         cls.other = user("Spec Other", 'finance')
         cls.manager = user("Spec Manager", 'manager')
 
