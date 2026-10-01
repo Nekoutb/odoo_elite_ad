@@ -525,6 +525,25 @@ Customs clearance job files for a logistics/clearance services provider.
      import) keeps the old rule: any of the three heads. An explicit
      `clearance_expense_approver_ids` list still wins over all of it.
   Tests: `test_owner_spec_0210.py`.
+- **Payment evidence (owner, 01/10/2026).** `ir.attachment.clearance_kind`
+  ('request' / 'payment', NULL = request) tells a disbursement's documents
+  apart: `logistics.expense.request_document_ids` and
+  `payment_evidence_ids` are computed/inversed through the mixin's
+  `_clearance_compute_documents(field, kinds)` /
+  `_clearance_adopt_documents(field, kinds, kind)`, and `attachment_ids`
+  stays the UNION (chatter, justification count). **Disburse / Pay is a
+  dialog** (`logistics.expense.settle.wizard`, `action_open_settle_wizard`)
+  that refuses with nothing attached and re-points the drop as payment
+  evidence; `action_settle` itself refuses a real user without evidence
+  (su-exempt: fixtures and the importer). Payment evidence never stamps
+  `date_documents_submitted` (both the `ir.attachment.create` override and
+  the adopt hook skip kind 'payment'). `action_send_payment_evidence`
+  (Customer Service group, vendor with an e-mail) opens `mail.compose.message`
+  with `mail_template_payment_evidence` (French, vendor-facing, noupdate),
+  the vendor and the evidence; context `clearance_payment_evidence` makes
+  the expense's `message_post` override stamp `payment_evidence_sent_*`.
+  `date_settled` ("Paid On") is a shown column of both expense lists.
+  Tests: `test_payment_evidence.py`.
 - **The General Manager's settings page (owner, 01/10/2026).** Odoo's
   `res.config.settings.execute()` raises for anybody who is not an
   administrator (core `res_config.py`, never edited), so Clearance ->
