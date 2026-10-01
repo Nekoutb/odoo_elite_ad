@@ -1,5 +1,7 @@
 from odoo import api, fields, models, tools
 
+from .logistics_expense import HEAD_OF_TEAM
+
 # Every checkpoint in the module, as one queue. The rows are a database
 # view over the files and expenses that are actually waiting - nothing is
 # stored, nothing can drift out of step with the records themselves.
@@ -28,6 +30,8 @@ KIND_GROUPS = {
     'recharge_ops': ('elite_clearance.group_clearance_ops_manager',),
     'recharge_gm': ('elite_clearance.group_clearance_manager',),
     'reopen_imported': ('elite_clearance.group_clearance_ops_manager',),
+    'file_open': ('elite_clearance.group_clearance_customer_service_manager',),
+    'file_close': ('elite_clearance.group_clearance_customer_service_manager',),
     'ops_close': ('elite_clearance.group_clearance_ops_manager',),
     'billing': ('elite_clearance.group_clearance_billing',),
     'billing_service': ('elite_clearance.group_clearance_ops_manager',),
@@ -47,6 +51,8 @@ KINDS = [
     ('recharge_ops', "Approve recharge (Operations)"),
     ('recharge_gm', "Approve undercharge (General Manager)"),
     ('reopen_imported', "Approve reopening"),
+    ('file_open', "Approve a new file"),
+    ('file_close', "Close the file"),
     ('ops_close', "Close for operations"),
     ('billing', "Bill the file"),
     ('billing_service', "Approve a billable service"),
@@ -68,6 +74,13 @@ class ClearanceTask(models.Model):
     res_model = fields.Char(readonly=True)
     res_id = fields.Integer(readonly=True)
     file_id = fields.Many2one('logistics.file', readonly=True)
+    originating_team = fields.Selection(
+        [('operations', "Service Operations"),
+         ('customer_service', "Customer Service"),
+         ('transit', "Service Transit")],
+        readonly=True, string="Keyed By",
+        help="Set only on a disbursement awaiting approval: the row is "
+             "shown to the head of that service alone.")
     holder_user_id = fields.Many2one(
         'res.users', readonly=True, string="Advance Held By",
         help="Set only on an advance awaiting justification: the row is "
@@ -117,7 +130,8 @@ class ClearanceTask(models.Model):
                    e.date_requested AS date_deadline,
                    e.company_id AS company_id,
                    c.currency_id AS currency_id,
-                   NULL::integer AS holder_user_id
+                   NULL::integer AS holder_user_id,
+                   e.originating_team AS originating_team
               FROM logistics_expense e
               JOIN logistics_file f ON f.id = e.file_id
               JOIN res_company c ON c.id = e.company_id
@@ -136,7 +150,8 @@ class ClearanceTask(models.Model):
                    f.create_date::date AS date_deadline,
                    f.company_id AS company_id,
                    c.currency_id AS currency_id,
-                   NULL::integer AS holder_user_id
+                   NULL::integer AS holder_user_id,
+                   NULL::varchar AS originating_team
               FROM logistics_file f
               JOIN res_company c ON c.id = f.company_id
              WHERE %(where)s
@@ -198,7 +213,8 @@ class ClearanceTask(models.Model):
                    e.date_settled::date AS date_deadline,
                    e.company_id AS company_id,
                    c.currency_id AS currency_id,
-                   emp.user_id AS holder_user_id
+                   emp.user_id AS holder_user_id,
+                   NULL::varchar AS originating_team
               FROM logistics_expense e
               JOIN logistics_file f ON f.id = e.file_id
               JOIN res_company c ON c.id = e.company_id
@@ -214,6 +230,38 @@ class ClearanceTask(models.Model):
                 offset=11, kind='reopen_imported',
                 detail="'Reopening requested for an imported file'",
                 amount='0.0', where="f.reopen_request_state = 'requested'"),
+            file_task % dict(
+                offset=17, kind='file_open',
+                detail="'New file awaiting the Head of Customer Service'",
+                amount='0.0',
+                where="f.state = 'draft' AND f.opening_state = 'requested'"),
+            # billed and every document posted: ready to be closed for good
+            file_task % dict(
+                offset=18, kind='file_close',
+                detail="'Billed and posted; ready to close'",
+                amount='f.oop_total',
+                where="f.state = 'ops_closed' AND f.invoice_id IS NOT NULL "
+                      "AND NOT EXISTS (SELECT 1 FROM account_move m "
+                      "WHERE m.logistics_file_id = f.id "
+                      "AND m.move_type IN ('out_invoice', 'out_refund') "
+                      "AND m.state = 'draft') "
+                      "AND NOT EXISTS (SELECT 1 FROM account_move m "
+                      "WHERE m.id IN (f.invoice_id, f.debours_invoice_id) "
+                      "AND (m.state = 'cancel' "
+                      "OR COALESCE(m.clearance_voided, FALSE))) "
+                      # ... and nothing left to bill, or Close would refuse
+                      "AND NOT EXISTS (SELECT 1 FROM logistics_expense e "
+                      "LEFT JOIN account_move_line bl ON bl.id = e.billed_line_id "
+                      "LEFT JOIN account_move bm ON bm.id = bl.move_id "
+                      "WHERE e.file_id = f.id "
+                      "AND NOT COALESCE(e.is_legacy, FALSE) "
+                      "AND (e.state = 'justified' OR (e.state = 'settled' "
+                      "AND (e.payment_mode <> 'advance' "
+                      "OR NOT COALESCE(e.justification_required, TRUE)))) "
+                      "AND (e.billed_line_id IS NULL "
+                      "OR bm.state = 'cancel' "
+                      "OR COALESCE(bm.clearance_voided, FALSE) "
+                      "OR COALESCE(bl.clearance_credited, FALSE)))"),
             file_task % dict(
                 offset=12, kind='ops_close',
                 detail="'Work is done; close for operations'",
@@ -261,7 +309,8 @@ class ClearanceTask(models.Model):
                    s.create_date::date AS date_deadline,
                    s.company_id AS company_id,
                    c.currency_id AS currency_id,
-                   NULL::integer AS holder_user_id
+                   NULL::integer AS holder_user_id,
+                   NULL::varchar AS originating_team
               FROM logistics_billing_service s
               JOIN res_company c ON c.id = s.company_id
              WHERE s.state = 'draft' AND s.active = TRUE
@@ -345,6 +394,7 @@ class ClearanceTask(models.Model):
         # reads the table underneath it.
         self.env['logistics.file'].flush_model()
         self.env['logistics.expense'].flush_model()
+        self.env['logistics.file'].flush_model(['opening_state'])
         self.env['account.journal'].flush_model()
         self.env['logistics.billing.service'].flush_model()
         self.env['account.move'].flush_model(['state', 'clearance_voided'])
@@ -359,6 +409,16 @@ class ClearanceTask(models.Model):
         if not self.env.su:
             domain = ['|', ('kind', '!=', 'advance_justify'),
                       ('holder_user_id', '=', self.env.user.id)] + domain
+        # A cost awaiting approval is its own service's head's: the Head
+        # of Service Operations sees Operations' costs and nobody else's
+        # (owner spec 02/10/2026). A cost that belongs to no team is
+        # shown to every head, as before.
+        if not self.env.su:
+            mine = [team for team, group in HEAD_OF_TEAM.items()
+                    if self.env.user.has_group(group)]
+            domain = ['|', ('kind', '!=', 'expense_approve'),
+                      '|', ('originating_team', '=', False),
+                      ('originating_team', 'in', mine)] + domain
         # ... and never a file this user cannot open: a _table_query model
         # is raw SQL, so the file's own record rules do not reach it, and
         # a draft file would sit in a queue that raises AccessError when

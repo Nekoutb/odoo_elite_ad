@@ -230,10 +230,14 @@ class TestBillingWizard(TransactionCase):
         self.assertIn('action_open_billing', arch,
                       "the Billing button is stripped from the form")
         self.assertIn('action_request_reopen_imported', arch)
-        self.assertIn('action_mark_complete', arch)
-        self.assertIn('invoices_posted', arch,
-                      "Mark Complete waits for every invoice of the bill")
+        self.assertNotIn('action_mark_complete', arch,
+                         "closing is Customer Service's since 02/10/2026")
         self.assertIn('bill_stands', arch)
+        head = self._user("CS Head W", 'customer_service_manager')
+        head_arch = self._form_arch(head)
+        self.assertIn('action_mark_complete', head_arch)
+        self.assertIn('invoices_posted', head_arch,
+                      "Close waits for every invoice of the bill")
         action = self.file.with_user(biller).action_open_billing()
         self.assertEqual(action['res_model'], 'logistics.billing.wizard')
         # and the screen works end to end AS THAT USER: the write-through

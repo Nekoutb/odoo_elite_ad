@@ -151,7 +151,7 @@ class TestSegregationOfDuties(TransactionCase):
             self._vals())
         exp.with_user(self.finance).write({'vendor_id': self.vendor.id})
         exp.with_user(self.ops).action_submit()
-        exp.with_user(self.cs_manager).action_approve()
+        exp.with_user(self.ops_manager).action_approve()
         holder = self.env['hr.employee'].create({'name': "Advance Holder S"})
         with Form(exp.with_user(self.finance)) as form:
             form.payment_mode = 'advance'
@@ -169,21 +169,28 @@ class TestSegregationOfDuties(TransactionCase):
         self.assertFalse(exp.employee_id)
 
     # -- who approves -----------------------------------------------------
-    def test_05_a_team_manager_approves_not_the_general_manager(self):
+    def test_05_the_head_of_the_keying_service_approves_and_nobody_else(self):
+        """Owner spec 02/10/2026: the Head of Service Operations approves
+        what an Operations agent keyed - not the general manager, not
+        Finance, and not another service's head either."""
         exp = self._keyed_by_ops()
+        self.assertEqual(exp.originating_team, 'operations')
         exp.with_user(self.ops).action_submit()
         with self.assertRaises(UserError):
             exp.with_user(self.general_manager).action_approve()
         with self.assertRaises(UserError):
             exp.with_user(self.finance_manager).action_approve()
-        exp.with_user(self.cs_manager).action_approve()
+        with self.assertRaises(UserError,
+                               msg="another service's head is not its head"):
+            exp.with_user(self.cs_manager).action_approve()
+        exp.with_user(self.ops_manager).action_approve()
         self.assertEqual(exp.state, 'approved')
 
     # -- who pays ---------------------------------------------------------
     def test_06_finance_sets_the_settlement_and_the_finance_manager_signs(self):
         exp = self._keyed_by_ops()
         exp.with_user(self.ops).action_submit()
-        exp.with_user(self.cs_manager).action_approve()
+        exp.with_user(self.ops_manager).action_approve()
         # nothing can be settled on an unsigned settlement - even from the
         # superuser env, so it is the STATE that refuses, not the rights
         with self.assertRaises(UserError):
@@ -226,7 +233,7 @@ class TestSegregationOfDuties(TransactionCase):
         cash_exp, bank_exp = self._keyed_by_ops(70000), self._keyed_by_ops(80000)
         for exp, journal in ((cash_exp, self.journal), (bank_exp, bank)):
             exp.with_user(self.ops).action_submit()
-            exp.with_user(self.cs_manager).action_approve()
+            exp.with_user(self.ops_manager).action_approve()
             exp.with_user(self.finance).write({
                 'payment_mode': 'cash' if journal.type == 'cash' else 'electronic',
                 'journal_id': journal.id,

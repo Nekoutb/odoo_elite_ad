@@ -9,6 +9,18 @@ ORIGINATING_GROUPS = (
     'elite_clearance.group_clearance_transit',
 )
 FINANCE_GROUP = 'elite_clearance.group_clearance_finance'
+# Which head signs for which team (owner spec 02/10/2026): the Head of
+# Service Operations approves what an Operations agent keyed, and so on.
+TEAM_OF_GROUP = {
+    'elite_clearance.group_clearance_operations': 'operations',
+    'elite_clearance.group_clearance_customer_service': 'customer_service',
+    'elite_clearance.group_clearance_transit': 'transit',
+}
+HEAD_OF_TEAM = {
+    'operations': 'elite_clearance.group_clearance_ops_manager',
+    'customer_service': 'elite_clearance.group_clearance_customer_service_manager',
+    'transit': 'elite_clearance.group_clearance_transit_manager',
+}
 
 # How an expense is paid is Finance's decision alone. An originating team
 # submits WITHOUT these; Finance fills them in once the expense is approved,
@@ -151,6 +163,14 @@ class LogisticsExpense(models.Model):
          ('justified', "Justified"),
          ('cancel', "Cancelled")],
         default='draft', required=True, tracking=True, index=True)
+    originating_team = fields.Selection(
+        [('operations', "Service Operations"),
+         ('customer_service', "Customer Service"),
+         ('transit', "Service Transit")],
+        string="Keyed By", readonly=True, copy=False, index=True,
+        help="The service whose agent keyed this cost. Its head is the "
+             "one who approves it. Empty when it was keyed by an "
+             "administrator or a migration, in which case any head may.")
     accrual_move_id = fields.Many2one(
         'account.move', string="Accrual Entry", readonly=True, copy=False,
         help="Dr Débours à engager / Cr the third party, posted when the "
@@ -416,6 +436,10 @@ class LogisticsExpense(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        team = self._team_of_current_user()
+        if team:
+            for vals in vals_list:
+                vals.setdefault('originating_team', team)
         self._check_originating_team()
         for vals in vals_list:
             self._check_settlement_fields(vals)
@@ -457,6 +481,17 @@ class LogisticsExpense(models.Model):
         self.ensure_one()
         Task = self.env['clearance.task']
         kind = self.NOTIFY_KIND.get(self.state)
+        if kind == 'expense_approve' and self.originating_team:
+            # the head of the service that keyed it, and nobody else
+            head = self.env.ref(HEAD_OF_TEAM[self.originating_team],
+                                raise_if_not_found=False)
+            users = self.env['res.users'].sudo().search([
+                ('all_group_ids', 'in', head.ids), ('share', '=', False),
+                ('company_ids', 'in', self.company_id.ids)]) \
+                if head else self.env['res.users']
+            Task._notify_assignment(kind, self, users=users,
+                                    detail=self.description)
+            return
         if kind:
             Task._notify_assignment(kind, self, detail=self.description)
             return
@@ -634,9 +669,46 @@ class LogisticsExpense(models.Model):
             kind = 'cash_disburse' if exp.journal_id.type == 'cash' else 'bank_disburse'
             exp.company_id._clearance_check_approver(kind)
 
+    @api.model
+    def _team_of_current_user(self):
+        """The originating team the current user belongs to, or False."""
+        if self.env.su:
+            return False
+        user = self.env.user
+        # An administrator is in every group; they configure, they do
+        # not operate, and an expense they key belongs to no team.
+        if user.has_group('base.group_system'):
+            return False
+        for group, team in TEAM_OF_GROUP.items():
+            if user.has_group(group):
+                return team
+        return False
+
     def _check_manager(self):
+        """The head of the service that keyed it approves it.
+
+        An explicit approver list on the company still wins, as it does
+        for every checkpoint. Without one, the Head of Service Operations
+        signs Operations' costs, the Head of Customer Service theirs, the
+        Head of Service Transit theirs - and a cost that belongs to no
+        team (keyed by an administrator or imported) may be signed by any
+        of the three, which is what the rule was before 02/10/2026.
+        """
         for exp in self:
-            exp.company_id._clearance_check_approver('expense')
+            company = exp.company_id
+            if company.clearance_expense_approver_ids:
+                company._clearance_check_approver('expense')
+                continue
+            head = HEAD_OF_TEAM.get(exp.originating_team)
+            if not head:
+                company._clearance_check_approver('expense')
+                continue
+            if not self.env.user.has_group(head):
+                labels = dict(exp._fields['originating_team'].selection)
+                raise UserError(self.env._(
+                    "%(exp)s was keyed by %(team)s, so its head approves "
+                    "it - not another service's.",
+                    exp=exp.name, team=labels[exp.originating_team]))
 
     # ------------------------------------------------------------------
     # workflow

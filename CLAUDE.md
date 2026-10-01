@@ -388,8 +388,10 @@ Customs clearance job files for a logistics/clearance services provider.
      14/09 storno presentation and said they meant the words: debit
      sales, credit receivables. So `account_storno` goes back OFF -
      `_clearance_ensure_storno()` is deleted, the hook no longer asks for
-     it, and `migrations/19.0.35.0.0` turns it off for every company
-     except one trading in a `STORNO_MANDATORY_COUNTRIES` country. The
+     it, and `_clearance_ensure_swapped()` (called when a reversal is
+     raised) turns it off for every company except one trading in a
+     `STORNO_MANDATORY_COUNTRIES` country - there is NO 35.0.0 migration;
+     the one drafted on 19/09 was never committed. The
      checkbox stays in Settings, reworded, because the owner has now
      changed their mind about this twice. Entries already posted keep the
      form they were posted in.
@@ -471,6 +473,40 @@ Customs clearance job files for a logistics/clearance services provider.
      `clearance_charged`, the per-line figure the biller agreed. The two
      add to the same total, so TOTAL HT is unchanged; "out of pocket
      expense undercharge" no longer reaches a customer.
+- **Owner spec 02/10/2026: the services and their heads.** The groups
+  are RENAMED (Manager -> Head of Service: `group_clearance_ops_manager`
+  "Head of Service Operations", `..._customer_service_manager` "Head of
+  Customer Service", `..._transit_manager` "Head of Service Transit",
+  `..._finance_manager` "Head of Service Finance"; xmlids unchanged, so
+  nothing on disk or in a database moved) and three rules changed:
+  1. **Only Customer Service opens a file** (`access_logistics_file_cs`
+     is the one create row; `group_clearance_user` has create=0), and
+     **the Head of Customer Service approves the opening before work
+     starts**: `opening_state` none/requested/approved/refused +
+     `action_request_opening` / `action_approve_opening` /
+     `action_refuse_opening` (kind `file_open`, note required to refuse),
+     mirroring the document waiver. `action_start_work` refuses unless
+     approved - **su-exempt**, like the originating-team gate, because
+     hooks, the importer and test fixtures are not people. The requested
+     draft is readable by the head through
+     `rule_logistics_file_manager_sees_all` (+ the checklist rule), which
+     now names that group too. Queue kind `file_open`.
+  2. **The Head of Customer Service closes the file for good** -
+     `action_mark_complete` checks kind `file_close`, the button is on
+     that group, queue kind `file_close` lists a file whose every
+     document is posted AND nothing is left to bill (the billing EXISTS
+     clause, negated). Billing still bills; reopening is still the Head
+     of Service Operations' (`reopen`).
+  3. **A cost is approved by the head of the service that keyed it.**
+     `logistics.expense.originating_team` is stamped at create from the
+     keying user's group (`TEAM_OF_GROUP`; empty under su or for an
+     administrator), `HEAD_OF_TEAM` maps it to the head group,
+     `_check_manager` refuses another service's head, the queue column
+     `originating_team` narrows `expense_approve` rows in `_search` and
+     `_notify_landed` rings only that head. A cost of NO team (admin,
+     import) keeps the old rule: any of the three heads. An explicit
+     `clearance_expense_approver_ids` list still wins over all of it.
+  Tests: `test_owner_spec_0210.py`.
 - **My Tasks (owner spec, 03/09/2026).** `views/clearance_tasks_views.xml`:
    ten group-restricted actions under a "My Tasks" menu, so each role sees
    only the queue it can act on. No new model — domains over the existing

@@ -7,8 +7,20 @@
         <field name="arch" type="xml">
             <form string="Clearance File">
                 <header>
+                    <!-- A Customer Service Agent opens; the Head of Customer
+                         Service approves; only then does Start Work appear. -->
+                    <button name="action_request_opening" type="object" string="Request Opening Approval"
+                            class="oe_highlight"
+                            invisible="state != 'draft' or opening_state in ('requested', 'approved')"/>
+                    <button name="action_approve_opening" type="object" string="Approve Opening"
+                            class="oe_highlight" invisible="opening_state != 'requested'"
+                            groups="elite_clearance.group_clearance_customer_service_manager"/>
+                    <button name="action_refuse_opening" type="object" string="Refuse Opening"
+                            invisible="opening_state != 'requested'"
+                            groups="elite_clearance.group_clearance_customer_service_manager"/>
                     <button name="action_start_work" type="object" string="Start Work"
-                            class="oe_highlight" invisible="state != 'draft'"/>
+                            class="oe_highlight"
+                            invisible="state != 'draft' or opening_state != 'approved'"/>
                     <button name="action_request_waiver" type="object" string="Request Waiver"
                             invisible="state != 'draft' or documents_complete or waiver_state in ('requested', 'approved')"/>
                     <button name="action_approve_waiver" type="object" string="Approve Waiver"
@@ -70,9 +82,10 @@
                             string="Preview Invoice" invisible="not invoice_id"
                             groups="account.group_account_invoice,account.group_account_readonly"/>
                     <!-- both invoices of a split bill: a file is completed whole -->
+                    <!-- Billing bills; Customer Service closes (owner 02/10/2026). -->
                     <button name="action_mark_complete" type="object" string="Close the File"
                             invisible="state != 'ops_closed' or not invoices_posted"
-                            groups="elite_clearance.group_clearance_billing"/>
+                            groups="elite_clearance.group_clearance_customer_service_manager"/>
                     <button name="%(action_logistics_reopen_wizard)d" type="action" string="Reopen (Approval)"
                             invisible="state not in ('ops_closed', 'done')"
                             groups="elite_clearance.group_clearance_manager"
@@ -90,6 +103,25 @@
                             invisible="partner_disclosure != 'undisclosed'"/>
                     <field name="partner_disclosure" invisible="1"/>
                     <field name="can_start" invisible="1"/>
+                    <field name="opening_state" invisible="1"/>
+                    <div class="alert alert-info" role="alert"
+                         invisible="state != 'draft' or opening_state != 'requested'">
+                        The opening of this file is with the Head of Customer Service. Work
+                        starts once it is approved.
+                        <field name="opening_note" nolabel="1" class="d-block mt-2"
+                               groups="elite_clearance.group_clearance_customer_service_manager"
+                               placeholder="Your note - required to refuse, optional to approve"/>
+                    </div>
+                    <div class="alert alert-danger" role="alert"
+                         invisible="opening_state != 'refused'">
+                        <b>Opening refused.</b>
+                        <field name="opening_note" readonly="1" nolabel="1" class="d-block mt-1"/>
+                    </div>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="state != 'draft' or opening_state != 'none'">
+                        Fill the file in, then press <b>Request Opening Approval</b>. The Head of
+                        Customer Service signs it before any work starts.
+                    </div>
                     <field name="invoice_id" invisible="1"/>
                     <field name="invoice_state" invisible="1"/>
                     <field name="bill_stands" invisible="1"/>

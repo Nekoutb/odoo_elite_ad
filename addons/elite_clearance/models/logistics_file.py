@@ -195,6 +195,28 @@ class LogisticsFile(models.Model):
     )
 
     # --- waiver (start work without full documentation) -----------------
+    # A Customer Service Agent opens the file; the Head of Customer
+    # Service approves it before any work starts (owner spec 02/10/2026).
+    # Same shape as the document waiver below, because it is the same
+    # kind of thing: a request, a signature, a reason on record.
+    opening_state = fields.Selection(
+        [
+            ('none', "Not requested"),
+            ('requested', "Awaiting the Head of Customer Service"),
+            ('approved', "Approved"),
+            ('refused', "Refused"),
+        ],
+        default='none', required=True, tracking=True, copy=False,
+        string="Opening Approval")
+    opening_requested_by_id = fields.Many2one(
+        'res.users', readonly=True, copy=False, string="Opening Requested By")
+    opening_approved_by_id = fields.Many2one(
+        'res.users', readonly=True, copy=False, string="Opening Approved By")
+    opening_date = fields.Datetime(readonly=True, copy=False)
+    opening_note = fields.Text(
+        string="Opening Note", copy=False,
+        help="Why the opening was refused, or anything the head wants on "
+             "record when approving it.")
     waiver_state = fields.Selection(
         [
             ('none', "Not requested"),
@@ -493,6 +515,9 @@ class LogisticsFile(models.Model):
         if vals.get('state') == 'in_progress' and self.reopen_count:
             Task._notify_assignment('ops_close', self,
                                     detail=self.env._("Reopened for work"))
+        if vals.get('opening_state') == 'requested':
+            Task._notify_assignment('file_open', self,
+                                    detail=self.env._("New file to approve"))
         if vals.get('waiver_state') == 'requested':
             Task._notify_assignment('doc_waiver', self,
                                     detail=self.env._("Document waiver"))
@@ -693,12 +718,19 @@ class LogisticsFile(models.Model):
                 "Closed. An Head of Service Operations can reopen it for more "
                 "billing, a credit note or any other adjustment.")
         if self.state == 'draft':
+            if self.opening_state == 'requested':
+                return self.env._("Head of Customer Service"), self.env._(
+                    "A new file is waiting for approval.")
             if self.waiver_state == 'requested':
                 return self.env._("Manager"), self.env._(
                     "A document waiver is waiting to be signed.")
-            return (self.create_uid.name or self.env._("Operations"),
+            if self.opening_state == 'refused':
+                return (self.create_uid.name or self.env._("Customer Service"),
+                        self.env._("Opening refused: %s",
+                                   self.opening_note or ""))
+            return (self.create_uid.name or self.env._("Customer Service"),
                     self.env._("Being opened. Nobody else can see it until "
-                               "Start Work is pressed."))
+                               "the opening is approved and work starts."))
         blocking = self._stage_blocked_by_expense()
         if blocking:
             return blocking
@@ -721,7 +753,7 @@ class LogisticsFile(models.Model):
             if not self.invoices_posted:
                 return self.env._("Billing"), self.env._(
                     "The invoice is raised and waiting to be posted.")
-            return self.env._("Billing"), self.env._(
+            return self.env._("Head of Customer Service"), self.env._(
                 "Billed and posted. The file can be closed.")
         return (self.user_id.name or self.env._("Operations"),
                 self.env._("Work in progress."))
@@ -740,8 +772,11 @@ class LogisticsFile(models.Model):
 
         rows = waiting('submitted')
         if rows:
-            return (self.env._("Head of Service"),
-                    self.env._("%s disbursement(s) to approve.", len(rows)))
+            teams = set(rows.mapped('originating_team')) - {False}
+            labels = dict(rows._fields['originating_team'].selection)
+            who = (self.env._("Head of %s", labels[teams.pop()])
+                   if len(teams) == 1 else self.env._("Head of Service"))
+            return who, self.env._("%s disbursement(s) to approve.", len(rows))
         rows = waiting('approved')
         if rows:
             return (self.env._("Finance"),
@@ -999,6 +1034,60 @@ class LogisticsFile(models.Model):
         self._build_checklist()
         return True
 
+    def action_request_opening(self):
+        """The agent asks the Head of Customer Service to approve the file."""
+        for file in self:
+            if file.state != 'draft':
+                raise UserError(self.env._(
+                    "%s is no longer in draft.", file.name))
+            if file.opening_state == 'approved':
+                raise UserError(self.env._(
+                    "The opening of %s is already approved.", file.name))
+            file.write({
+                'opening_state': 'requested',
+                'opening_requested_by_id': self.env.user.id,
+                'opening_date': fields.Datetime.now(),
+            })
+            file.message_post(body=self.env._(
+                "Opening sent to the Head of Customer Service for approval."))
+        return True
+
+    def action_approve_opening(self):
+        for file in self:
+            file.company_id._clearance_check_approver('file_open')
+            if file.opening_state != 'requested':
+                raise UserError(self.env._(
+                    "No opening is awaiting approval on %s.", file.name))
+            file.write({
+                'opening_state': 'approved',
+                'opening_approved_by_id': self.env.user.id,
+                'opening_date': fields.Datetime.now(),
+            })
+            file.message_post(body=self.env._(
+                "Opening approved by %s. Work can start.",
+                self.env.user.name))
+        return True
+
+    def action_refuse_opening(self):
+        for file in self:
+            file.company_id._clearance_check_approver('file_open')
+            if file.opening_state != 'requested':
+                raise UserError(self.env._(
+                    "No opening is awaiting approval on %s.", file.name))
+            if not file.opening_note:
+                raise UserError(self.env._(
+                    "Say why the opening of %s is refused, in the Opening "
+                    "Note.", file.name))
+            file.write({
+                'opening_state': 'refused',
+                'opening_approved_by_id': self.env.user.id,
+                'opening_date': fields.Datetime.now(),
+            })
+            file.message_post(body=self.env._(
+                "Opening refused by %(who)s: %(why)s",
+                who=self.env.user.name, why=file.opening_note))
+        return True
+
     def action_request_waiver(self):
         for file in self:
             if file.documents_complete:
@@ -1250,6 +1339,13 @@ class LogisticsFile(models.Model):
                 raise UserError(self.env._(
                     "Work cannot start on %s until its customs regime is "
                     "chosen.", file.name))
+            # Skipped under su, like the originating-team gate on the
+            # expense: hooks, the importer and the test superuser are not
+            # people. Every real user waits for the head's signature.
+            if not self.env.su and file.opening_state != 'approved':
+                raise UserError(self.env._(
+                    "Work cannot start on %s until the Head of Customer "
+                    "Service has approved its opening.", file.name))
             file._check_cargo_described()
             if not file.can_start:
                 raise UserError(self.env._(
@@ -1964,7 +2060,11 @@ class LogisticsFile(models.Model):
     def action_mark_complete(self):
         """Final close: only once the client invoice is posted."""
         for file in self:
-            file.company_id._clearance_check_approver('billing')
+            # Billing bills; Customer Service closes (owner spec
+            # 02/10/2026). The precondition is still Billing's work -
+            # every invoice posted - and the head sees it is ready in
+            # their own queue.
+            file.company_id._clearance_check_approver('file_close')
             if file.state != 'ops_closed':
                 raise UserError(self.env._(
                     "%s must be closed for operations first.", file.name))

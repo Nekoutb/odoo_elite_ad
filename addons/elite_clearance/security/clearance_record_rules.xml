@@ -31,7 +31,9 @@
         <record id="rule_logistics_file_manager_sees_all" model="ir.rule">
             <field name="name">Clearance file: a manager sees every file</field>
             <field name="model_id" ref="model_logistics_file"/>
-            <field name="groups" eval="[(4, ref('group_clearance_manager'))]"/>
+            <!-- The Head of Customer Service too: the files their agents
+                 open wait in draft for their approval (02/10/2026). -->
+            <field name="groups" eval="[(4, ref('group_clearance_manager')), (4, ref('group_clearance_customer_service_manager'))]"/>
             <field name="domain_force">[(1, '=', 1)]</field>
         </record>
 
@@ -48,7 +50,7 @@
         <record id="rule_logistics_file_document_manager" model="ir.rule">
             <field name="name">Clearance checklist: a manager sees every one</field>
             <field name="model_id" ref="model_logistics_file_document"/>
-            <field name="groups" eval="[(4, ref('group_clearance_manager'))]"/>
+            <field name="groups" eval="[(4, ref('group_clearance_manager')), (4, ref('group_clearance_customer_service_manager'))]"/>
             <field name="domain_force">[(1, '=', 1)]</field>
         </record>
 

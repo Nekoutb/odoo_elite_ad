@@ -31,6 +31,7 @@ class TestOwnerSpec0809(TransactionCase):
         # Opening a file is Customer Service's alone since 02/10/2026,
         # so the author of every file in this suite is one of theirs.
         cls.author = user("Spec Author", 'customer_service')
+        cls.cs_head = user("Spec CS Head", 'customer_service_manager')
         cls.other = user("Spec Other", 'finance')
         cls.manager = user("Spec Manager", 'manager')
 
@@ -47,6 +48,13 @@ class TestOwnerSpec0809(TransactionCase):
         if user:
             model = model.with_user(user)
         return model.create(vals)
+
+    def _opened(self, file):
+        """The author asks and the Head of Customer Service approves -
+        what every real user does before Start Work (02/10/2026)."""
+        file.with_user(self.author).action_request_opening()
+        file.with_user(self.cs_head).action_approve_opening()
+        return file
 
     def _form_arch(self, user=None):
         model = self.env['logistics.file']
@@ -173,7 +181,7 @@ class TestOwnerSpec0809(TransactionCase):
         """required= is inert on a number - the web client counts 0 as
         filled in - so the figures are enforced at Start Work."""
         from odoo.exceptions import UserError
-        file = self._file(user=self.author)
+        file = self._opened(self._file(user=self.author))
         with self.assertRaises(UserError) as caught:
             file.with_user(self.author).action_start_work()
         self.assertIn("Packages", str(caught.exception))
@@ -217,6 +225,7 @@ class TestOwnerSpec0809(TransactionCase):
 
         file.write({'package_count': 12, 'weight_kg': 800.0,
                     'not_containerised': True})
+        self._opened(file)
         file.with_user(self.author).action_start_work()
         self.assertEqual(file.state, 'in_progress')
         self.assertTrue(

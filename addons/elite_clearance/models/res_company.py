@@ -69,6 +69,14 @@ APPROVAL_KINDS = {
     'reopen': ("clearance_reopen_approver_ids",
                ('elite_clearance.group_clearance_ops_manager',),
                "reopen a closed file"),
+    # Opening a file and closing it for good are Customer Service's, and
+    # the head of that service signs both (owner spec 02/10/2026).
+    'file_open': ("clearance_file_open_approver_ids",
+                  ('elite_clearance.group_clearance_customer_service_manager',),
+                  "approve the opening of a file"),
+    'file_close': ("clearance_file_close_approver_ids",
+                   ('elite_clearance.group_clearance_customer_service_manager',),
+                   "close a file for good"),
     'ops_close': ("clearance_ops_close_approver_ids",
                   ('elite_clearance.group_clearance_ops_manager',),
                   "close a file for operations"),
@@ -234,6 +242,17 @@ class ResCompany(models.Model):
         help="Who may approve how an expense is paid once Finance has set "
              "the payment mode, vendor, holder and journal. Empty = any "
              "Clearance Head of Service Finance.")
+    clearance_file_open_approver_ids = fields.Many2many(
+        'res.users', 'clearance_file_open_approver_rel',
+        string="File Opening Approvers",
+        help="Who approves a file a Customer Service Agent has opened, "
+             "before work can start on it. Empty = any Head of Customer "
+             "Service.")
+    clearance_file_close_approver_ids = fields.Many2many(
+        'res.users', 'clearance_file_close_approver_rel',
+        string="File Closing Approvers",
+        help="Who closes a billed file for good. Empty = any Head of "
+             "Customer Service.")
     clearance_reopen_approver_ids = fields.Many2many(
         'res.users', 'clearance_reopen_approver_rel',
         string="Reopening Approvers",
