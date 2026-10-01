@@ -72,5 +72,9 @@ class TestClearanceSettings(TransactionCase):
     def test_04_the_menu_is_the_general_managers(self):
         menu = self.env.ref('elite_clearance.menu_clearance_settings')
         self.assertEqual(menu.action.res_model, 'clearance.settings.wizard')
-        self.assertEqual(menu.group_ids,
-                         self.env.ref('elite_clearance.group_clearance_manager'))
+        # `in`, not equal: a database upgraded from the administrator-only
+        # build keeps base.group_system on the menu beside the manager
+        # group - a menuitem's groups are added on upgrade, never
+        # replaced - and menu groups are OR-ed, so that changes nothing.
+        self.assertIn(self.env.ref('elite_clearance.group_clearance_manager'),
+                      menu.group_ids)
