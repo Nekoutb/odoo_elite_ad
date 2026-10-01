@@ -5,7 +5,7 @@ from odoo.exceptions import UserError
 class LogisticsFileReopenWizard(models.TransientModel):
     """Reopening a closed file is an exception and must be approved.
 
-    The Operations Manager signs it (owner spec 14/09/2026): closing a
+    The Head of Service Operations signs it (owner spec 14/09/2026): closing a
     billed file is the Billing Agent's own decision, but going back into
     a closed one - for more billing, a credit note, any adjustment - is
     an operational judgement. The reason is posted to the file."""

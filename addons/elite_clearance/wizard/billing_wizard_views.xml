@@ -24,7 +24,7 @@
                 </div>
                 <div class="alert alert-warning" role="alert" invisible="not needs_review">
                     <b>The recharge no longer matches what was disbursed.</b>
-                    No invoice can be raised until an Operations Manager approves it — and where the
+                    No invoice can be raised until an Head of Service Operations approves it — and where the
                     recharge is <i>below</i> cost, the General Manager as well. Give the reason and
                     send it for review.
                 </div>
@@ -136,7 +136,7 @@
                 <separator string="Additional services"/>
                 <div class="text-muted mb-1">
                     Anything beyond the commission and the customs fee. Only services an
-                    Operations Manager has approved can be picked here.
+                    Head of Service Operations has approved can be picked here.
                 </div>
                 <field name="service_line_ids">
                     <list editable="bottom">

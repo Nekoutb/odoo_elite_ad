@@ -118,14 +118,14 @@ class TestRegimeAndBillingParams(TransactionCase):
     def test_06_the_departments_are_named_as_the_owner_named_them(self):
         expected = {
             'group_clearance_finance': "Finance Agent",
-            'group_clearance_finance_manager': "Finance Manager",
+            'group_clearance_finance_manager': "Head of Service Finance",
             'group_clearance_cashier': "Cashier",
             'group_clearance_operations': "Operations Agent",
-            'group_clearance_ops_manager': "Operations Manager",
+            'group_clearance_ops_manager': "Head of Service Operations",
             'group_clearance_customer_service': "Customer Service Agent",
-            'group_clearance_customer_service_manager': "Customer Service Manager",
+            'group_clearance_customer_service_manager': "Head of Customer Service",
             'group_clearance_transit': "Transit Agent",
-            'group_clearance_transit_manager': "Transit Manager",
+            'group_clearance_transit_manager': "Head of Service Transit",
         }
         for xmlid, label in expected.items():
             self.assertEqual(

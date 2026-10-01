@@ -144,7 +144,7 @@
                             <field name="clearance_expense_approver_ids" widget="many2many_tags"/>
                         </setting>
                         <setting string="Settlement Approvers"
-                                 help="Who may approve the payment mode, vendor, holder and journal Finance has set on an expense. Empty = any Clearance Finance Manager.">
+                                 help="Who may approve the payment mode, vendor, holder and journal Finance has set on an expense. Empty = any Clearance Head of Service Finance.">
                             <field name="clearance_settlement_approver_ids" widget="many2many_tags"/>
                         </setting>
                         <setting string="Disbursement (Finance) Approvers"
@@ -156,23 +156,23 @@
                             <field name="clearance_billing_approver_ids" widget="many2many_tags"/>
                         </setting>
                         <setting string="Reopening Approvers"
-                                 help="Who may reopen a file that has been closed - for more billing, a credit note or any other adjustment. Empty = any Clearance Operations Manager.">
+                                 help="Who may reopen a file that has been closed - for more billing, a credit note or any other adjustment. Empty = any Clearance Head of Service Operations.">
                             <field name="clearance_reopen_approver_ids" widget="many2many_tags"/>
                         </setting>
                         <setting string="Operations Close Approvers"
-                                 help="Who may close a file for operations. Empty = any Clearance Operations Manager.">
+                                 help="Who may close a file for operations. Empty = any Clearance Head of Service Operations.">
                             <field name="clearance_ops_close_approver_ids" widget="many2many_tags"/>
                         </setting>
                         <setting string="Justification Approvers"
-                                 help="Who may approve that the documents attached to a staff advance really justify it. Empty = any Clearance Operations Manager.">
+                                 help="Who may approve that the documents attached to a staff advance really justify it. Empty = any Clearance Head of Service Operations.">
                             <field name="clearance_justification_approver_ids" widget="many2many_tags"/>
                         </setting>
-                        <setting string="Justification Signatories (Finance Manager)"
-                                 help="Who signs the reclassification of a justified advance from 421101 to the billable account. Empty = any Clearance Finance Manager.">
+                        <setting string="Justification Signatories (Head of Service Finance)"
+                                 help="Who signs the reclassification of a justified advance from 421101 to the billable account. Empty = any Clearance Head of Service Finance.">
                             <field name="clearance_justification_finance_approver_ids" widget="many2many_tags"/>
                         </setting>
                         <setting string="Recharge Adjustment Approvers (Operations)"
-                                 help="Who may approve recharging the client at other than cost. Empty = any Clearance Operations Manager.">
+                                 help="Who may approve recharging the client at other than cost. Empty = any Clearance Head of Service Operations.">
                             <field name="clearance_recharge_ops_approver_ids" widget="many2many_tags"/>
                         </setting>
                         <setting string="Below-Cost Recharge Approvers (General Manager)"
@@ -180,19 +180,19 @@
                             <field name="clearance_recharge_gm_approver_ids" widget="many2many_tags"/>
                         </setting>
                         <setting string="Cashiers"
-                                 help="Who may disburse from a cash till once the Finance Manager has approved the settlement. Empty = any Clearance Cashier.">
+                                 help="Who may disburse from a cash till once the Head of Service Finance has approved the settlement. Empty = any Clearance Cashier.">
                             <field name="clearance_cashier_approver_ids" widget="many2many_tags"/>
                         </setting>
                         <setting string="Treasury"
-                                 help="Who may pay from a bank or mobile-money journal once the Finance Manager has approved the settlement. Empty = any Clearance Treasury user.">
+                                 help="Who may pay from a bank or mobile-money journal once the Head of Service Finance has approved the settlement. Empty = any Clearance Treasury user.">
                             <field name="clearance_treasury_approver_ids" widget="many2many_tags"/>
                         </setting>
                         <setting string="Imported-File Reopening Approvers"
-                                 help="Who may approve reopening a file imported from the legacy system so it can be worked and billed again. Empty = any Clearance Operations Manager.">
+                                 help="Who may approve reopening a file imported from the legacy system so it can be worked and billed again. Empty = any Clearance Head of Service Operations.">
                             <field name="clearance_reopen_imported_approver_ids" widget="many2many_tags"/>
                         </setting>
                         <setting string="Unjustified Advance Waiver Approvers"
-                                 help="Who may allow a file to be billed while a staff advance is still unsupported on 421101. Empty = any Clearance Operations Manager.">
+                                 help="Who may allow a file to be billed while a staff advance is still unsupported on 421101. Empty = any Clearance Head of Service Operations.">
                             <field name="clearance_advance_waiver_approver_ids" widget="many2many_tags"/>
                         </setting>
                     </block>

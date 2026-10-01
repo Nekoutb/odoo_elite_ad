@@ -6,7 +6,7 @@ class LogisticsBillingService(models.Model):
     """A revenue line the billing agent may put on a clearance invoice.
 
     Billing proposes; Operations decides. Anyone in Billing can write down a
-    new service, but until an Operations Manager approves it, it cannot
+    new service, but until an Head of Service Operations approves it, it cannot
     reach a client invoice - so the list of things the company charges for
     stays a deliberate list rather than whatever was typed under deadline.
     """

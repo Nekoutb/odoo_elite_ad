@@ -31,7 +31,7 @@ class HrEmployee(models.Model):
              "justified with supporting documents — the balance standing "
              "against them on 421101 Personnel débours avancés. A clearance "
              "file carrying any of this cannot be billed unless an "
-             "Operations Manager waives it in writing.",
+             "Head of Service Operations waives it in writing.",
     )
 
     @api.depends('clearance_advance_ids.state',

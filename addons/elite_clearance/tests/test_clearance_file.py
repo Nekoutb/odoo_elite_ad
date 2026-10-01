@@ -159,7 +159,10 @@ class TestClearanceFile(TransactionCase):
             'name': "Ops Agent",
             'login': "ops.agent@test.example",
             'group_ids': [(6, 0, [
-                self.env.ref('elite_clearance.group_clearance_user').id,
+                # Opening a file is Customer Service's alone since
+                # 02/10/2026; a plain Clearance user cannot.
+                self.env.ref(
+                    'elite_clearance.group_clearance_customer_service').id,
             ])],
         })
         # opened BY that user: since 08/09/2026 a draft file is its
@@ -180,7 +183,10 @@ class TestClearanceFile(TransactionCase):
             'name': "Ops Agent 2",
             'login': "ops.agent2@test.example",
             'group_ids': [(6, 0, [
-                self.env.ref('elite_clearance.group_clearance_user').id,
+                # Opening a file is Customer Service's alone since
+                # 02/10/2026; a plain Clearance user cannot.
+                self.env.ref(
+                    'elite_clearance.group_clearance_customer_service').id,
             ])],
         })
         file = self.env['logistics.file'].with_user(user).create({
@@ -245,7 +251,10 @@ class TestClearanceFile(TransactionCase):
             'name': "Ops Agent 3",
             'login': "ops.agent3@test.example",
             'group_ids': [(6, 0, [
-                self.env.ref('elite_clearance.group_clearance_user').id,
+                # Opening a file is Customer Service's alone since
+                # 02/10/2026; a plain Clearance user cannot.
+                self.env.ref(
+                    'elite_clearance.group_clearance_customer_service').id,
             ])],
         })
         file = self.env['logistics.file'].with_user(user).create({

@@ -571,7 +571,7 @@ class LogisticsBillingWizardService(models.TransientModel):
     service_id = fields.Many2one(
         'logistics.billing.service', string="Billable Service",
         domain="[('state', '=', 'approved')]",
-        help="Only services an Operations Manager has approved can be "
+        help="Only services an Head of Service Operations has approved can be "
              "billed. Propose a new one from Billing > Billable Services.")
     name = fields.Char(string="Service", required=True)
     amount = fields.Monetary(string="Amount", currency_field='currency_id')

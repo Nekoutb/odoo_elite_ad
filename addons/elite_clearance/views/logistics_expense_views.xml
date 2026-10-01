@@ -15,7 +15,7 @@
                     <button name="action_refuse" type="object" string="Refuse"
                             invisible="state != 'submitted'"
                             groups="elite_clearance.group_clearance_ops_manager,elite_clearance.group_clearance_customer_service_manager,elite_clearance.group_clearance_transit_manager"/>
-                    <button name="action_submit_settlement" type="object" string="Send to Finance Manager"
+                    <button name="action_submit_settlement" type="object" string="Send to Head of Service Finance"
                             class="oe_highlight" invisible="state != 'approved'"
                             groups="elite_clearance.group_clearance_finance"/>
                     <button name="action_approve_settlement" type="object" string="Approve Settlement"
@@ -36,7 +36,7 @@
                     <button name="action_justify" type="object" string="Approve Justification (Operations)"
                             class="oe_highlight" invisible="state != 'justification_submitted'"
                             groups="elite_clearance.group_clearance_ops_manager"/>
-                    <button name="action_justify_finance" type="object" string="Sign Justification (Finance Manager)"
+                    <button name="action_justify_finance" type="object" string="Sign Justification (Head of Service Finance)"
                             class="oe_highlight" invisible="state != 'justification_ops_approved'"
                             groups="elite_clearance.group_clearance_finance_manager"/>
                     <button name="action_refuse_justification" type="object" string="Refuse Justification"
@@ -210,7 +210,7 @@
                 <filter name="legacy_unjustified" string="Legacy, unjustified" domain="[('is_legacy', '=', True), ('legacy_justified', '=', False), ('legacy_reversal', '=', False)]"/>
                 <separator/>
                 <filter name="to_set_settlement" string="Settlement To Set (Finance)" domain="[('state', '=', 'approved')]"/>
-                <filter name="to_approve_settlement" string="Awaiting Finance Manager" domain="[('state', '=', 'settlement_submitted')]"/>
+                <filter name="to_approve_settlement" string="Awaiting Head of Service Finance" domain="[('state', '=', 'settlement_submitted')]"/>
                 <filter name="to_settle" string="To Settle" domain="[('state', '=', 'settlement_approved')]"/>
                 <filter name="to_justify" string="Advances To Justify"
                         domain="[('state', '=', 'settled'), ('payment_mode', '=', 'advance')]"/>

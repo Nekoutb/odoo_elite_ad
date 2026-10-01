@@ -122,7 +122,7 @@ class TestStaffAdvances(TransactionCase):
             "submitted, so it leaves the holder's queue")
 
     def test_21_a_justification_is_signed_twice(self):
-        """Operations accepts the documents; the Finance Manager signs
+        """Operations accepts the documents; the Head of Service Finance signs
         the reclassification, because it moves money between two
         accounts (owner, 11/09/2026)."""
         advance = self._settled_advance()
@@ -135,7 +135,7 @@ class TestStaffAdvances(TransactionCase):
             'group_ids': [(6, 0, [self.env.ref(
                 'elite_clearance.group_clearance_finance_manager').id])]})
 
-        # the Finance Manager cannot sign before Operations has accepted
+        # the Head of Service Finance cannot sign before Operations has accepted
         with self.assertRaises(UserError):
             advance.with_user(finance_manager).action_justify_finance()
 
@@ -150,7 +150,7 @@ class TestStaffAdvances(TransactionCase):
         with self.assertRaises(UserError):
             advance.with_user(ops).action_justify_finance()
 
-        # it waits in the Finance Manager's queue meanwhile
+        # it waits in the Head of Service Finance's queue meanwhile
         waiting = self.env['clearance.task'].with_user(finance_manager).search(
             [('kind', '=', 'justification_finance')])
         self.assertEqual(waiting.res_id, advance.id)

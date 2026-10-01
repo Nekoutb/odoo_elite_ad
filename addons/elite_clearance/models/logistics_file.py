@@ -160,14 +160,14 @@ class LogisticsFile(models.Model):
         default='draft', required=True, tracking=True, index=True,
         help="Imported: brought over from the legacy system as a record. "
              "No work or billing happens on it unless the billing agent "
-             "asks to reopen it and an Operations Manager approves.",
+             "asks to reopen it and an Head of Service Operations approves.",
     )
 
     # --- reopening an imported file -------------------------------------
     reopen_request_state = fields.Selection(
         [
             ('none', "Not requested"),
-            ('requested', "Awaiting Operations Manager"),
+            ('requested', "Awaiting Head of Service Operations"),
             ('approved', "Approved"),
             ('refused', "Refused"),
         ],
@@ -300,7 +300,7 @@ class LogisticsFile(models.Model):
     recharge_state = fields.Selection(
         [
             ('none', "At cost"),
-            ('requested', "Awaiting Operations Manager"),
+            ('requested', "Awaiting Head of Service Operations"),
             ('ops_approved', "Awaiting General Manager"),
             ('approved', "Approved"),
             ('refused', "Refused"),
@@ -690,7 +690,7 @@ class LogisticsFile(models.Model):
                 "Imported from the legacy system and kept as a record.")
         if self.state == 'done':
             return self.env._("Nobody"), self.env._(
-                "Closed. An Operations Manager can reopen it for more "
+                "Closed. An Head of Service Operations can reopen it for more "
                 "billing, a credit note or any other adjustment.")
         if self.state == 'draft':
             if self.waiver_state == 'requested':
@@ -703,14 +703,14 @@ class LogisticsFile(models.Model):
         if blocking:
             return blocking
         if self.reopen_request_state == 'requested':
-            return self.env._("Operations Manager"), self.env._(
+            return self.env._("Head of Service Operations"), self.env._(
                 "A request to reopen an imported file is waiting.")
         if self.advance_waiver_state == 'requested':
-            return self.env._("Operations Manager"), self.env._(
+            return self.env._("Head of Service Operations"), self.env._(
                 "A waiver for unjustified staff advances is waiting.")
         if self.state == 'ops_closed':
             if self.recharge_state == 'requested':
-                return self.env._("Operations Manager"), self.env._(
+                return self.env._("Head of Service Operations"), self.env._(
                     "A recharge other than at cost is waiting for approval.")
             if self.recharge_state == 'ops_approved':
                 return self.env._("General Manager"), self.env._(
@@ -740,7 +740,7 @@ class LogisticsFile(models.Model):
 
         rows = waiting('submitted')
         if rows:
-            return (self.env._("Team Manager"),
+            return (self.env._("Head of Service"),
                     self.env._("%s disbursement(s) to approve.", len(rows)))
         rows = waiting('approved')
         if rows:
@@ -749,7 +749,7 @@ class LogisticsFile(models.Model):
                                "method and a journal.", len(rows)))
         rows = waiting('settlement_submitted')
         if rows:
-            return (self.env._("Finance Manager"),
+            return (self.env._("Head of Service Finance"),
                     self.env._("%s settlement(s) to sign.", len(rows)))
         rows = waiting('settlement_approved')
         if rows:
@@ -763,12 +763,12 @@ class LogisticsFile(models.Model):
             return who, self.env._("%s disbursement(s) to pay out.", len(rows))
         rows = waiting('justification_submitted')
         if rows:
-            return (self.env._("Operations Manager"),
+            return (self.env._("Head of Service Operations"),
                     self.env._("%s advance justification(s) to accept.",
                                len(rows)))
         rows = waiting('justification_ops_approved')
         if rows:
-            return (self.env._("Finance Manager"),
+            return (self.env._("Head of Service Finance"),
                     self.env._("%s advance justification(s) to sign.",
                                len(rows)))
         held = live.filtered(lambda e: e.state == 'settled'
@@ -974,7 +974,7 @@ class LogisticsFile(models.Model):
 
         Anything still on 421101 is a staff debt with no supporting document
         behind it. Billing it would recharge the client for money we cannot
-        evidence, so the file stops here unless an Operations Manager signs
+        evidence, so the file stops here unless an Head of Service Operations signs
         for it in writing.
         """
         self.ensure_one()
@@ -988,7 +988,7 @@ class LogisticsFile(models.Model):
         raise UserError(self.env._(
             "%(name)s carries %(amount)s advanced to staff (%(who)s) that is "
             "still unjustified on 421101. Justify it with the supporting "
-            "documents, or obtain an Operations Manager's waiver.",
+            "documents, or obtain an Head of Service Operations's waiver.",
             name=self.name, amount=self.unjustified_advance_total,
             who=", ".join(sorted(set(holders))) or "-"))
 
@@ -1126,7 +1126,7 @@ class LogisticsFile(models.Model):
         return True
 
     def action_approve_reopen_imported(self):
-        """The Operations Manager, after review, releases it into the workflow."""
+        """The Head of Service Operations, after review, releases it into the workflow."""
         for file in self:
             file.company_id._clearance_check_approver('reopen_imported')
             if file.reopen_request_state != 'requested':
@@ -1290,7 +1290,7 @@ class LogisticsFile(models.Model):
     def action_close_operations(self):
         """Operations are finished: no further expenses can be captured.
 
-        Two gates, in order: an Operations Manager is closing it, and every
+        Two gates, in order: an Head of Service Operations is closing it, and every
         expense is final (an unjustified staff advance being the one
         waivable exception).
 
@@ -1300,7 +1300,7 @@ class LogisticsFile(models.Model):
         not own in order to hand the file on.
         """
         for file in self:
-            # Closing is the Operations Manager's decision, not the agent's.
+            # Closing is the Head of Service Operations's decision, not the agent's.
             file.company_id._clearance_check_approver('ops_close')
             if file.state != 'in_progress':
                 raise UserError(self.env._(
@@ -1872,13 +1872,13 @@ class LogisticsFile(models.Model):
         (owner spec 14/09/2026). A closed file is the record of a
         finished job: it can be opened again at any time, for more
         billing, for a credit note, for any other adjustment, but an
-        Operations Manager signs for it and the reopening says which way
+        Head of Service Operations signs for it and the reopening says which way
         the file comes back.
         """
         self.ensure_one()
         if self.state == 'done':
             raise UserError(self.env._(
-                "%s is closed. Reopen it first - an Operations Manager "
+                "%s is closed. Reopen it first - an Head of Service Operations "
                 "approves that, and says whether it comes back for "
                 "billing or for more work - and its invoices can then be "
                 "credited, cancelled or added to.", self.name))
@@ -1991,7 +1991,7 @@ class LogisticsFile(models.Model):
             file.message_post(body=self.env._(
                 "File closed by %s. It can be reopened later - for more "
                 "billing, a credit note or any other adjustment - with an "
-                "Operations Manager's approval.", self.env.user.name))
+                "Head of Service Operations's approval.", self.env.user.name))
         return True
 
     def action_cancel(self):

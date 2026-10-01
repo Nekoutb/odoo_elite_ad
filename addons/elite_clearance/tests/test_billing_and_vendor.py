@@ -145,7 +145,7 @@ class TestVendorPayableAndRecharge(TransactionCase):
         self.assertEqual(exp.payment_mode, 'electronic')
         self.assertEqual(exp.state, 'settled')
 
-    # -- justification now needs the Operations Manager -------------------
+    # -- justification now needs the Head of Service Operations -------------------
     def test_05_justification_is_approved_by_the_operations_manager(self):
         exp = self._settled(40000, mode='advance', vendor=False)
         self.env['ir.attachment'].create({

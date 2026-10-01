@@ -7,7 +7,7 @@ class TestSegregationOfDuties(TransactionCase):
     """Who may do what to an expense, and who may close a file.
 
     The spending team keys; a team manager approves; Finance decides how
-    it is paid; the Finance Manager signs that; the Operations Manager
+    it is paid; the Head of Service Finance signs that; the Head of Service Operations
     closes the file. Every step is a different pair of hands.
     """
 
@@ -60,7 +60,7 @@ class TestSegregationOfDuties(TransactionCase):
         cls.cs_manager = user("CS Manager", G + 'customer_service_manager')
         cls.general_manager = user("General Manager", G + 'manager')
         cls.finance = user("Finance Clerk", G + 'finance')
-        cls.finance_manager = user("Finance Manager", G + 'finance_manager')
+        cls.finance_manager = user("Head of Service Finance", G + 'finance_manager')
         cls.ops_manager = user("Ops Manager", G + 'ops_manager')
         cls.cashier = user("Till Cashier", G + 'cashier')
         cls.treasury = user("Treasury Officer", G + 'treasury')
@@ -188,7 +188,7 @@ class TestSegregationOfDuties(TransactionCase):
         # superuser env, so it is the STATE that refuses, not the rights
         with self.assertRaises(UserError):
             exp.with_env(self.env).action_settle()
-        # the Finance Manager cannot sign a blank settlement
+        # the Head of Service Finance cannot sign a blank settlement
         with self.assertRaises(UserError):
             exp.with_user(self.finance_manager).action_approve_settlement()
         exp.with_user(self.finance).write({
@@ -196,12 +196,12 @@ class TestSegregationOfDuties(TransactionCase):
             'journal_id': self.journal.id,
             'vendor_id': self.vendor.id,
         })
-        # the Finance Manager cannot sign what Finance has not sent on
+        # the Head of Service Finance cannot sign what Finance has not sent on
         with self.assertRaises(UserError):
             exp.with_user(self.finance_manager).action_approve_settlement()
         exp.with_user(self.finance).action_submit_settlement()
         self.assertEqual(exp.state, 'settlement_submitted')
-        # a Finance clerk proposes; only the Finance Manager signs
+        # a Finance clerk proposes; only the Head of Service Finance signs
         with self.assertRaises(UserError):
             exp.with_user(self.finance).action_approve_settlement()
         exp.with_user(self.finance_manager).action_approve_settlement()

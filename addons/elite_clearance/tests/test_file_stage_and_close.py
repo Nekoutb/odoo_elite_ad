@@ -2,7 +2,7 @@
 
 Owner spec 14/09/2026: a file says at the top whose desk it is on, so it
 can be chased without anybody opening it; and a billed file can be closed
-by the Billing Agent, after which only an Operations Manager can let
+by the Billing Agent, after which only an Head of Service Operations can let
 anybody back into it.
 """
 
@@ -89,7 +89,7 @@ class TestFileStageAndClose(TransactionCase):
                          "a draft disbursement is on nobody's desk yet")
 
         expense.action_submit()
-        self.assertEqual(self.file.stage_owner, "Team Manager")
+        self.assertEqual(self.file.stage_owner, "Head of Service")
         self.assertIn("to approve", self.file.stage_detail)
 
         expense.action_approve()
@@ -99,7 +99,7 @@ class TestFileStageAndClose(TransactionCase):
         expense.write({'payment_mode': 'cash', 'journal_id': self.cash.id,
                        'vendor_id': self.vendor.id})
         expense.action_submit_settlement()
-        self.assertEqual(self.file.stage_owner, "Finance Manager")
+        self.assertEqual(self.file.stage_owner, "Head of Service Finance")
         self.assertIn("to sign", self.file.stage_detail)
 
         expense.action_approve_settlement()
@@ -140,7 +140,7 @@ class TestFileStageAndClose(TransactionCase):
     def test_04_an_approval_on_the_file_names_who_owes_it(self):
         self.file.state = 'in_progress'
         self.file.write({'advance_waiver_state': 'requested'})
-        self.assertEqual(self.file.stage_owner, "Operations Manager")
+        self.assertEqual(self.file.stage_owner, "Head of Service Operations")
         self.assertIn("waiver", self.file.stage_detail)
 
     # =================================================================

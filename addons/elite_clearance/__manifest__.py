@@ -24,7 +24,7 @@ engagés. An advance instead debits 421101 Personnel débours avancés against
 the staff member as auxiliary — it is their debt, not the client's — and only
 the justification entry reclassifies it to 47xx, which is what makes it
 billable. A file carrying an unjustified advance cannot be billed unless an
-Operations Manager waives it in writing; the waiver releases the file, never
+Head of Service Operations waives it in writing; the waiver releases the file, never
 the money, which stays on 421101 to recover from the holder.
 
 **Billing** — the client invoice recharges disbursements at cost against the

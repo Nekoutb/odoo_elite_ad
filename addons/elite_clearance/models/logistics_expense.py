@@ -12,7 +12,7 @@ FINANCE_GROUP = 'elite_clearance.group_clearance_finance'
 
 # How an expense is paid is Finance's decision alone. An originating team
 # submits WITHOUT these; Finance fills them in once the expense is approved,
-# and the Finance Manager signs them before any money moves. WHO is paid is
+# and the Head of Service Finance signs them before any money moves. WHO is paid is
 # not in the list: the team that incurred the cost knows the terminal, the
 # shipping line or the transporter it dealt with, and names it when keying
 # (owner, 06/09/2026). Finance may still correct it at settlement.
@@ -71,8 +71,8 @@ class LogisticsExpense(models.Model):
               -> settlement_submitted  Finance keyed mode and journal,
                                        the holder for an advance, confirmed
                                        the vendor the originator named, and
-                                       sent it to the Finance Manager
-              -> settlement_approved   the Finance Manager signed it
+                                       sent it to the Head of Service Finance
+              -> settlement_approved   the Head of Service Finance signed it
               -> settled               the Cashier (till) or Treasury (bank)
                                        paid it out
               -> justified             advances only, with documents
@@ -143,11 +143,11 @@ class LogisticsExpense(models.Model):
         [('draft', "Draft"),
          ('submitted', "Submitted"),
          ('approved', "Approved"),
-         ('settlement_submitted', "Awaiting Finance Manager"),
+         ('settlement_submitted', "Awaiting Head of Service Finance"),
          ('settlement_approved', "Settlement Approved"),
          ('settled', "Settled"),
          ('justification_submitted', "Justification: Operations"),
-         ('justification_ops_approved', "Justification: Finance Manager"),
+         ('justification_ops_approved', "Justification: Head of Service Finance"),
          ('justified', "Justified"),
          ('cancel', "Cancelled")],
         default='draft', required=True, tracking=True, index=True)
@@ -176,12 +176,12 @@ class LogisticsExpense(models.Model):
         string="Approved On", readonly=True, copy=False,
         help="When the team manager approved it.")
     date_settlement_submitted = fields.Datetime(
-        string="Sent to Finance Manager On", readonly=True, copy=False,
+        string="Sent to Head of Service Finance On", readonly=True, copy=False,
         help="When Finance had keyed the payment mode and the journal, "
              "confirmed the counterparty, and sent it for approval.")
     date_settlement_approved = fields.Datetime(
         string="Settlement Approved On", readonly=True, copy=False,
-        help="When the Finance Manager approved how it would be paid.")
+        help="When the Head of Service Finance approved how it would be paid.")
     date_settled = fields.Datetime(
         string="Paid On", readonly=True, copy=False,
         help="When the Cashier or Treasury actually paid it out and the "
@@ -679,7 +679,7 @@ class LogisticsExpense(models.Model):
         self.write({'state': 'cancel'})
 
     def action_submit_settlement(self):
-        """Finance has keyed how it is paid; hand it to the Finance Manager."""
+        """Finance has keyed how it is paid; hand it to the Head of Service Finance."""
         for exp in self:
             if exp.state != 'approved':
                 raise UserError(self.env._(
@@ -699,34 +699,34 @@ class LogisticsExpense(models.Model):
             if missing:
                 raise UserError(self.env._(
                     "Key %(what)s on %(exp)s before sending it to the "
-                    "Finance Manager.", what=", ".join(missing), exp=exp.name))
+                    "Head of Service Finance.", what=", ".join(missing), exp=exp.name))
             exp.write({'state': 'settlement_submitted',
                        'date_settlement_submitted': fields.Datetime.now()})
             exp.message_post(body=self.env._(
-                "Settlement sent to the Finance Manager for approval."))
+                "Settlement sent to the Head of Service Finance for approval."))
             # The third party is named and the expense is approved: this
             # is the first moment the debt can be recognised against
             # somebody (owner spec 01/10/2026).
             exp._post_accrual()
 
     def action_return_settlement(self):
-        """The Finance Manager sends it back to Finance to correct."""
+        """The Head of Service Finance sends it back to Finance to correct."""
         for exp in self:
             exp.company_id._clearance_check_approver('settlement')
             if exp.state != 'settlement_submitted':
                 raise UserError(self.env._(
-                    "%s is not awaiting the Finance Manager.", exp.name))
+                    "%s is not awaiting the Head of Service Finance.", exp.name))
             exp.state = 'approved'
             exp.message_post(body=self.env._(
-                "Settlement returned to Finance by the Finance Manager."))
+                "Settlement returned to Finance by the Head of Service Finance."))
 
     def action_approve_settlement(self):
-        """The Finance Manager signs how Finance proposes to pay."""
+        """The Head of Service Finance signs how Finance proposes to pay."""
         for exp in self:
             exp.company_id._clearance_check_approver('settlement')
             if exp.state != 'settlement_submitted':
                 raise UserError(self.env._(
-                    "%s has not been sent to the Finance Manager by "
+                    "%s has not been sent to the Head of Service Finance by "
                     "Finance yet.", exp.name))
             if not exp.payment_mode or not exp.journal_id:
                 raise UserError(self.env._(
@@ -752,7 +752,7 @@ class LogisticsExpense(models.Model):
             if exp.state != 'settlement_approved':
                 raise UserError(self.env._(
                     "The settlement of %s has not been approved by the "
-                    "Finance Manager.", exp.name))
+                    "Head of Service Finance.", exp.name))
             if not exp.journal_id:
                 raise UserError(self.env._(
                     "Choose the settlement journal on %s — Cash, Bank, "
@@ -851,7 +851,7 @@ class LogisticsExpense(models.Model):
         Attaching a receipt is not the same as the receipt being
         accepted. The reclassification that makes an advance billable is
         an operational judgement AND a movement between two accounts, so
-        it is approved twice - Operations, then the Finance Manager.
+        it is approved twice - Operations, then the Head of Service Finance.
         """
         for exp in self:
             if not exp.justification_required:
@@ -877,8 +877,8 @@ class LogisticsExpense(models.Model):
                        'date_justification_submitted': fields.Datetime.now()})
             exp.message_post(body=self.env._(
                 "Justification submitted with %(count)s supporting "
-                "document(s), for the Operations Manager and then the "
-                "Finance Manager to review.", count=attachments))
+                "document(s), for the Head of Service Operations and then the "
+                "Head of Service Finance to review.", count=attachments))
 
     def _is_engaged(self):
         """Has this cost reached the engaged-disbursements account?
@@ -918,11 +918,11 @@ class LogisticsExpense(models.Model):
                 "the holder and is not billable."))
 
     def action_justify(self):
-        """The Operations Manager accepts the documents as evidence of
+        """The Head of Service Operations accepts the documents as evidence of
         what the money was spent on.
 
         It does not yet move anything: the reclassification is a
-        movement between two accounts, so the Finance Manager signs it
+        movement between two accounts, so the Head of Service Finance signs it
         too (owner, 11/09/2026).
         """
         for exp in self:
@@ -934,17 +934,17 @@ class LogisticsExpense(models.Model):
             exp.write({'state': 'justification_ops_approved'})
             exp.message_post(body=self.env._(
                 "Justification accepted by Operations. It now awaits the "
-                "Finance Manager, who signs the reclassification."))
+                "Head of Service Finance, who signs the reclassification."))
 
     def action_justify_finance(self):
-        """The Finance Manager signs it; the advance is reclassified from
+        """The Head of Service Finance signs it; the advance is reclassified from
         421101 to the engaged account and becomes billable."""
         for exp in self:
             exp.company_id._clearance_check_approver('justification_finance')
             if exp.state != 'justification_ops_approved':
                 raise UserError(self.env._(
                     "%s has not been accepted by Operations yet.", exp.name))
-            # The decision is the Operations Manager's; the entry that
+            # The decision is the Head of Service Operations's; the entry that
             # follows is the system's consequence of it. They hold the
             # operational authority, not accounting rights, so the
             # reclassification is written under sudo - the same reason the
@@ -991,7 +991,7 @@ class LogisticsExpense(models.Model):
             booking.write({'justification_move_id': move.id, 'state': 'justified',
                            'date_justified': fields.Datetime.now()})
             exp.message_post(body=self.env._(
-                "Advance justified by Operations and the Finance Manager: "
+                "Advance justified by Operations and the Head of Service Finance: "
                 "%(amount)s reclassified from 421101 (held by %(who)s) to "
                 "the engaged disbursements account. It is now billable.",
                 amount=exp.amount, who=exp.employee_id.name))
@@ -1000,7 +1000,7 @@ class LogisticsExpense(models.Model):
         for exp in self:
             if exp.state in ('settlement_submitted', 'settlement_approved'):
                 raise UserError(self.env._(
-                    "%s is with the Finance Manager or already approved for "
+                    "%s is with the Head of Service Finance or already approved for "
                     "settlement. Have it returned first.", exp.name))
             if exp.settlement_move_id or exp.accrual_move_id:
                 raise UserError(self.env._(

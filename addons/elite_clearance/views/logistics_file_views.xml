@@ -122,13 +122,13 @@
                     <div class="alert alert-secondary" role="alert" invisible="state != 'imported'">
                         <b>Imported record.</b> Brought over from the legacy system as history — no work and no
                         billing happen on it here. If something remains to be billed, the billing agent requests
-                        reopening and an Operations Manager approves it after review.
+                        reopening and an Head of Service Operations approves it after review.
                     </div>
                     <div class="alert alert-danger" role="alert"
                          invisible="not unjustified_advance_total or advance_waiver_state == 'approved'">
                         <field name="unjustified_advance_total" class="fw-bold" nolabel="1" readonly="1"/>
                         advanced to staff is still unjustified on 421101. It cannot be billed.
-                        Justify it with the supporting documents, or ask an Operations Manager to waive it.
+                        Justify it with the supporting documents, or ask an Head of Service Operations to waive it.
                     </div>
                     <div class="alert alert-warning" role="alert"
                          invisible="not unjustified_advance_total or advance_waiver_state != 'approved'">
@@ -371,7 +371,7 @@
                         against a cost of
                         <field name="oop_total" nolabel="1" readonly="1" class="fw-bold"/>.
                         It cannot be billed until the adjustment is approved. Below cost it needs a written
-                        reason, a supporting document, the Operations Manager and the General Manager.
+                        reason, a supporting document, the Head of Service Operations and the General Manager.
                     </div>
                     <separator string="Recharge Adjustment"
                                invisible="recharge_state == 'none'"/>

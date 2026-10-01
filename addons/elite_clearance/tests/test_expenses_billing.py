@@ -111,7 +111,7 @@ class TestExpensesAndBilling(TransactionCase):
             'res_id': exp.id, 'raw': b"dummy"})
         exp.action_submit_justification()
         self.assertEqual(exp.state, 'justification_submitted')
-        # Operations accepts the documents; the Finance Manager signs the
+        # Operations accepts the documents; the Head of Service Finance signs the
         # reclassification (owner, 11/09/2026)
         exp.action_justify()
         self.assertEqual(exp.state, 'justification_ops_approved')
@@ -359,7 +359,7 @@ class TestExpensesAndBilling(TransactionCase):
 
         exp.action_submit_justification()
         self.assertTrue(exp.date_justification_submitted)
-        # two signatures: Operations accepts, the Finance Manager posts
+        # two signatures: Operations accepts, the Head of Service Finance posts
         exp.action_justify()
         self.assertFalse(exp.date_justified,
                          "nothing is justified until the entry is made")

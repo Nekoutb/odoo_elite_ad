@@ -38,7 +38,7 @@
     </record>
 
     <record id="group_clearance_customer_service_manager" model="res.groups">
-        <field name="name">Customer Service Manager</field>
+        <field name="name">Head of Customer Service</field>
         <field name="sequence">14</field>
         <field name="privilege_id" ref="res_groups_privilege_clearance"/>
         <field name="implied_ids" eval="[(4, ref('group_clearance_customer_service'))]"/>
@@ -54,7 +54,7 @@
     </record>
 
     <record id="group_clearance_transit_manager" model="res.groups">
-        <field name="name">Transit Manager</field>
+        <field name="name">Head of Service Transit</field>
         <field name="sequence">16</field>
         <field name="privilege_id" ref="res_groups_privilege_clearance"/>
         <field name="implied_ids" eval="[(4, ref('group_clearance_transit'))]"/>
@@ -71,7 +71,7 @@
     </record>
 
     <record id="group_clearance_ops_manager" model="res.groups">
-        <field name="name">Operations Manager</field>
+        <field name="name">Head of Service Operations</field>
         <field name="sequence">25</field>
         <field name="privilege_id" ref="res_groups_privilege_clearance"/>
         <field name="implied_ids" eval="[(4, ref('group_clearance_operations'))]"/>
@@ -94,7 +94,7 @@
         <field name="privilege_id" ref="res_groups_privilege_clearance"/>
         <field name="implied_ids" eval="[(4, ref('group_clearance_finance'))]"/>
         <field name="user_ids" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
-        <field name="comment">Disburses cash from a till once the Finance Manager has approved the settlement.</field>
+        <field name="comment">Disburses cash from a till once the Head of Service Finance has approved the settlement.</field>
     </record>
 
     <record id="group_clearance_treasury" model="res.groups">
@@ -103,11 +103,11 @@
         <field name="privilege_id" ref="res_groups_privilege_clearance"/>
         <field name="implied_ids" eval="[(4, ref('group_clearance_finance'))]"/>
         <field name="user_ids" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
-        <field name="comment">Pays from a bank or mobile-money journal once the Finance Manager has approved the settlement.</field>
+        <field name="comment">Pays from a bank or mobile-money journal once the Head of Service Finance has approved the settlement.</field>
     </record>
 
     <record id="group_clearance_finance_manager" model="res.groups">
-        <field name="name">Finance Manager</field>
+        <field name="name">Head of Service Finance</field>
         <field name="sequence">35</field>
         <field name="privilege_id" ref="res_groups_privilege_clearance"/>
         <field name="implied_ids" eval="[(4, ref('group_clearance_finance'))]"/>

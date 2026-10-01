@@ -1,5 +1,6 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_logistics_file_user,logistics.file.user,model_logistics_file,group_clearance_user,1,1,1,0
+access_logistics_file_user,logistics.file.user,model_logistics_file,group_clearance_user,1,1,0,0
+access_logistics_file_cs,logistics.file.customer.service,model_logistics_file,group_clearance_customer_service,1,1,1,0
 access_logistics_file_manager,logistics.file.manager,model_logistics_file,group_clearance_manager,1,1,1,1
 access_logistics_file_document_user,logistics.file.document.user,model_logistics_file_document,group_clearance_user,1,1,1,1
 access_logistics_document_type_user,logistics.document.type.user,model_logistics_document_type,group_clearance_user,1,0,0,0

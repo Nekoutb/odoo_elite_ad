@@ -16,7 +16,7 @@ APPROVAL_KINDS = {
                  'elite_clearance.group_clearance_customer_service_manager',
                  'elite_clearance.group_clearance_transit_manager'),
                 "approve expenses before disbursement"),
-    # Finance proposes how an expense is paid; the Finance Manager signs it.
+    # Finance proposes how an expense is paid; the Head of Service Finance signs it.
     'settlement': ("clearance_settlement_approver_ids",
                    ('elite_clearance.group_clearance_finance_manager',),
                    "approve the settlement method of an expense"),
@@ -31,7 +31,7 @@ APPROVAL_KINDS = {
     'billing_service': ("clearance_billing_service_approver_ids",
                         ('elite_clearance.group_clearance_ops_manager',),
                         "approve a new billable service"),
-    # Finance keys the settlement, the Finance Manager signs it, then the
+    # Finance keys the settlement, the Head of Service Finance signs it, then the
     # money leaves through whoever holds the till or the bank.
     'cash_disburse': ("clearance_cashier_approver_ids",
                       ('elite_clearance.group_clearance_cashier',),
@@ -40,7 +40,7 @@ APPROVAL_KINDS = {
                       ('elite_clearance.group_clearance_treasury',),
                       "pay from a bank or mobile-money account"),
     # An imported file is history; billing it again is an exception the
-    # Operations Manager signs after review.
+    # Head of Service Operations signs after review.
     'reopen_imported': ("clearance_reopen_imported_approver_ids",
                         ('elite_clearance.group_clearance_ops_manager',),
                         "approve reopening an imported file"),
@@ -53,7 +53,7 @@ APPROVAL_KINDS = {
                       ('elite_clearance.group_clearance_ops_manager',),
                       "approve the justification of a staff advance"),
     # Recharging the client at anything other than cost. Above cost needs
-    # Operations; below cost needs Operations AND the Finance Manager,
+    # Operations; below cost needs Operations AND the Head of Service Finance,
     # because the company is giving margin away.
     'recharge_ops': ("clearance_recharge_ops_approver_ids",
                      ('elite_clearance.group_clearance_ops_manager',),
@@ -64,7 +64,7 @@ APPROVAL_KINDS = {
     # Closing a billed file is the Billing Agent's own decision and costs
     # nothing. REOPENING one is not: a closed file is the record of a
     # finished job, and going back into it - for more billing, a credit
-    # note, any adjustment at all - is the Operations Manager's call
+    # note, any adjustment at all - is the Head of Service Operations's call
     # (owner spec 14/09/2026).
     'reopen': ("clearance_reopen_approver_ids",
                ('elite_clearance.group_clearance_ops_manager',),
@@ -221,7 +221,7 @@ class ResCompany(models.Model):
         'res.users', 'res_company_clearance_billing_service_approver_rel',
         'company_id', 'user_id', string="Billable Service Approvers",
         help="Who may approve a new billable service proposed by Billing. "
-             "Empty = any Operations Manager.")
+             "Empty = any Head of Service Operations.")
 
     clearance_billing_approver_ids = fields.Many2many(
         'res.users', 'clearance_billing_approver_rel', string="Billing Approvers",
@@ -233,33 +233,33 @@ class ResCompany(models.Model):
         string="Settlement Approvers",
         help="Who may approve how an expense is paid once Finance has set "
              "the payment mode, vendor, holder and journal. Empty = any "
-             "Clearance Finance Manager.")
+             "Clearance Head of Service Finance.")
     clearance_reopen_approver_ids = fields.Many2many(
         'res.users', 'clearance_reopen_approver_rel',
         string="Reopening Approvers",
         help="Who may reopen a file that has been closed. Empty = any "
-             "Clearance Operations Manager.")
+             "Clearance Head of Service Operations.")
     clearance_ops_close_approver_ids = fields.Many2many(
         'res.users', 'clearance_ops_close_approver_rel',
         string="Operations Close Approvers",
         help="Who may close a file for operations. Empty = any Clearance "
-             "Operations Manager.")
+             "Head of Service Operations.")
     clearance_justification_approver_ids = fields.Many2many(
         'res.users', 'clearance_justification_approver_rel',
         string="Justification Approvers",
         help="Who may approve that the documents attached to a staff advance "
-             "really justify it. Empty = any Clearance Operations Manager.")
+             "really justify it. Empty = any Clearance Head of Service Operations.")
     clearance_justification_finance_approver_ids = fields.Many2many(
         'res.users', 'clearance_justification_finance_approver_rel',
         string="Justification Signatories",
         help="Who signs the reclassification of a justified advance from "
              "421101 to the billable account. Empty = any Clearance "
-             "Finance Manager.")
+             "Head of Service Finance.")
     clearance_recharge_ops_approver_ids = fields.Many2many(
         'res.users', 'clearance_recharge_ops_approver_rel',
         string="Recharge Adjustment Approvers (Operations)",
         help="Who may approve recharging the client at anything other than "
-             "cost. Empty = any Clearance Operations Manager.")
+             "cost. Empty = any Clearance Head of Service Operations.")
     clearance_recharge_gm_approver_ids = fields.Many2many(
         'res.users', 'clearance_recharge_gm_approver_rel',
         string="Below-Cost Recharge Approvers (General Manager)",
@@ -269,25 +269,25 @@ class ResCompany(models.Model):
     clearance_cashier_approver_ids = fields.Many2many(
         'res.users', 'clearance_cashier_approver_rel',
         string="Cashiers",
-        help="Who may disburse from a cash till once the Finance Manager "
+        help="Who may disburse from a cash till once the Head of Service Finance "
              "has approved the settlement. Empty = any Clearance Cashier.")
     clearance_treasury_approver_ids = fields.Many2many(
         'res.users', 'clearance_treasury_approver_rel',
         string="Treasury",
         help="Who may pay from a bank or mobile-money journal once the "
-             "Finance Manager has approved the settlement. Empty = any "
+             "Head of Service Finance has approved the settlement. Empty = any "
              "Clearance Treasury user.")
     clearance_reopen_imported_approver_ids = fields.Many2many(
         'res.users', 'clearance_reopen_imported_approver_rel',
         string="Imported-File Reopening Approvers",
         help="Who may approve reopening a file imported from the legacy "
              "system so it can be worked and billed again. Empty = any "
-             "Clearance Operations Manager.")
+             "Clearance Head of Service Operations.")
     clearance_advance_waiver_approver_ids = fields.Many2many(
         'res.users', 'clearance_advance_waiver_approver_rel',
         string="Unjustified Advance Waiver Approvers",
         help="Who may allow a file to be billed while a staff advance is "
-             "still unjustified. Empty = any Clearance Operations Manager.")
+             "still unjustified. Empty = any Clearance Head of Service Operations.")
 
     def _clearance_check_approver(self, kind):
         """Enforce the configured approver list for a checkpoint; fall back

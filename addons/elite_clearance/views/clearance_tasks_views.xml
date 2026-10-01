@@ -4,7 +4,7 @@
   <!--
     One screen, not a menu of queues. The rows a user sees are already
     narrowed to the kinds their groups let them act on, so Finance and the
-    Operations Manager open the same menu and find different work.
+    Head of Service Operations open the same menu and find different work.
   -->
 
   <record id="view_clearance_task_list" model="ir.ui.view">
