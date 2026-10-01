@@ -55,6 +55,8 @@ class ResConfigSettings(models.TransientModel):
         related='company_id.clearance_file_fee_account_id', readonly=False)
     clearance_credit_note_title = fields.Char(
         related='company_id.clearance_credit_note_title', readonly=False)
+    clearance_oop_payable_account_id = fields.Many2one(
+        related='company_id.clearance_oop_payable_account_id', readonly=False)
     clearance_undisclosed_file_sequence_id = fields.Many2one(
         related='company_id.clearance_undisclosed_file_sequence_id',
         readonly=False)

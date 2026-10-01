@@ -151,6 +151,11 @@ class LogisticsExpense(models.Model):
          ('justified', "Justified"),
          ('cancel', "Cancelled")],
         default='draft', required=True, tracking=True, index=True)
+    accrual_move_id = fields.Many2one(
+        'account.move', string="Accrual Entry", readonly=True, copy=False,
+        help="Dr Débours à engager / Cr the third party, posted when the "
+             "disbursement is approved and the third party is named. "
+             "Settling it moves the debit to Débours engagés.")
     settlement_move_id = fields.Many2one(
         'account.move', string="Settlement Entry", readonly=True, copy=False)
     justification_move_id = fields.Many2one(
@@ -511,6 +516,118 @@ class LogisticsExpense(models.Model):
             return False
         return self.vendor_id.property_account_payable_id or False
 
+    def _oop_accrual_account(self):
+        """The 471xx a disbursement waits on between approval and payment.
+
+        Empty means the company has not asked for the two-stage treatment
+        and everything behaves as it did before.
+        """
+        self.ensure_one()
+        return self.company_id.clearance_oop_payable_account_id
+
+    def _accrual_postings(self, account, payable):
+        """Dr Débours à engager / Cr the third party."""
+        self.ensure_one()
+        return [(account, self.vendor_id, self.amount, 0.0),
+                (payable, self.vendor_id, 0.0, self.amount)]
+
+    def _post_accrual(self):
+        """Recognise what is owed the moment it is owed.
+
+        The owner's rule of 01/10/2026: a disbursement is a debt from the
+        moment it is approved and the third party is named, not from the
+        moment the money leaves. Until it is paid it sits on its own 471
+        account - débours À ENGAGER - against the vendor's payable;
+        paying it moves that debit across to débours ENGAGÉS, which is
+        what the client is billed from.
+
+        It is posted here, at the settlement submission, and not at the
+        team's own submission as the instruction read - because since
+        19/09/2026 the third party is Finance's to name, and until they
+        name it there is nobody to credit. Move this call to
+        action_submit if that decision is ever reversed.
+
+        An advance to a member of staff is untouched: it has no vendor,
+        it is not owed to anybody, and it already has its own two-step
+        treatment through 421101.
+        """
+        self.ensure_one()
+        account = self._oop_accrual_account()
+        payable = self._vendor_payable_account()
+        if not account or not payable or self.accrual_move_id:
+            return
+        analytic = self._analytic_distribution()
+        move = self.env['account.move'].create({
+            'move_type': 'entry',
+            'journal_id': self._accrual_journal().id,
+            'logistics_file_id': self.file_id.id,
+            'date': fields.Date.context_today(self),
+            'ref': self.env._("%(exp)s — %(file)s — à engager",
+                              exp=self.name, file=self.file_id.name),
+            'line_ids': [
+                fields.Command.create({
+                    'name': self.description,
+                    'account_id': acc.id,
+                    'partner_id': who.id if who else False,
+                    'debit': debit, 'credit': credit,
+                    'analytic_distribution': analytic,
+                })
+                for acc, who, debit, credit
+                in self._accrual_postings(account, payable)
+            ],
+        })
+        move.action_post()
+        self.accrual_move_id = move.id
+        self.message_post(body=self.env._(
+            "%(amount)s recognised as owed to %(vendor)s: debited to "
+            "%(account)s until it is paid.",
+            amount=self.amount, vendor=self.vendor_id.display_name,
+            account=account.display_name))
+
+    def _accrual_journal(self):
+        """The miscellaneous journal: no money moves, so it is not the
+        till's or the bank's."""
+        self.ensure_one()
+        journal = self.company_id.clearance_misc_journal_id
+        if not journal:
+            journal = self.env['account.journal'].search(
+                [('type', '=', 'general'),
+                 ('company_id', '=', self.company_id.id)], limit=1)
+        if not journal:
+            raise UserError(self.env._(
+                "Company %s has no miscellaneous journal to recognise a "
+                "disbursement in.", self.company_id.name))
+        return journal
+
+    def _reverse_accrual(self, why):
+        """Unrecognise it: the same entry, the other way round."""
+        self.ensure_one()
+        source = self.accrual_move_id
+        if not source or source.state != 'posted':
+            return
+        move = self.env['account.move'].create({
+            'move_type': 'entry',
+            'journal_id': source.journal_id.id,
+            'logistics_file_id': self.file_id.id,
+            'date': fields.Date.context_today(self),
+            'ref': self.env._("Reversal of %s", source.name),
+            'line_ids': [
+                fields.Command.create({
+                    'name': line.name,
+                    'account_id': line.account_id.id,
+                    'partner_id': line.partner_id.id or False,
+                    'debit': line.credit, 'credit': line.debit,
+                    'analytic_distribution': line.analytic_distribution,
+                })
+                for line in source.line_ids
+            ],
+        })
+        move.action_post()
+        self.message_post(body=self.env._(
+            "What was recognised as owed has been reversed (%(move)s): "
+            "%(why)s", move=move.name, why=why))
+        return move
+
     def _check_disburser(self):
         """Cash leaves through the Cashier, bank money through Treasury."""
         for exp in self:
@@ -553,6 +670,12 @@ class LogisticsExpense(models.Model):
 
     def action_refuse(self):
         self._check_manager()
+        for exp in self:
+            if exp.settlement_move_id:
+                raise UserError(self.env._(
+                    "%s has been paid. Reverse the settlement entry from "
+                    "Accounting before refusing it.", exp.name))
+            exp._reverse_accrual(self.env._("the disbursement was refused"))
         self.write({'state': 'cancel'})
 
     def action_submit_settlement(self):
@@ -581,6 +704,10 @@ class LogisticsExpense(models.Model):
                        'date_settlement_submitted': fields.Datetime.now()})
             exp.message_post(body=self.env._(
                 "Settlement sent to the Finance Manager for approval."))
+            # The third party is named and the expense is approved: this
+            # is the first moment the debt can be recognised against
+            # somebody (owner spec 01/10/2026).
+            exp._post_accrual()
 
     def action_return_settlement(self):
         """The Finance Manager sends it back to Finance to correct."""
@@ -658,17 +785,34 @@ class LogisticsExpense(models.Model):
                     "Journal %s has no default account.", exp.journal_id.name))
 
             # (account, partner, debit, credit)
-            postings = [(debit_account, partner, exp.amount, 0.0)]
             payable = exp._vendor_payable_account()
-            if payable:
-                # The vendor's own payable account, with the vendor as the
-                # auxiliary, so every third party has a ledger of what was
-                # charged to them and what was paid. Recognised and settled
-                # in the same move: 401100 nets to nil for this expense and
-                # the money still leaves today.
-                postings.append((payable, exp.vendor_id, 0.0, exp.amount))
-                postings.append((payable, exp.vendor_id, exp.amount, 0.0))
-            postings.append((credit_account, partner, 0.0, exp.amount))
+            if exp.accrual_move_id:
+                # The debt was recognised when the disbursement was
+                # approved, so paying it does two things at once (owner
+                # spec 01/10/2026): it clears the third party against the
+                # money going out, and it moves the debit from "to
+                # engage" across to "engaged", which is the account
+                # billing recharges from. Both halves in one entry,
+                # because they are one event.
+                accrual = exp._oop_accrual_account()
+                postings = [
+                    (payable, exp.vendor_id, exp.amount, 0.0),
+                    (credit_account, exp.vendor_id, 0.0, exp.amount),
+                    (debit_account, exp.vendor_id, exp.amount, 0.0),
+                    (accrual, exp.vendor_id, 0.0, exp.amount),
+                ]
+            else:
+                postings = [(debit_account, partner, exp.amount, 0.0)]
+                if payable:
+                    # The vendor's own payable account, with the vendor as
+                    # the auxiliary, so every third party has a ledger of
+                    # what was charged to them and what was paid.
+                    # Recognised and settled in the same move: 401100 nets
+                    # to nil for this expense and the money still leaves
+                    # today.
+                    postings.append((payable, exp.vendor_id, 0.0, exp.amount))
+                    postings.append((payable, exp.vendor_id, exp.amount, 0.0))
+                postings.append((credit_account, partner, 0.0, exp.amount))
 
             move = self.env['account.move'].create({
                 'move_type': 'entry',
@@ -858,8 +1002,9 @@ class LogisticsExpense(models.Model):
                 raise UserError(self.env._(
                     "%s is with the Finance Manager or already approved for "
                     "settlement. Have it returned first.", exp.name))
-            if exp.settlement_move_id:
+            if exp.settlement_move_id or exp.accrual_move_id:
                 raise UserError(self.env._(
-                    "%s has been settled — the journal entry exists. "
-                    "Reverse the entry from Accounting first.", exp.name))
+                    "%s already has a journal entry against it. Refuse it "
+                    "instead - that reverses what was recognised - or "
+                    "reverse the entry from Accounting first.", exp.name))
             exp.state = 'draft'

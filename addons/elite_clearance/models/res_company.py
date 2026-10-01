@@ -130,6 +130,15 @@ class ResCompany(models.Model):
     # whole company rather than per service type, because the owner sets
     # them up once and they carry on from a number already in use
     # (owner spec 15/09/2026).
+    clearance_oop_payable_account_id = fields.Many2one(
+        'account.account', string="Débours à Engager (471xx)",
+        help="Where an approved disbursement waits between being approved "
+             "and being paid. Naming it switches on the two-stage "
+             "treatment (owner spec 01/10/2026): the vendor is credited "
+             "when the disbursement is approved and this account carries "
+             "the debit, and paying it moves that debit across to Débours "
+             "Engagés, which is what billing recharges. Leave it empty "
+             "and a disbursement posts nothing until it is paid.")
     clearance_credit_note_title = fields.Char(
         string="Credit note title", default="Avoir N°",
         help="Printed where the invoice says 'Facture doit N°'. The credit "

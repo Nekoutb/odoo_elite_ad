@@ -13,6 +13,10 @@
                                  help="Balance-sheet account holding recoverable client disbursements until the invoice clears them.">
                             <field name="clearance_oop_account_id"/>
                         </setting>
+                        <setting string="Débours à Engager (471xx)"
+                                 help="Where an approved disbursement waits between being approved and being paid. Name it and the vendor is credited as soon as the disbursement is approved; paying it moves the debit across to Débours Engagés, which is what billing recharges. Leave it empty and nothing posts until payment.">
+                            <field name="clearance_oop_payable_account_id"/>
+                        </setting>
                         <setting string="Employee Advances Account"
                                  help="Where cash advances sit until justified with supporting documents.">
                             <field name="clearance_advance_account_id"/>
