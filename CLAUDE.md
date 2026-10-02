@@ -525,6 +525,20 @@ Customs clearance job files for a logistics/clearance services provider.
      import) keeps the old rule: any of the three heads. An explicit
      `clearance_expense_approver_ids` list still wins over all of it.
   Tests: `test_owner_spec_0210.py`.
+- **The requester keys the payment (owner, 02/10/2026, reversing
+  19/09).** `journal_id` reads "Payment Channel", `employee_id` "Staff
+  Collecting the Funds"; the capture wizard and the capture form offer
+  channel + supplier OR staff member (each greys the other). The
+  `SETTLEMENT_FIELDS` guard (`_check_settlement_fields`) now refuses a
+  non-Finance user only once the expense has LEFT `REQUESTER_STATES`
+  (draft, submitted); Finance may overwrite all four at any time, and
+  `can_edit_payment` (non-stored, depends_context uid) drives the
+  readonly rules on both forms. `payment_mode` is DERIVED when not keyed
+  (`_derived_payment_mode`: staff -> advance, till -> cash, bank ->
+  electronic) in create/write (`_fill_payment_mode`) and by an onchange;
+  Finance may still set it by hand. The `approved` state reads
+  "Approved - with Finance": the head's approval already landed it in
+  Finance's queue (`NOTIFY_KIND['approved'] = 'settlement_key'`).
 - **Payment evidence (owner, 01/10/2026).** `ir.attachment.clearance_kind`
   ('request' / 'payment', NULL = request) tells a disbursement's documents
   apart: `logistics.expense.request_document_ids` and

@@ -53,9 +53,9 @@ registry.category("web_tour.tours").add("elite_clearance_expense_dialog", {
             run: "edit 25000",
         },
         {
-            content: "Neither the unit nor the third party is asked for here",
+            content: "No unit is asked for; the payment channel and the counterparty are (02/10/2026)",
             trigger:
-                ".modal .o_form_view:not(:has(.o_field_widget[name='unit_label'])):not(:has(.o_field_widget[name='vendor_id']))",
+                ".modal .o_form_view:not(:has(.o_field_widget[name='unit_label'])):has(.o_field_widget[name='journal_id']):has(.o_field_widget[name='vendor_id'])",
         },
         {
             content: "Drag a receipt over the dialog",

@@ -33,8 +33,14 @@ HEAD_OF_TEAM = {
 # they know who they handed the money to; the owner has since decided
 # that naming a third party on a payment is a Finance act whoever knew
 # it first, so it is back in this list.
+# Owner 02/10/2026, reversing again: the REQUESTER keys the payment
+# channel and the supplier or the staff member who collects the money,
+# while the expense is theirs (draft, submitted); from `approved` on
+# these are Finance's, and Finance may overwrite every one of them.
 SETTLEMENT_FIELDS = ('payment_mode', 'journal_id', 'employee_id',
                      'vendor_id')
+# the states in which the originating team may still key them
+REQUESTER_STATES = ('draft', 'submitted')
 
 # An advance is the holder's debt until the reclassification is POSTED.
 # Submitting the receipts is not being believed, and the Operations
@@ -137,24 +143,32 @@ class LogisticsExpense(models.Model):
          ('electronic', "Electronic (bank / mobile money)"),
          ('advance', "Via employee cash advance")],
         tracking=True,
-        help="How the money leaves. Set by Finance once the expense is "
-             "approved by the team manager - never by the team that keyed "
-             "it. Blank until then.")
+        help="How the money leaves. Follows the payment channel and the "
+             "staff member keyed at request - a till is cash, a bank or "
+             "mobile-money channel is electronic, a staff member is an "
+             "advance - and Finance may overwrite it once the expense is "
+             "approved.")
     journal_id = fields.Many2one(
-        'account.journal', string="Settlement Journal",
+        'account.journal', string="Payment Channel",
         domain="[('type', 'in', ('cash', 'bank'))]", check_company=True,
-        help="Where the money leaves from: Cash, Bank, Mobile Money or "
-             "Maviance — each configured as a cash/bank journal.")
+        help="Where the money leaves from: a till, a bank, Mobile Money "
+             "or Maviance - each configured as a cash/bank journal. Keyed "
+             "by the requester; Finance may change it.")
     employee_id = fields.Many2one(
-        'hr.employee', string="Advance Holder", tracking=True,
-        help="Employee who receives the cash advance and must justify it.")
+        'hr.employee', string="Staff Collecting the Funds", tracking=True,
+        help="The member of staff who collects the money as an advance "
+             "and must justify it. Named by the requester, or by Finance.")
+    can_edit_payment = fields.Boolean(
+        compute='_compute_can_edit_payment',
+        help="Whether the current user may key or change the payment "
+             "channel and counterparty in the expense's present state.")
     # attachment_ids comes from clearance.documents.mixin: the receipts
     # and invoices behind the expense, dropped on the dialog or picked
     # with Upload. Their arrival is what stamps date_documents_submitted.
     state = fields.Selection(
         [('draft', "Draft"),
          ('submitted', "Submitted"),
-         ('approved', "Approved"),
+         ('approved', "Approved - with Finance"),
          ('settlement_submitted', "Awaiting Head of Service Finance"),
          ('settlement_approved', "Settlement Approved"),
          ('settled', "Settled"),
@@ -390,6 +404,33 @@ class LogisticsExpense(models.Model):
                     "(%s). Create the employee first, then hand over the "
                     "money.", exp.name))
 
+    @api.depends('state')
+    @api.depends_context('uid')
+    def _compute_can_edit_payment(self):
+        finance = self.env.su or self.env.user.has_group(FINANCE_GROUP)
+        for exp in self:
+            exp.can_edit_payment = (
+                exp.state in REQUESTER_STATES
+                or (finance and exp.state == 'approved'))
+
+    @api.model
+    def _derived_payment_mode(self, journal, employee):
+        """The mode the channel and the counterparty imply."""
+        if employee:
+            return 'advance'
+        if journal:
+            return 'cash' if journal.type == 'cash' else 'electronic'
+        return False
+
+    @api.onchange('journal_id', 'employee_id')
+    def _onchange_payment_channel(self):
+        """The requester picks a channel or a staff member; the mode
+        follows, so nobody is asked a question whose answer they have
+        just given. Finance may still set it by hand afterwards."""
+        mode = self._derived_payment_mode(self.journal_id, self.employee_id)
+        if mode and mode != self.payment_mode:
+            self.payment_mode = mode
+
     @api.onchange('payment_mode')
     def _onchange_payment_mode(self):
         """One counterparty per mode: an advance has a holder, a cash or
@@ -460,16 +501,40 @@ class LogisticsExpense(models.Model):
         return False
 
     def _check_settlement_fields(self, vals):
-        """The payment mode, holder and journal are Finance's."""
+        """The requester keys the channel and the counterparty while the
+        expense is theirs; once approved, only Finance may change them
+        (owner, 02/10/2026)."""
         if self.env.su:
             return
         touched = [f for f in SETTLEMENT_FIELDS
                    if f in vals and self._settlement_value_changes(f, vals[f])]
-        if touched and not self.env.user.has_group(FINANCE_GROUP):
+        if not touched or self.env.user.has_group(FINANCE_GROUP):
+            return
+        locked = self.filtered(lambda exp: exp.state not in REQUESTER_STATES)
+        if locked:
             raise UserError(self.env._(
-                "Who is paid, and how, is decided by Finance and not by "
-                "the team submitting the cost. Leave %s blank.",
-                ", ".join(self._fields[f].string for f in touched)))
+                "%(exp)s is approved: who is paid, through which channel "
+                "and how is Finance's to change now, not the team that "
+                "keyed it (%(fields)s).",
+                exp=", ".join(locked.mapped('name')),
+                fields=", ".join(self._fields[f].string for f in touched)))
+
+    @api.model
+    def _fill_payment_mode(self, vals, current=None):
+        """Derive the mode from what was keyed, unless it was keyed too."""
+        if vals.get('payment_mode') or not (
+                'journal_id' in vals or 'employee_id' in vals):
+            return vals
+        journal = self.env['account.journal'].browse(
+            vals['journal_id'] if 'journal_id' in vals
+            else (current.journal_id.id if current else False))
+        employee = self.env['hr.employee'].browse(
+            vals['employee_id'] if 'employee_id' in vals
+            else (current.employee_id.id if current else False))
+        mode = self._derived_payment_mode(journal, employee)
+        if mode and (current is None or current.payment_mode != mode):
+            vals['payment_mode'] = mode
+        return vals
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -480,6 +545,7 @@ class LogisticsExpense(models.Model):
         self._check_originating_team()
         for vals in vals_list:
             self._check_settlement_fields(vals)
+            self._fill_payment_mode(vals)
             if vals.get('name', "New") == "New":
                 vals['name'] = self.env['ir.sequence'].next_by_code(
                     'logistics.expense') or "New"
@@ -507,6 +573,8 @@ class LogisticsExpense(models.Model):
 
     def write(self, vals):
         self._check_settlement_fields(vals)
+        if len(self) == 1:
+            vals = self._fill_payment_mode(dict(vals), current=self)
         res = super().write(vals)
         if 'state' in vals:
             for expense in self:
@@ -857,14 +925,19 @@ class LogisticsExpense(models.Model):
         self.write({'state': 'cancel'})
 
     def action_submit_settlement(self):
-        """Finance has keyed how it is paid; hand it to the Head of Service Finance."""
+        """Finance has confirmed - or corrected - how it is paid; hand it
+        to the Head of Service Finance."""
         for exp in self:
             if exp.state != 'approved':
                 raise UserError(self.env._(
                     "%s is not approved by its team manager yet.", exp.name))
             if not self.env.su and not self.env.user.has_group(FINANCE_GROUP):
                 raise UserError(self.env._(
-                    "Only Finance sets how an expense is paid."))
+                    "Only Finance sends an expense on for payment."))
+            if not exp.payment_mode:
+                mode = exp._derived_payment_mode(exp.journal_id, exp.employee_id)
+                if mode:
+                    exp.payment_mode = mode
             missing = []
             if not exp.payment_mode:
                 missing.append(exp._fields['payment_mode'].string)

@@ -107,16 +107,18 @@ class TestOwnerSpec1909(TransactionCase):
     # =================================================================
     # Who names the third party
     # =================================================================
-    def test_01_the_third_party_is_finances_to_name(self):
+    def test_01_the_third_party_is_named_at_request_and_finances_to_change(self):
+        """19/09: Finance's to name. 02/10/2026: the requester names it,
+        Finance may change it once approved."""
         file = self._file()
         expense = self.env['logistics.expense'].with_user(self.agent).create({
             'file_id': file.id, 'category_id': self.category.id,
             'description': "Handling", 'amount': 50000})
         self.assertEqual(self.env['logistics.expense']._fields[
             'vendor_id'].string, "Third Party")
-        with self.assertRaises(UserError,
-                               msg="the spending team does not name it"):
-            expense.with_user(self.agent).vendor_id = self.vendor.id
+        expense.with_user(self.agent).vendor_id = self.vendor.id
+        self.assertEqual(expense.vendor_id, self.vendor)
+        expense.with_user(self.agent).vendor_id = False
         # Back to the test's own user, who may approve. sudo() would not
         # do it: it sets superuser MODE and leaves env.user alone, and
         # the approver check reads env.user.
@@ -128,20 +130,33 @@ class TestOwnerSpec1909(TransactionCase):
             'vendor_id': self.vendor.id})
         self.assertEqual(expense.vendor_id, self.vendor)
 
-    def test_02_the_capture_dialog_does_not_offer_it(self):
+    def test_02_the_capture_dialog_offers_the_payment(self):
+        """02/10/2026: the dialog asks for the channel and who collects."""
         wizard = self.env['logistics.expense.capture.wizard']
-        self.assertNotIn('vendor_id', wizard._fields,
-                         "the originator is not asked who is paid")
+        self.assertIn('vendor_id', wizard._fields)
+        self.assertIn('journal_id', wizard._fields)
+        self.assertIn('employee_id', wizard._fields)
         file = self._file()
         keyed = wizard.with_user(self.agent).with_context(
             active_id=file.id).create({
                 'file_id': file.id, 'category_id': self.category.id,
-                'description': "Keyed by the team", 'amount': 40000})
+                'description': "Keyed by the team", 'amount': 40000,
+                'journal_id': self.cash.id, 'vendor_id': self.vendor.id})
         keyed.action_submit_close()
         expense = file.expense_ids
         self.assertEqual(len(expense), 1)
         self.assertEqual(expense.state, 'submitted')
-        self.assertFalse(expense.vendor_id)
+        self.assertEqual(expense.vendor_id, self.vendor)
+        self.assertEqual(expense.journal_id, self.cash)
+        self.assertEqual(expense.payment_mode, 'cash')
+        # an approved expense is the Finance agent's at once
+        expense.action_approve()
+        self.assertEqual(expense.state, 'approved')
+        self.assertEqual(self.env['clearance.task'].with_user(self.finance)
+                         .search([('kind', '=', 'settlement_key'),
+                                  ('res_id', '=', expense.id)]).mapped('res_id'),
+                         [expense.id], "it sits in Finance's own queue")
+        self.assertEqual(file.stage_owner, "Finance")
 
     # =================================================================
     # A receipt on the bank journal, put against a file

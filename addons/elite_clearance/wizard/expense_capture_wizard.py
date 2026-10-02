@@ -36,6 +36,23 @@ class LogisticsExpenseCaptureWizard(models.TransientModel):
     date_requested = fields.Date(
         string="Requested On", required=True,
         default=fields.Date.context_today)
+    # Owner 02/10/2026: the requester says where the money should leave
+    # from and who collects it - a supplier OR a member of staff. Finance
+    # may change all of it once the head has approved.
+    journal_id = fields.Many2one(
+        'account.journal', string="Payment Channel",
+        domain="[('type', 'in', ('cash', 'bank'))]", check_company=True,
+        help="A till, a bank, Mobile Money or Maviance. Finance may change it.")
+    vendor_id = fields.Many2one(
+        'res.partner', string="Supplier / Third Party",
+        help="Who is paid - customs, a terminal, a shipping line, a "
+             "transporter. Leave empty if a member of staff collects the "
+             "money instead.")
+    employee_id = fields.Many2one(
+        'hr.employee', string="Staff Collecting the Funds",
+        help="The member of staff who collects the money as an advance "
+             "and must justify it. Leave empty if a supplier is paid.")
+    company_id = fields.Many2one(related='file_id.company_id')
 
     @api.model
     def default_get(self, field_names):
@@ -54,12 +71,19 @@ class LogisticsExpenseCaptureWizard(models.TransientModel):
             raise UserError(self.env._(
                 "A disbursement of nothing is not a disbursement. Key "
                 "what was actually paid."))
+        if self.vendor_id and self.employee_id:
+            raise UserError(self.env._(
+                "A supplier OR a member of staff collects the money, not "
+                "both. Clear one of them."))
         expense = self.env['logistics.expense'].create({
             'file_id': self.file_id.id,
             'category_id': self.category_id.id,
             'description': self.description,
             'amount': self.amount,
             'date_requested': self.date_requested,
+            'journal_id': self.journal_id.id,
+            'vendor_id': self.vendor_id.id,
+            'employee_id': self.employee_id.id,
         })
         # The receipts were dropped on the wizard, so they are pointing at
         # a transient record that is about to be swept away. Re-point them

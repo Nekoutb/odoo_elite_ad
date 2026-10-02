@@ -64,29 +64,36 @@
                             <field name="category_id" readonly="state not in ('draft', 'submitted')"/>
                             <field name="description" readonly="state not in ('draft', 'submitted')"/>
                             <field name="amount" readonly="state not in ('draft', 'submitted')"/>
-                            <!-- Named by the team that keyed the expense, corrected
-                                 by Finance at settlement. Greyed out as a control:
-                                 money goes to a vendor OR to a staff member, never
-                                 to both, and a constraint enforces it too. -->
-                            <!-- force_save on both counterparties: choosing 'advance'
-                                 clears the vendor AND makes it readonly in the same
-                                 onchange, and a readonly value is never sent on save. -->
-                            <field name="vendor_id" force_save="1"
-                                   readonly="state not in ('draft', 'submitted', 'approved') or payment_mode == 'advance' or employee_id"
-                                   placeholder="who is paid - not used for a staff advance"
-                                   options="{'no_create': True}"/>
                             <field name="currency_id" invisible="1"/>
                             <field name="company_id" invisible="1"/>
+                            <field name="can_edit_payment" invisible="1"/>
                         </group>
-                        <group string="Settlement (Finance)" groups="elite_clearance.group_clearance_finance">
-                            <field name="payment_mode" widget="radio" readonly="state != 'approved'"/>
+                        <!-- Keyed by the requester while the expense is theirs,
+                             changed by Finance once approved (owner 02/10/2026):
+                             can_edit_payment says which, for whoever is looking.
+                             Money goes to a supplier OR to a member of staff,
+                             never both: each greys the other, and a constraint
+                             enforces it. force_save on both: an onchange that
+                             clears one makes it readonly in the same breath, and
+                             a readonly value is never sent on save. -->
+                        <group string="Payment">
+                            <field name="journal_id" readonly="not can_edit_payment"
+                                   options="{'no_create': True}"
+                                   placeholder="till, bank, Mobile Money, Maviance"/>
+                            <field name="vendor_id" force_save="1"
+                                   readonly="not can_edit_payment or payment_mode == 'advance' or employee_id"
+                                   placeholder="who is paid - not used for a staff advance"
+                                   options="{'no_create': True}"/>
                             <field name="employee_id" force_save="1"
                                    required="payment_mode == 'advance'"
-                                   readonly="state != 'approved' or payment_mode != 'advance' or vendor_id"
-                                   placeholder="only for a staff advance"/>
-                            <field name="journal_id" readonly="state != 'approved'"/>
-                            <field name="settlement_move_id" invisible="not settlement_move_id"/>
-                            <field name="justification_move_id" invisible="not justification_move_id"/>
+                                   readonly="not can_edit_payment or vendor_id"
+                                   placeholder="who collects the money"
+                                   options="{'no_create': True}"/>
+                            <field name="payment_mode" widget="radio" readonly="not can_edit_payment"/>
+                            <field name="settlement_move_id" invisible="not settlement_move_id"
+                                   groups="elite_clearance.group_clearance_finance"/>
+                            <field name="justification_move_id" invisible="not justification_move_id"
+                                   groups="elite_clearance.group_clearance_finance"/>
                         </group>
                     </group>
                     <!-- Two boxes, one set of documents: what supported the
@@ -142,28 +149,29 @@
     <field name="arch" type="xml">
       <form string="Out-of-Pocket Expense">
         <sheet>
-          <!-- Read by the vendor's readonly rule. readonly="1" as well as
-               invisible: the web client sends every editable field of a
-               new record, blanks included, and a blank payment mode sent
-               by an originator is refused by the Finance-only guard. -->
           <field name="state" invisible="1" readonly="1"/>
-          <field name="employee_id" invisible="1" readonly="1"/>
           <field name="payment_mode" invisible="1" readonly="1"/>
+          <field name="can_edit_payment" invisible="1"/>
           <group>
             <group>
               <field name="category_id" readonly="state not in ('draft', 'submitted')"/>
               <field name="description" placeholder="What the money was spent on"
                      readonly="state not in ('draft', 'submitted')"/>
-              <field name="vendor_id" placeholder="named by Finance"
-                     groups="elite_clearance.group_clearance_finance"
-                     readonly="state not in ('draft', 'submitted') or payment_mode == 'advance' or employee_id"
-                     options="{'no_create': True}"/>
-            </group>
-            <group>
               <field name="amount" readonly="state not in ('draft', 'submitted')"/>
               <field name="currency_id" invisible="1"/>
               <field name="date_requested"/>
               <field name="file_id" invisible="1"/>
+            </group>
+            <!-- the requester's say on the payment (owner 02/10/2026) -->
+            <group string="Payment">
+              <field name="journal_id" readonly="not can_edit_payment"
+                     options="{'no_create': True}"/>
+              <field name="vendor_id" force_save="1" placeholder="who is paid"
+                     readonly="not can_edit_payment or employee_id"
+                     options="{'no_create': True}"/>
+              <field name="employee_id" force_save="1" placeholder="who collects the money"
+                     readonly="not can_edit_payment or vendor_id"
+                     options="{'no_create': True}"/>
             </group>
           </group>
           <separator string="Documents"/>
@@ -172,10 +180,9 @@
           <field name="attachment_ids" widget="clearance_documents"
                  nolabel="1" colspan="2"/>
           <div class="alert alert-info" role="alert">
-            Save this, then <strong>Submit</strong> it from the list. How it
-            gets paid - the payment mode, the journal or the advance
-            holder - is keyed by Finance afterwards, on the expense's own
-            page.
+            Save this, then <strong>Submit</strong> it from the list. Once the
+            head of your service approves it, Finance may change the channel
+            and the counterparty before sending it on for payment.
           </div>
         </sheet>
       </form>

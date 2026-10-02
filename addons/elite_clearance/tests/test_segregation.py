@@ -1,4 +1,4 @@
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -111,35 +111,49 @@ class TestSegregationOfDuties(TransactionCase):
         exp.with_user(self.ops).action_submit()
         self.assertEqual(exp.state, 'submitted')
 
-    def test_04_originator_cannot_touch_the_settlement_fields(self):
+    def test_04_the_requester_keys_the_payment_and_loses_it_at_approval(self):
+        """Owner 02/10/2026, reversing 19/09: the requester keys the
+        channel and the counterparty while the expense is theirs; once
+        the head has approved it they are Finance's, and Finance may
+        overwrite every one of them."""
         vals = self._vals()
-        vals['payment_mode'] = 'cash'
-        with self.assertRaises(UserError):
-            self.env['logistics.expense'].with_user(self.ops).create(vals)
-        exp = self._keyed_by_ops()
-        with self.assertRaises(UserError):
-            exp.with_user(self.ops).write({'journal_id': self.journal.id})
-        with self.assertRaises(UserError):
-            exp.with_user(self.ops).write({'employee_id': False,
-                                           'payment_mode': 'cash'})
-
-    def test_04b_finance_names_who_is_paid(self):
-        """Owner 19/09/2026, reversing 06/09: naming a third party on a
-        payment is a Finance act, whoever knew it first."""
-        vals = self._vals()
+        vals['journal_id'] = self.journal.id
         vals['vendor_id'] = self.vendor.id
-        with self.assertRaises(UserError,
-                               msg="the spending team does not name it"):
-            self.env['logistics.expense'].with_user(self.ops).create(vals)
-        exp = self.env['logistics.expense'].with_user(self.ops).create(
-            self._vals())
-        self.assertFalse(exp.vendor_id)
-        with self.assertRaises(UserError):
-            exp.with_user(self.ops).write({'vendor_id': self.vendor.id})
-        exp.with_user(self.finance).write({'vendor_id': self.vendor.id})
+        exp = self.env['logistics.expense'].with_user(self.ops).create(vals)
+        self.assertEqual(exp.journal_id, self.journal)
         self.assertEqual(exp.vendor_id, self.vendor)
+        self.assertEqual(exp.payment_mode, 'cash',
+                         "a till is cash: the mode follows the channel")
+        exp.with_user(self.ops).write({'vendor_id': False})
+        exp.with_user(self.ops).action_submit()
+        exp.with_user(self.ops).write({'vendor_id': self.vendor.id},)
+        exp.with_user(self.ops_manager).action_approve()
+        with self.assertRaises(UserError, msg="approved: Finance's now"):
+            exp.with_user(self.ops).write({'journal_id': False})
+        with self.assertRaises(UserError):
+            exp.with_user(self.ops).write({'vendor_id': False})
+        bank = self.env['account.journal'].create({
+            'name': "Bank seg", 'type': 'bank', 'code': 'XBNK4'})
+        exp.with_user(self.finance).write({'journal_id': bank.id})
+        self.assertEqual(exp.journal_id, bank)
+        self.assertEqual(exp.payment_mode, 'electronic',
+                         "and the mode follows Finance's change too")
+        exp.with_user(self.finance).write({'payment_mode': 'cash'})
+        self.assertEqual(exp.payment_mode, 'cash',
+                         "unless Finance sets the mode by hand")
+
+    def test_04b_a_staff_member_collecting_the_money_is_an_advance(self):
+        holder = self.env['hr.employee'].create({'name': "Collector S"})
+        vals = self._vals()
+        vals['employee_id'] = holder.id
+        exp = self.env['logistics.expense'].with_user(self.ops).create(vals)
+        self.assertEqual(exp.payment_mode, 'advance')
+        with self.assertRaises(ValidationError,
+                               msg="a supplier OR a member of staff"):
+            exp.with_user(self.ops).write({'vendor_id': self.vendor.id})
         self.assertEqual(exp._fields['vendor_id'].string, "Third Party",
                          "it is as often a member of staff as a supplier")
+        self.assertEqual(exp._fields['journal_id'].string, "Payment Channel")
 
     def test_04c_finance_may_turn_a_vendor_expense_into_an_advance(self):
         """Finance named a third party and then decides the money goes

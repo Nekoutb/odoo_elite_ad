@@ -19,6 +19,16 @@
                         <field name="date_requested"/>
                     </group>
                 </group>
+                <group string="Payment (Finance may change it)">
+                    <field name="company_id" invisible="1"/>
+                    <field name="journal_id" options="{'no_create': True}"
+                           placeholder="till, bank, Mobile Money, Maviance"/>
+                    <!-- a supplier OR a member of staff: each greys the other -->
+                    <field name="vendor_id" options="{'no_create': True}"
+                           readonly="employee_id" placeholder="who is paid"/>
+                    <field name="employee_id" options="{'no_create': True}"
+                           readonly="vendor_id" placeholder="who collects the money"/>
+                </group>
                 <separator string="Documents"/>
                 <!-- The widget makes the whole dialog a drop target: a receipt
                      dragged anywhere onto it is uploaded and listed here, and
@@ -26,9 +36,9 @@
                 <field name="attachment_ids" widget="clearance_documents"
                        nolabel="1" colspan="2"/>
                 <div class="text-muted mt-2">
-                    Submitting sends it straight for approval. Who is paid and how — the
-                    third party, the payment mode, the journal or the advance holder — is
-                    keyed by Finance afterwards, on the disbursement's own page.
+                    Submitting sends it straight to the head of your service. Once approved
+                    it lands with Finance, who may change the channel and the counterparty
+                    before sending it on for payment.
                 </div>
                 <footer>
                     <button name="action_submit_close" type="object"
