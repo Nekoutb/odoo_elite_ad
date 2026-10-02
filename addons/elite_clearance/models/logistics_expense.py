@@ -419,7 +419,9 @@ class LogisticsExpense(models.Model):
         if employee:
             return 'advance'
         if journal:
-            return 'cash' if journal.type == 'cash' else 'electronic'
+            # sudo: the type of a journal is not a secret, and the
+            # requester keying it may not be an accounting user
+            return 'cash' if journal.sudo().type == 'cash' else 'electronic'
         return False
 
     @api.onchange('journal_id', 'employee_id')

@@ -313,24 +313,25 @@ class TestExpenseCapture(TransactionCase):
                          "no workflow button belongs in a dialog")
 
     def test_02_the_capture_form_asks_only_what_an_originator_keys(self):
-        """What was spent, to whom, and the receipt. How it is paid -
-        payment mode, journal, holder - is Finance's. The unit is not
-        asked for at all: it is "Par dossier" for every disbursement.
-        Owner spec 06/09/2026."""
+        """What was spent, the receipt - and, since 02/10/2026, the
+        payment channel and who is paid or who collects the money. The
+        payment MODE is never asked: it follows what was keyed. The unit
+        is not asked for at all: it is "Par dossier" for every
+        disbursement (owner spec 06/09/2026)."""
         from lxml import etree
         arch = self._capture_view().arch
         for wanted in ('name="category_id"', 'name="description"',
                        'name="amount"', 'name="vendor_id"',
+                       'name="journal_id"', 'name="employee_id"',
                        'name="attachment_ids"'):
             self.assertIn(wanted, arch, wanted)
         self.assertNotIn('name="unit_label"', arch, "the unit is fixed")
-        self.assertNotIn('name="journal_id"', arch)
         self.assertIn('widget="clearance_documents"', arch,
                       "the documents field is the drop-zone widget")
-        # payment mode and holder appear only to feed the vendor's readonly
-        # rule: invisible AND readonly, so the web client never sends them
+        # the mode appears only to feed the readonly rules: invisible AND
+        # readonly, so the web client never sends it
         tree = etree.fromstring(arch)
-        for helper in ('payment_mode', 'employee_id'):
+        for helper in ('payment_mode',):
             nodes = tree.xpath("//field[@name='%s']" % helper)
             self.assertTrue(nodes, helper)
             for node in nodes:
