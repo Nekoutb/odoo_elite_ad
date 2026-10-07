@@ -9,6 +9,8 @@ ORIGINATING_GROUPS = (
     'elite_clearance.group_clearance_transit',
 )
 FINANCE_GROUP = 'elite_clearance.group_clearance_finance'
+# every role at once; exempt wherever an administrator is
+ADMIN_GROUP = 'elite_clearance.group_clearance_admin'
 # Which head signs for which team (owner spec 02/10/2026): the Head of
 # Service Operations approves what an Operations agent keyed, and so on.
 TEAM_OF_GROUP = {
@@ -478,6 +480,11 @@ class LogisticsExpense(models.Model):
         # them. Production staff are never administrators.
         if user.has_group('base.group_system'):
             return
+        # The Clearance Administrator is every role at once (07/10/2026):
+        # Finance among them, so the rule would fire on the one person
+        # meant to be able to do everything.
+        if user.has_group(ADMIN_GROUP):
+            return
         if user.has_group(FINANCE_GROUP):
             raise UserError(self.env._(
                 "Finance does not key expenses. The team that incurred the "
@@ -852,8 +859,9 @@ class LogisticsExpense(models.Model):
             return False
         user = self.env.user
         # An administrator is in every group; they configure, they do
-        # not operate, and an expense they key belongs to no team.
-        if user.has_group('base.group_system'):
+        # not operate, and an expense they key belongs to no team. The
+        # Clearance Administrator is every team at once, so the same.
+        if user.has_group('base.group_system') or user.has_group(ADMIN_GROUP):
             return False
         for group, team in TEAM_OF_GROUP.items():
             if user.has_group(group):

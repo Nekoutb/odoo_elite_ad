@@ -525,6 +525,17 @@ Customs clearance job files for a logistics/clearance services provider.
      import) keeps the old rule: any of the three heads. An explicit
      `clearance_expense_approver_ids` list still wins over all of it.
   Tests: `test_owner_spec_0210.py`.
+- **The Clearance Administrator (owner, 07/10/2026).** `group_clearance_admin`
+  implies EVERY clearance group plus `account.group_account_manager`,
+  `hr.group_hr_user` and `base.group_partner_manager` - one role that
+  passes every gate, because every gate reads the user's groups. It is
+  NOT `base.group_system`: the Odoo-wide settings, users and companies
+  stay a separate tick. The two places an administrator is exempt by
+  name (`_check_originating_team`, `_team_of_current_user`) exempt this
+  group too, or the one person meant to do everything would be refused
+  as "Finance" when keying a cost. `test_clearance_admin.test_02` walks a
+  file from opening to closing as that one user - add a step there when
+  a new gate is built.
 - **The requester keys the payment (owner, 02/10/2026, reversing
   19/09).** `journal_id` reads "Payment Channel", `employee_id` "Staff
   Collecting the Funds"; the capture wizard and the capture form offer

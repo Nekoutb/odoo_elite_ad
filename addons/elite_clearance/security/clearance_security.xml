@@ -140,4 +140,40 @@
     </record>
 
 
+    <!-- One person who may do everything the application does (owner,
+         07/10/2026): every Clearance role at once, plus the accounting,
+         staff and contact rights those roles lean on. Meant for the
+         owner's own account and for a deputy who must be able to unblock
+         any step; the segregation rules read the user's groups, so this
+         user passes every one of them - which is the point, and why it
+         is one role to give and one to take away. It does NOT make
+         somebody an Odoo administrator (Settings -> Users, Companies,
+         the Odoo-wide settings page): that stays a separate tick. -->
+    <record id="group_clearance_admin" model="res.groups">
+        <field name="name">Clearance Administrator</field>
+        <field name="sequence">99</field>
+        <field name="privilege_id" ref="res_groups_privilege_clearance"/>
+        <field name="implied_ids" eval="[
+            (4, ref('group_clearance_user')),
+            (4, ref('group_clearance_operations')),
+            (4, ref('group_clearance_customer_service')),
+            (4, ref('group_clearance_customer_service_manager')),
+            (4, ref('group_clearance_transit')),
+            (4, ref('group_clearance_transit_manager')),
+            (4, ref('group_clearance_manager')),
+            (4, ref('group_clearance_ops_manager')),
+            (4, ref('group_clearance_finance')),
+            (4, ref('group_clearance_cashier')),
+            (4, ref('group_clearance_treasury')),
+            (4, ref('group_clearance_finance_manager')),
+            (4, ref('group_clearance_billing')),
+            (4, ref('group_clearance_billing_manager')),
+            (4, ref('account.group_account_manager')),
+            (4, ref('hr.group_hr_user')),
+            (4, ref('base.group_partner_manager')),
+        ]"/>
+        <field name="user_ids" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+        <field name="comment">Unrestricted access to the whole Clearance application: every role at once, with full accounting, staff and contact rights. Not an Odoo administrator.</field>
+    </record>
+
 </odoo>

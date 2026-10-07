@@ -22,3 +22,4 @@ from . import test_oop_accrual
 from . import test_owner_spec_0210
 from . import test_clearance_settings
 from . import test_payment_evidence
+from . import test_clearance_admin
