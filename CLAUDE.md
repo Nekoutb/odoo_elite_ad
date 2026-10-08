@@ -607,6 +607,15 @@ Customs clearance job files for a logistics/clearance services provider.
   declared sequence.
 
 ## Hard-won Odoo 19 gotchas (do not relearn these)
+- **An Odoo.sh build is yellow ("Test: Warning") on ANY WARNING line in
+  its log** - staging runs no tests, so it is the module update of the
+  production copy that is read. Two warnings came from this module itself
+  (08/10/2026): `group_operator=` on `clearance.turnaround` (deprecated
+  since 18, logged through py.warnings at every load - it is `aggregator=`
+  now) and `clearance_unit` labelled "Unit" like account's `product_uom_id`
+  on the same model. Before adding a field, grep the log of a green CI run
+  for `WARNING` and keep it at the platform's own two lines (addons_path,
+  http-interface) plus Odoo's test-only onchange and chrome notices.
 - `<group expand="0">` invalid in search views. Kanban template is
   `<t t-name="card">`. `t-esc`→`t-out`. `_sql_constraints` is IGNORED —
   use `models.Constraint` class attributes (name starts with `_`).

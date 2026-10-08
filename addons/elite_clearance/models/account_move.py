@@ -526,8 +526,12 @@ class AccountMoveLine(models.Model):
              "out-of-pocket account clears in full, and the invoice prints "
              "the two added together - so correcting the line moves the "
              "printed figure with it. Zero means charged at cost.")
+    # "Billing Unit", not "Unit": account's own product_uom_id is already
+    # labelled Unit, and two fields of one model with the same label is a
+    # WARNING at every module load - which is what turns an Odoo.sh build
+    # yellow (08/10/2026). The printed column header is the template's own.
     clearance_unit = fields.Char(
-        string="Unit", copy=False,
+        string="Billing Unit", copy=False,
         help="Printed as Unité, e.g. Par dossier or Par Conteneur.")
     # A line that has been credit-noted is spent: the disbursement behind
     # it is billable again, and the service on it may be charged again.

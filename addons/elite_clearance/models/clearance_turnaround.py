@@ -86,9 +86,9 @@ class ClearanceTurnaround(models.Model):
     completed = fields.Datetime(string="Done at", readonly=True)
     is_done = fields.Boolean(readonly=True)
     hours_taken = fields.Float(
-        string="Hours", readonly=True, group_operator='avg')
+        string="Hours", readonly=True, aggregator='avg')
     days_taken = fields.Float(
-        string="Days", readonly=True, group_operator='avg',
+        string="Days", readonly=True, aggregator='avg',
         help="Elapsed so far when the step is not finished.")
     target_hours = fields.Float(readonly=True, digits=(6, 2))
     is_late = fields.Boolean(string="Over target", readonly=True)
