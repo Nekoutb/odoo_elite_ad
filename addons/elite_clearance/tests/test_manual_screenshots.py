@@ -147,8 +147,17 @@ class TestManualScreenshots(HttpCase):
         cls.employee = env['hr.employee'].create({'name': "J. ETOUNDI"})
         # the person taking the pictures also holds a cash advance, so
         # My Tasks shows "Justify your cash advance" as the holder sees it
-        cls.holder = env['hr.employee'].create({
-            'name': "A. MBARGA", 'user_id': env.ref('base.user_admin').id})
+        # (demo data already gives the administrator an employee, and an
+        # employee's user is unique per company - reuse it)
+        admin = env.ref('base.user_admin')
+        cls.holder = env['hr.employee'].search([
+            ('user_id', '=', admin.id), ('company_id', '=', company.id)],
+            limit=1)
+        if cls.holder:
+            cls.holder.write({'name': "A. MBARGA"})
+        else:
+            cls.holder = env['hr.employee'].create({
+                'name': "A. MBARGA", 'user_id': admin.id})
 
         # a file being worked, with disbursements standing at each stage
         cls.file_work = cls._new_file("MSCU7741203")
