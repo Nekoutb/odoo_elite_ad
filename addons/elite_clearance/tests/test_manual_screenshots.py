@@ -373,7 +373,12 @@ class TestManualScreenshots(HttpCase):
             paid = cls._disbursement(
                 cls.file_work, "Scanner conteneur", 61000)
             cls._settle(paid)
-            return {'exp_pay': to_pay, 'exp_paid': paid}
+            sent = cls._disbursement(
+                cls.file_work, "Plombage conteneur", 15000)
+            sent.action_submit()
+            sent.action_approve()
+            sent.action_submit_settlement()
+            return {'exp_pay': to_pay, 'exp_paid': paid, 'exp_sent': sent}
 
         def advance():
             file = cls._new_file("SEGU5518870")
@@ -581,6 +586,8 @@ class TestManualScreenshots(HttpCase):
                  wait=".o_form_view")
             shot("10_expense_settlement", expense_form % self.exp_approved.id,
                  wait=".o_form_view")
+            scene_shot('exp_sent', "47_settlement_approve", expense_form,
+                       wait=".o_form_view")
             scene_shot('exp_pay', "24_expense_pay", expense_form,
                        wait=".o_form_view")
             scene_shot('exp_pay', "25_settle_dialog", expense_form,
