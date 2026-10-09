@@ -23,3 +23,4 @@ from . import test_owner_spec_0210
 from . import test_clearance_settings
 from . import test_payment_evidence
 from . import test_clearance_admin
+from . import test_bank_holding_accounts

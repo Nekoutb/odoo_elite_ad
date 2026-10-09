@@ -1,4 +1,5 @@
 from odoo.tests import TransactionCase, tagged
+from .holding import give_holding_account
 
 
 @tagged('post_install', '-at_install')
@@ -222,6 +223,7 @@ class TestTasksAndVat(TransactionCase):
     def test_10_cash_and_bank_disbursements_are_different_queues(self):
         bank = self.env['account.journal'].create({
             'name': "Bank", 'type': 'bank', 'code': 'ZBNK'})
+        give_holding_account(bank)
         by_cash = self.env['logistics.expense'].create({
             'file_id': self.file.id, 'category_id': self.category.id,
             'description': "Petty", 'amount': 5000})

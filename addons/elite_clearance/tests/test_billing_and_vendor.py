@@ -1,5 +1,6 @@
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
+from .holding import give_holding_account
 
 
 @tagged('post_install', '-at_install')
@@ -49,6 +50,7 @@ class TestVendorPayableAndRecharge(TransactionCase):
             'name': "Petty cash", 'type': 'cash', 'code': 'XCSH5'})
         cls.bank = env['account.journal'].create({
             'name': "Bank", 'type': 'bank', 'code': 'XBNK5'})
+        give_holding_account(cls.bank)
         cls.client = env['res.partner'].create({
             'name': "Recharge Client SA", 'is_company': True, 'street': "BP 1234 Douala", 'email': "client@test.cm", 'vat': "M000000000001A", 'company_registry': "RC/DLA/2026/B/0001", 'clearance_invoice_name': "Full Legal Name SARL"})
         cls.vendor = env['res.partner'].create({

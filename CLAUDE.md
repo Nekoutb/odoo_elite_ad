@@ -550,6 +550,18 @@ Customs clearance job files for a logistics/clearance services provider.
   Finance may still set it by hand. The `approved` state reads
   "Approved - with Finance": the head's approval already landed it in
   Finance's queue (`NOTIFY_KIND['approved'] = 'settlement_key'`).
+- **Each bank has its own holding account (owner, 09/10/2026).**
+  `logistics.expense._payment_credit_account()`: Disburse / Pay through
+  any journal that is not a till credits that journal's OWN Outstanding
+  Payments account (`outbound_payment_method_line_ids.payment_account_id`),
+  never the bank account; matching the bank statement line clears it
+  (Dr holding / Cr bank). Before, the settlement credited the bank and the
+  imported statement credited it again. Refused - at the Disburse / Pay
+  button already - when the journal has none, more than one, one that is
+  not reconcilable, is the bank account itself, or is shared with another
+  journal. A till is still credited directly. The vendor's 401 still nets
+  to nil on the day Finance pays. Test fixtures give a bank journal its
+  account with `tests/holding.py`. Tests: `test_bank_holding_accounts.py`.
 - **Payment evidence (owner, 01/10/2026).** `ir.attachment.clearance_kind`
   ('request' / 'payment', NULL = request) tells a disbursement's documents
   apart: `logistics.expense.request_document_ids` and

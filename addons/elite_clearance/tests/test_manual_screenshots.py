@@ -37,6 +37,7 @@ import odoo.tools
 from odoo import fields
 from odoo.tests import HttpCase, tagged
 from odoo.tests.common import ChromeBrowser, get_db_name
+from .holding import give_holding_account
 
 _logger = logging.getLogger(__name__)
 
@@ -107,6 +108,7 @@ class TestManualScreenshots(HttpCase):
             'name': "Caisse principale", 'type': 'cash', 'code': 'MCSH'})
         cls.bank = env['account.journal'].create({
             'name': "AFRILAND FIRST BANK", 'type': 'bank', 'code': 'MAFB'})
+        give_holding_account(cls.bank)
         cls.vat = env['account.tax'].create({
             'name': "TVA 19,25%", 'amount': 19.25,
             'amount_type': 'percent', 'type_tax_use': 'sale'})

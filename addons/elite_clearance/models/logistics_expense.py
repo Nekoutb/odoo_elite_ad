@@ -665,6 +665,70 @@ class LogisticsExpense(models.Model):
             return False
         return self.vendor_id.property_account_payable_id or False
 
+    def _payment_credit_account(self):
+        """The account the money leaves from when a disbursement is paid.
+
+        A till is credited directly: the cash is gone the moment it is
+        handed over and no statement will ever confirm it. Every other
+        channel - bank, Mobile Money, Maviance - is credited to that
+        journal's OWN holding account, its "Outstanding Payments" account
+        on the outgoing payment method (owner spec 09/10/2026). The bank
+        account itself moves only when the statement line is matched
+        against it, so the books agree with the bank line by line and the
+        holding account's balance is what has been paid but not yet
+        cleared. Before this, the settlement credited the bank account
+        and the imported statement credited it a second time.
+
+        One holding account per journal, because the owner wants each
+        bank's uncleared payments on their own line; a shared one is
+        refused rather than quietly accepted.
+        """
+        self.ensure_one()
+        journal = self.journal_id
+        if journal.type == 'cash':
+            if not journal.default_account_id:
+                raise UserError(self.env._(
+                    "Journal %s has no default account.", journal.name))
+            return journal.default_account_id
+        how = self.env._(
+            "Set it in Accounting -> Configuration -> Journals -> %(journal)s "
+            "-> Outgoing Payments -> Outstanding Payments account: an "
+            "account of its own, with Allow Reconciliation ticked.",
+            journal=journal.name)
+        # Read off the lines rather than through Odoo's own getter, which
+        # browses an empty id for a method with no account set.
+        holding = journal.sudo().outbound_payment_method_line_ids.payment_account_id
+        if len(holding) != 1:
+            raise UserError(self.env._(
+                "%(exp)s cannot be paid through %(journal)s: the journal "
+                "needs exactly one holding account for payments not yet "
+                "through the bank, and it has %(count)s. %(how)s",
+                exp=self.name, journal=journal.name, count=len(holding),
+                how=how))
+        if holding == journal.default_account_id or not holding.reconcile:
+            raise UserError(self.env._(
+                "%(exp)s cannot be paid through %(journal)s: its holding "
+                "account %(account)s must be reconcilable and must not be "
+                "the bank account itself, or the statement has nothing to "
+                "clear. %(how)s",
+                exp=self.name, journal=journal.name,
+                account=holding.display_name, how=how))
+        shared = self.env['account.journal'].sudo().search([
+            ('company_id', '=', journal.company_id.id),
+            ('id', '!=', journal.id),
+            ('outbound_payment_method_line_ids.payment_account_id', '=', holding.id),
+        ])
+        if shared:
+            raise UserError(self.env._(
+                "%(exp)s cannot be paid through %(journal)s: its holding "
+                "account %(account)s is also used by %(others)s. Each bank "
+                "keeps its own, so its uncleared payments read on their own "
+                "line. %(how)s",
+                exp=self.name, journal=journal.name,
+                account=holding.display_name,
+                others=", ".join(shared.mapped('name')), how=how))
+        return holding
+
     def _oop_accrual_account(self):
         """The 471xx a disbursement waits on between approval and payment.
 
@@ -785,6 +849,9 @@ class LogisticsExpense(models.Model):
             raise UserError(self.env._(
                 "The settlement of %s has not been approved by the "
                 "Head of Service Finance.", self.name))
+        # Before the evidence is attached, not after: Treasury should not
+        # scan a transfer advice only to be told the journal is not set up.
+        self._payment_credit_account()
         action = self.env['ir.actions.act_window']._for_xml_id(
             'elite_clearance.action_expense_settle_wizard')
         action['context'] = {'default_expense_id': self.id}
@@ -1049,10 +1116,7 @@ class LogisticsExpense(models.Model):
             # everything that reaches the ledger, including an advance
             # sitting on 421101 before it is justified.
             analytic = exp._analytic_distribution()
-            credit_account = exp.journal_id.default_account_id
-            if not credit_account:
-                raise UserError(self.env._(
-                    "Journal %s has no default account.", exp.journal_id.name))
+            credit_account = exp._payment_credit_account()
 
             # (account, partner, debit, credit)
             payable = exp._vendor_payable_account()

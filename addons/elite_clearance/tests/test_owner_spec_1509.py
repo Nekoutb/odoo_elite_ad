@@ -9,6 +9,7 @@ holds nothing up.
 
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
+from .holding import give_holding_account
 
 
 @tagged('post_install', '-at_install')
@@ -59,6 +60,7 @@ class TestOwnerSpec1509(TransactionCase):
             'name': "Cash 1509", 'type': 'cash', 'code': 'VCSH9'})
         cls.bank = env['account.journal'].create({
             'name': "Bank 1509", 'type': 'bank', 'code': 'VBNK9'})
+        give_holding_account(cls.bank)
 
         def client(name, disclosure='disclosed'):
             return env['res.partner'].create({

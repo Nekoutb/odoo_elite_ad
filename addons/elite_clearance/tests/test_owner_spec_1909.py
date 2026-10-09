@@ -6,6 +6,7 @@ arrived on the bank journal is put against the file it belongs to.
 
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
+from .holding import give_holding_account
 
 
 @tagged('post_install', '-at_install')
@@ -46,6 +47,7 @@ class TestOwnerSpec1909(TransactionCase):
             'name': "Cash 1909", 'type': 'cash', 'code': 'TCSH9'})
         cls.bank = env['account.journal'].create({
             'name': "Bank 1909", 'type': 'bank', 'code': 'TBNK9'})
+        give_holding_account(cls.bank)
         # Deterministic: a payment only makes a journal entry when it has
         # an outstanding account to make it against.
         method = cls.bank.inbound_payment_method_line_ids[:1]

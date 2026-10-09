@@ -1,5 +1,6 @@
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
+from .holding import give_holding_account
 
 
 @tagged('post_install', '-at_install')
@@ -134,6 +135,7 @@ class TestSegregationOfDuties(TransactionCase):
             exp.with_user(self.ops).write({'vendor_id': False})
         bank = self.env['account.journal'].create({
             'name': "Bank seg", 'type': 'bank', 'code': 'XBNK4'})
+        give_holding_account(bank)
         exp.with_user(self.finance).write({'journal_id': bank.id})
         self.assertEqual(exp.journal_id, bank)
         self.assertEqual(exp.payment_mode, 'electronic',
@@ -244,6 +246,7 @@ class TestSegregationOfDuties(TransactionCase):
         the bank by Treasury. A Finance clerk who is neither cannot pay."""
         bank = self.env['account.journal'].create({
             'name': "Bank", 'type': 'bank', 'code': 'XBNK3'})
+        give_holding_account(bank)
         cash_exp, bank_exp = self._keyed_by_ops(70000), self._keyed_by_ops(80000)
         for exp, journal in ((cash_exp, self.journal), (bank_exp, bank)):
             exp.with_user(self.ops).action_submit()
