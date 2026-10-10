@@ -311,6 +311,20 @@ class ResCompany(models.Model):
         help="Who may allow a file to be billed while a staff advance is "
              "still unjustified. Empty = any Clearance Head of Service Operations.")
 
+    def _clearance_service_taxes(self, partner=None):
+        """The VAT charged on a clearance invoice's service lines.
+
+        The tax named in Clearance Settings ("VAT on Service Fees") wins;
+        left empty, the company's Default Sales Tax from the Accounting
+        settings applies (owner 10/10/2026 - an invoice was issued with no
+        VAT at all because only the first was read). A client ticked
+        Exempt from VAT pays none, whatever is configured.
+        """
+        self.ensure_one()
+        if partner and partner.commercial_partner_id.clearance_vat_exempt:
+            return self.env['account.tax']
+        return self.clearance_service_tax_ids or self.account_sale_tax_id
+
     def _clearance_check_approver(self, kind):
         """Enforce the configured approver list for a checkpoint; fall back
         to the default security group when no list is configured."""

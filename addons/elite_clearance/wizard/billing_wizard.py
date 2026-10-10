@@ -90,8 +90,10 @@ class LogisticsBillingWizard(models.TransientModel):
     service_tax_total = fields.Monetary(
         compute='_compute_totals', currency_field='currency_id',
         string="VAT on services",
-        help="Configured in Settings, and charged on the service lines "
-             "only. Disbursements are recharged without VAT.")
+        help="VAT on Service Fees from Clearance Settings, or else the "
+             "Default Sales Tax of the Accounting settings; none for a "
+             "client ticked Exempt from VAT. Charged on the service lines "
+             "only - disbursements are recharged without VAT.")
     invoice_total = fields.Monetary(
         compute='_compute_totals', currency_field='currency_id',
         string="Invoice Total")
@@ -161,7 +163,8 @@ class LogisticsBillingWizard(models.TransientModel):
         for wizard in self:
             fee = wizard.customs_fee_amount
             wizard.advance_had_amount = fee
-            taxes = wizard.file_id.company_id.clearance_service_tax_ids
+            taxes = wizard.file_id.company_id._clearance_service_taxes(
+                wizard.file_id.partner_id)
             vat = 0.0
             if taxes and fee:
                 vat = sum(step['amount'] for step in taxes.compute_all(
@@ -294,9 +297,8 @@ class LogisticsBillingWizard(models.TransientModel):
         services = []
         if not self.currency_id.is_zero(self.commission_amount):
             services.append({
-                'name': self.env._("%(label)s (%(rate).2f%%)",
-                                   label=SERVICE_COMMISSION,
-                                   rate=self.commission_rate),
+                # no percentage on the client's document (owner 10/10/2026)
+                'name': SERVICE_COMMISSION,
                 'amount': self.commission_amount,
                 'unit': "Par dossier",
                 'account_id': (company.clearance_commission_account_id
@@ -383,7 +385,8 @@ class LogisticsBillingWizard(models.TransientModel):
                 + sum(wizard.service_line_ids.mapped('amount')))
             # VAT rides on the services and never on the disbursements, so
             # the biller sees the same split the invoice will carry.
-            taxes = wizard.file_id.company_id.clearance_service_tax_ids
+            taxes = wizard.file_id.company_id._clearance_service_taxes(
+                wizard.file_id.partner_id)
             tax = 0.0
             if taxes and wizard.service_total:
                 tax = sum(

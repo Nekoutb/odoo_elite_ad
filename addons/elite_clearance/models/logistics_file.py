@@ -1577,9 +1577,10 @@ class LogisticsFile(models.Model):
         services = []
         if self.commission_amount:
             services.append({
-                'name': self.env._(
-                    "Commission sur débours (%(rate).2f%%)",
-                    rate=self.commission_rate),
+                # The rate is the company's business, not the client's
+                # (owner 10/10/2026): the line says what it is, never the
+                # percentage behind it.
+                'name': self.env._("Commission sur débours"),
                 'amount': self.commission_amount,
                 'account_id': (
                     self.company_id.clearance_commission_account_id or fee).id,
@@ -1825,7 +1826,16 @@ class LogisticsFile(models.Model):
         # liability settled on their behalf. The tax is named in Settings
         # rather than inherited from whichever account a line lands on, so
         # the invoice does not change meaning when an account does.
-        service_taxes = self.company_id.clearance_service_tax_ids
+        service_taxes = self.company_id._clearance_service_taxes(self.partner_id)
+        if (services and not service_taxes
+                and not self.partner_id.commercial_partner_id.clearance_vat_exempt):
+            raise UserError(self.env._(
+                "No VAT is configured, so %(client)s would be billed without "
+                "it. Set VAT on Service Fees under Clearance -> "
+                "Configuration -> Settings, or the Default Sales Tax in the "
+                "Accounting settings - or, if this client does not pay VAT, "
+                "tick Exempt from VAT on the customer.",
+                client=self.partner_id.display_name))
         for line in services:
             service_lines.append(fields.Command.create({
                 'name': line['name'],

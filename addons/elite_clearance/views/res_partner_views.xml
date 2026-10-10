@@ -22,6 +22,8 @@
                        placeholder="the full legal name, as it prints on an invoice"/>
                 <field name="clearance_disclosure"
                        groups="elite_clearance.group_clearance_manager"/>
+                <field name="clearance_vat_exempt"
+                       groups="elite_clearance.group_clearance_user"/>
             </xpath>
             <xpath expr="//field[@name='ref']" position="after">
                 <!-- Readonly for everyone: the slug is assigned by the system

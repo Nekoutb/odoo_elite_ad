@@ -52,6 +52,14 @@ class ResPartner(models.Model):
              "references from the undisclosed series configured under "
              "Clearance -> Configuration -> Settings, not from the "
              "ordinary per-service-type numbering.")
+    # Owner spec 10/10/2026: VAT is billed unless the customer is ticked
+    # exempt. Off by default, so forgetting it charges VAT rather than
+    # forgetting VAT.
+    clearance_vat_exempt = fields.Boolean(
+        string="Exempt from VAT", default=False, tracking=True,
+        help="Ticked: this customer's clearance invoices carry no VAT. "
+             "Unticked, as it is by default, the commission and fees are "
+             "billed with VAT.")
     clearance_slug = fields.Char(
         string="Clearance Slug", size=3, index=True, copy=False, tracking=True,
         help="Three letters standing for this client in clearance analytic "
