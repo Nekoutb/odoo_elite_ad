@@ -57,10 +57,17 @@ CI (`.github/workflows/tests.yml`) runs the suite on all of these.
    and the billing flow refuses to run without them.
 2. `elite_clearance`.
 3. Configure *Settings → Clearance*: out-of-pocket account, employee advances
-   account, fee income account, miscellaneous journal, and optionally the
-   sales journal and the four approver lists.
+   account, fee income account, miscellaneous journal, **VAT on Service Fees**
+   (or rely on the Accounting default sales tax — with neither, billing a
+   non-exempt customer is refused), and optionally the sales journal, the
+   approver lists and, under *File Numbering*, the last file number each
+   service issued in the old system.
 4. Create the settlement journals (Cash, Bank, Mobile Money, Maviance) as
-   `cash`/`bank` journals.
+   `cash`/`bank` journals. **Every bank-type journal needs its own
+   reconcilable Outstanding Payments account** (*Journals → the journal →
+   Outgoing Payments*), one per bank, never shared: since 19.0.45 a payment
+   through it credits that account and the statement match clears it, and
+   the Disburse / Pay button refuses a journal without one.
 
 Installing runs the post-install hook, which seeds the real master data
 (document types, the IM/BO/ES/AI service types with their checklists, and the
@@ -92,7 +99,7 @@ console either. Choose the production branch name once, at project creation.
 - [x] Odoo.sh project exists and is connected to this repository.
 - [x] Production branch settled: `prod` (see *Branches* above).
 - [x] `prod` fast-forwarded to `staging` (v19.0.6.0.0) — the first real
-      promotion.
+      promotion. Production now runs 19.0.44.0.0; staging 19.0.46.0.0.
 - [ ] Console: drag `staging` from Development into the **Staging** stage,
       so it builds on a copy of production rather than an empty database.
 - [ ] Console: delete `19.0` from the Development stage (retired duplicate).
@@ -100,11 +107,13 @@ console either. Choose the production branch name once, at project creation.
 - [ ] Verify `l10n_cm` on 19.0 and load it before the module.
 - [ ] Configure Settings → Clearance on production (421101, 47xx, fee income,
       journals) and create the team users.
-- [ ] **Create the staff records** (Employees). Since 08/09/2026 a file cannot
-      be opened without a Follow-up Employee, and an employee is not the same
-      thing as a login: a declarant who follows files day to day may have no
-      user account at all. With none on record, nobody can open a file. The
-      ports are seeded by the module itself and need nothing.
+- [ ] **Create the staff records** (Employees). A cash advance must name a
+      registered employee (the holder on 421101), and an employee is not the
+      same thing as a login. The Follow-up Employee field left the file form
+      on 10/10/2026, so opening a file no longer needs one. The ports are
+      seeded by the module itself and need nothing.
+- [ ] Set the **Outstanding Payments** account on every bank, Mobile Money
+      and Maviance journal (see step 4 above) before anybody pays by bank.
 - [ ] Import the partner list (CSV) from the old Online database.
 - [ ] Decide on OCA `account_financial_report` if Trial Balance / P&L are
       wanted beyond what Enterprise ships.

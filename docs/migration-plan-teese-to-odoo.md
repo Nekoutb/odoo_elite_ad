@@ -11,7 +11,7 @@ record in the repository.
 | Teese export synced | 26/08/2026 (5 days short of cutoff) |
 | Odoo work starts | 01/09/2026 |
 | Trial balance upload | target 20/09/2026 |
-| Production | https://nekoutb-odoo-elite-ad.odoo.com — `elite_clearance` 19.0.9.0.0 |
+| Production | https://nekoutb-odoo-elite-ad.odoo.com — `elite_clearance` 19.0.44.0.0 (staging 19.0.46.0.0) |
 
 ## 1 · Principles
 
@@ -102,7 +102,7 @@ figure), purchase requests/orders (re-key open ones if Purchase is adopted).
 
 | Teese object | Odoo destination | Status |
 |---|---|---|
-| Dossier (3,644) | `logistics.file` — code as reference, client, type, port, follow-up employee, dates, cargo, regime, incoterm, importer; 8 duplicate codes renamed, 7 undated dated from code, sequences advanced | importer |
+| Dossier (3,644) | `logistics.file` — code as reference, client, type, port, follow-up employee (import only; off the form since 10/10/2026), dates, cargo, regime, incoterm, importer; 8 duplicate codes renamed, 7 undated dated from code, sequences advanced | importer |
 | Avance de frais (7,272) | `logistics.expense`, `is_legacy`, settled-direct, unposted, category Legacy; excluded from every total and gate | importer |
 | Facture (1,258) + lignes (6,308) | `account.move` **draft**, `is_legacy`, cannot be posted; Teese HT/TTC/outstanding kept; one "TVA (as invoiced in Teese)" line so the draft totals the Teese TTC; shown under the file's Billing, greyed; 44 without file | importer |
 | Étapes de dossier (12,375) | new model `logistics.file.step` + stage templates per service type — lead-time reporting | needs the `bi` dump |
@@ -232,7 +232,7 @@ themselves; backups verified; zip archived on the import record.
 ### A.2 Running the importer
 
 Newest staging build → Connect → Apps → Update Apps List → Clearance Files at
-19.0.9.0.0 (upgrade if lower) → install *Clearance Files — Teese Legacy
+19.0.44.0.0 or later (upgrade if lower) → install *Clearance Files — Teese Legacy
 Import* → Settings → Clearance accounts and sales journal → Clearance →
 Configuration → Teese Legacy Import → New → upload zip → Import (reopen and
 press again if the browser times out; it resumes) → compare with A.1.

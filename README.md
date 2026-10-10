@@ -8,7 +8,7 @@ billing that clears the balance sheet.
 | | |
 |---|---|
 | Module | `addons/elite_clearance` |
-| Version | `19.0.16.0.0` |
+| Version | `19.0.46.0.0` (staging) · `19.0.44.0.0` (production) |
 | Odoo | 19.0 Community (lab) / 19.0 Enterprise (production, Odoo.sh) |
 | Licence | LGPL-3 |
 | Currency / locale | XAF, Cameroon (SYSCOHADA — `l10n_cm`) |
@@ -32,11 +32,19 @@ every posting the module makes carries that account. Per-file profitability
 therefore falls out of the accounting rather than out of a spreadsheet.
 
 **The documentation gate.** Each `logistics.service.type` carries a checklist
-template. Opening a file generates the checklist; `action_start_work` refuses
-while a mandatory document is missing, unless an approver signs a waiver with
-a written justification, which is posted to the chatter. Ticking documents
-stamps one shared transaction timestamp (`env.cr.now()`) across everything
-saved together; the *Set Received Date/Time* wizard back-dates in bulk.
+template. Opening a file generates the checklist. Only Customer Service opens
+a file, and work starts when the **Head of Customer Service approves the
+opening**; with a mandatory document missing the file asks for a **waiver**
+instead, which the same head signs with a written reason posted to the
+chatter — the approval itself starts the work. Ticking documents stamps one
+shared transaction timestamp (`env.cr.now()`) across everything saved
+together; the *Set Received Date/Time* wizard back-dates in bulk.
+
+**File numbers.** References are structured per service type (`2026IM0009`).
+Under *Clearance → Configuration → Settings → File Numbering* each service
+takes the last number the old system issued; the next file opened continues
+from it (`2026IM0019` keyed, `2026IM0020` issued). A malformed reference, or
+one behind a file already opened here, is refused.
 
 **`logistics.expense` — out-of-pocket disbursements.**
 `draft → submitted → approved → settlement_submitted → settlement_approved
@@ -46,25 +54,37 @@ Each step is a different pair of hands:
 
 | Step | Who |
 |---|---|
-| Key and submit | Operations, Customer Service or Transit team — **never Finance** |
-| Approve | Operations, Customer Service or Transit **Manager** |
+| Key and submit | Operations, Customer Service or Transit team — **never Finance**. The free text is *Additional Comments* |
+| Approve | The **Head of the service that keyed it** |
 | Name who is paid (the vendor) | The team that keyed it, when keying; Finance may correct it at settlement |
 | Set how it is paid (cash / electronic / advance, holder for an advance, journal) and send it on | Finance — the originator cannot even see these fields |
 | Sign the settlement, or return it to Finance | Finance **Manager** |
 | Disburse cash / pay from the bank | **Cashier** (tills) / **Treasury** (bank, mobile money) |
-| Submit an advance's justification | Finance |
-| Approve the justification | Operations **Manager** |
+| Submit an advance's justification | The staff member holding it, or Finance — never asked for a non-justifiable category |
+| Approve the justification | Head of Service **Operations**, then the Head of Service **Finance** signs the entry |
 | Raise the invoice | **Billing Agent** |
 | Recharge above cost | Operations **Manager** |
-| Recharge **below** cost | Operations **Manager** and the **General Manager**, with a written reason and a supporting document |
+| Recharge **below** cost | Head of Service **Operations** and the **General Manager**; every adjusted line carries its own written reason (or the biller gives one overall note) |
+| Review a recharge | The approver is taken straight to the **billing screen** — disbursed, recharged, variance and the reason side by side — and approves or refuses there |
+| Refuse anything | The approver gives a **reason in a dialog**; it is posted on the record and the person who asked is notified |
+| Everything | The **Clearance Administrator** passes every checkpoint, named approver lists included |
 | Close the file for operations | Operations **Manager**, and only once the customs fee is keyed |
 | Reopen an imported file | **Billing Agent** requests with a reason; Operations **Manager** approves after review |
 
 | Step | Debit | Credit |
 |---|---|---|
-| Settle, paid direct | 47xx Débours engagés | Cash / bank / mobile money journal |
-| Settle, via advance | 421101 Personnel débours avancés | Cash / bank / mobile money journal |
+| Settle, paid direct from a till | 47xx Débours engagés (via 401 for a vendor) | Cash journal |
+| Settle, paid through a bank, Mobile Money or Maviance | 47xx Débours engagés (via 401 for a vendor) | **That bank's own holding account** (its *Outstanding Payments* account) |
+| Bank statement line matched | Bank holding account | 52xx Bank |
+| Settle, via advance | 421101 Personnel débours avancés | Till, or the bank's holding account |
 | Justify an advance | 47xx Débours engagés | 421101 Personnel débours avancés |
+
+Each bank-type journal needs its own reconcilable *Outstanding Payments*
+account (*Accounting → Configuration → Journals → Outgoing Payments*), or a
+payment through it is refused at the *Disburse / Pay* button. The bank
+account then moves once per payment, when the statement is matched, and the
+holding account's balance is what has been paid but is not yet through the
+bank.
 
 **Staff advances.** An advance must name a registered employee. It is carried
 on a single account — 421101 — with that person's work contact as the
@@ -88,9 +108,10 @@ client, stays on 421101 against the holder, and remains recoverable from
 them.
 
 **Opening a file.** Everything under Cargo & Routing is keyed when the file
-is opened, and a file stays the author's own until they press **Start Work** —
-Finance, Transit, Customer Service and Operations see it from that moment, not
-before. Cargo that is not in a container is marked **Not Containerised**, and
+is opened (the Responsible user names who follows it; there is no separate
+follow-up employee field), and a draft stays its author's own until the
+opening is approved — Finance, Transit and Operations see it from that
+moment, not before. Cargo that is not in a container is marked **Not Containerised**, and
 the container count and type are then switched off. Supporting documents are
 dragged straight onto the Document Checklist.
 
@@ -98,9 +119,13 @@ dragged straight onto the Document Checklist.
 invoice with two sections: disbursements recharged at cost against the
 out-of-pocket account (clearing it, and carrying no tax — they are the
 client's own liability paid on their behalf), then the fee lines, which do
-carry the default taxes: the commission (`service_type.commission_rate` % of
-the out-of-pocket total) and the manually keyed customs service fee, as two
-separate lines. The billing screen can **split the bill**: one invoice for the
+carry VAT: the commission (`service_type.commission_rate` % of the
+out-of-pocket total, printed as "Commission sur débours" with no percentage
+on the client's document) and the manually keyed customs service fee, as two
+separate lines. The VAT is the one named under *Clearance → Settings → VAT on
+Service Fees*, or else the Accounting *Default Sales Tax*; a customer ticked
+**Exempt from VAT** is billed without it; with neither configured for a
+non-exempt customer, billing is refused rather than issued without VAT. The billing screen can **split the bill**: one invoice for the
 disbursements alone (they carry no VAT), another for the commission and fees
 (with VAT), each printed as the same document. Invoice references are
 structured per service type (`EL26IM0001`); file references likewise
@@ -114,7 +139,13 @@ closed file goes through a wizard that demands a manager and a written reason.
 **Approvals.** Every checkpoint — documentation waiver, expense approval,
 settlement approval, disbursement, billing, operations close, unjustified-
 advance waiver — takes an explicit list of users under *Settings → Clearance*.
-Where no list is configured the security groups above apply.
+Where no list is configured the security groups above apply; the Clearance
+Administrator passes either way.
+
+**My Tasks and the bell.** Every checkpoint is a row in *My Tasks*, narrowed
+to what the reader can act on, and lands with a toast and a beep; the bell
+lists the newest task first. A recharge awaiting approval opens on the
+billing screen, not on the file.
 
 ## Legacy data (Elimelec / Teese)
 
@@ -164,7 +195,7 @@ changes additionally need *Apps → Clearance Files → Upgrade*.
 Run the suite against a throwaway database:
 
 ```bash
-docker compose run --rm odoo odoo -d clr_test -i elite_clearance --with-demo --test-enable --test-tags /elite_clearance --stop-after-init
+docker compose run --rm odoo odoo -d clr_test -i elite_clearance,elite_clearance_teese --with-demo --test-enable --test-tags /elite_clearance,/elite_clearance_teese --stop-after-init
 ```
 
 CI runs exactly that on every push. Before calling anything done: the suite

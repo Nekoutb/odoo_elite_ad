@@ -51,18 +51,25 @@ accounts and a journal before expenses will settle:
 
 Settlement journals (Cash, Bank, Mobile Money, Maviance) are ordinary
 `cash`/`bank` journals created under *Invoicing → Configuration → Journals*.
+Give each bank-type one its own *Outstanding Payments* account (Outgoing
+Payments tab, Allow Reconciliation ticked): a payment through it credits
+that holding account, and the button refuses a journal without one.
 
 ## Smoke test
 
 1. *Clearance → Files → Clearance Files → New*.
 2. Any client, service type **Import** — the checklist fills itself. Save.
-3. **Start Work** → refused, mandatory documents missing. That is the gate
-   working.
-4. Write a justification, **Request Waiver**, then **Approve Waiver**.
-5. **Start Work** now succeeds.
-6. Add an expense, submit, approve, settle — check the journal entry debits
-   the out-of-pocket account.
-7. **Close for Operations**, **Create Invoice**, post it, **Mark Complete**.
+3. **Request Opening Approval** → refused, mandatory documents missing.
+   That is the gate working.
+4. Write a justification, **Request Waiver**, then **Approve Waiver & Start
+   Work** as the Head of Customer Service — the approval starts the work.
+5. The file is *In Progress*.
+6. **Add a Disbursement**, submit, approve, key the payment channel, send for
+   settlement, approve it, **Disburse / Pay** with a document attached — check
+   the entry debits the out-of-pocket account and credits the till (or, for
+   a bank journal, its holding account).
+7. **Close for Operations**, **Billing** → *Create Invoice*, post it, **Close
+   the File**. Try **Refuse** on any step on the way: it asks for a reason.
 
 Repeat step 1–5 logged in as a user holding *Clearance / User* only. Unit
 tests run as admin and will not catch an access-rights failure.

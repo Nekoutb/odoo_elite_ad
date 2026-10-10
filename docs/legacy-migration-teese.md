@@ -59,7 +59,7 @@ answers again, those are the tables to ask TS Consulting for.
 | Model | Field | From |
 |---|---|---|
 | `logistics.file` | `port_id` → new `logistics.port` | `port_name` |
-| | `employee_id` (follow-up employee, `hr.employee`) | `employee_name` |
+| | `employee_id` (follow-up employee, `hr.employee`; filled by the import only — off the form since 10/10/2026) | `employee_name` |
 | | `shipment_type` container / conventional / flatbed | `embarquement` |
 | | `container_count`, `package_count`, `weight_kg`, `cargo_value` | as named |
 | | `customs_regime` (Char) | `regime` (EX1, EX2) |
