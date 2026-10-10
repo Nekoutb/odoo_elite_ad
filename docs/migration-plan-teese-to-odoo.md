@@ -11,7 +11,7 @@ record in the repository.
 | Teese export synced | 26/08/2026 (5 days short of cutoff) |
 | Odoo work starts | 01/09/2026 |
 | Trial balance upload | target 20/09/2026 |
-| Production | https://nekoutb-odoo-elite-ad.odoo.com — `elite_clearance` 19.0.44.0.0 (staging 19.0.46.0.0) |
+| Production | https://nekoutb-odoo-elite-ad.odoo.com — `elite_clearance` 19.0.44.0.0 (staging 19.0.47.0.0) |
 
 ## 1 · Principles
 

@@ -1366,8 +1366,10 @@ class LogisticsExpense(models.Model):
             if exp.state != 'settled' or exp.payment_mode != 'advance':
                 raise UserError(self.env._(
                     "%s is not a settled cash advance.", exp.name))
+            # the receipts - never the cash voucher, which is not one
             attachments = self.env['ir.attachment'].search_count([
-                ('res_model', '=', self._name), ('res_id', '=', exp.id)])
+                ('res_model', '=', self._name), ('res_id', '=', exp.id),
+                ('clearance_kind', 'not in', ('voucher', 'signed'))])
             if not attachments:
                 raise UserError(self.env._(
                     "Attach the supporting documents to %s before sending "

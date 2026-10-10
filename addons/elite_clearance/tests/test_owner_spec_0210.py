@@ -9,7 +9,7 @@ but a name is not a rule, and these tests are about the rules.
 
 import json
 
-from odoo.exceptions import AccessError, UserError
+from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -124,11 +124,10 @@ class TestOwnerSpec0210(TransactionCase):
         # it sits in the head's queue, and in nobody else's
         self.assertTrue(self._tasks(self.cs_head, 'file_open'))
         self.assertFalse(self._tasks(self.ops_head, 'file_open'))
-        # and the head can open what the queue lists - a draft nobody
-        # else sees
+        # and the head can open what the queue lists - as can every other
+        # team, since 10/10/2026 (every clearance team sees every file)
         self.assertTrue(file.with_user(self.cs_head).read(['name']))
-        with self.assertRaises(AccessError):
-            file.with_user(self.ops_head).read(['name'])
+        self.assertTrue(file.with_user(self.ops_head).read(['name']))
 
         # another head is not this head
         with self.assertRaises(UserError):

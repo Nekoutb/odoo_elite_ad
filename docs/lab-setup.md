@@ -65,11 +65,17 @@ that holding account, and the button refuses a journal without one.
    Work** as the Head of Customer Service — the approval starts the work.
 5. The file is *In Progress*.
 6. **Add a Disbursement**, submit, approve, key the payment channel, send for
-   settlement, approve it, **Disburse / Pay** with a document attached — check
-   the entry debits the out-of-pocket account and credits the till (or, for
-   a bank journal, its holding account).
-7. **Close for Operations**, **Billing** → *Create Invoice*, post it, **Close
+   settlement, approve it, **Disburse / Pay** — for a bank with a document
+   attached; for a till with nothing, and the **cash voucher** appears on
+   the disbursement. Check the entry debits the out-of-pocket account and
+   credits the till (or, for a bank journal, its holding account), labelled
+   *category / file number*.
+7. For a till, **Close for Operations** is refused until the signed voucher
+   is uploaded under *Cash Voucher (signed)*; upload any PDF there.
+8. **Close for Operations**, **Billing** → *Create Invoice*, post it, **Close
    the File**. Try **Refuse** on any step on the way: it asks for a reason.
+   On the billing screen, charge one line above cost and another below by
+   the same amount: the only button is *Submit for Review*.
 
 Repeat step 1–5 logged in as a user holding *Clearance / User* only. Unit
 tests run as admin and will not catch an access-rights failure.

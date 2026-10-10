@@ -61,7 +61,10 @@ CI (`.github/workflows/tests.yml`) runs the suite on all of these.
    (or rely on the Accounting default sales tax — with neither, billing a
    non-exempt customer is refused), and optionally the sales journal, the
    approver lists and, under *File Numbering*, the last file number each
-   service issued in the old system.
+   service issued in the old system. Under *Invoice Layout*, the
+   **letterhead tagline** and the **cash voucher title** printed on the
+   petty-cash voucher; its logo, address, NIU, RCCM and telephone are the
+   company record itself (*Settings → Companies*).
 4. Create the settlement journals (Cash, Bank, Mobile Money, Maviance) as
    `cash`/`bank` journals. **Every bank-type journal needs its own
    reconcilable Outstanding Payments account** (*Journals → the journal →
@@ -99,7 +102,7 @@ console either. Choose the production branch name once, at project creation.
 - [x] Odoo.sh project exists and is connected to this repository.
 - [x] Production branch settled: `prod` (see *Branches* above).
 - [x] `prod` fast-forwarded to `staging` (v19.0.6.0.0) — the first real
-      promotion. Production now runs 19.0.44.0.0; staging 19.0.46.0.0.
+      promotion. Production now runs 19.0.44.0.0; staging 19.0.47.0.0.
 - [ ] Console: drag `staging` from Development into the **Staging** stage,
       so it builds on a copy of production rather than an empty database.
 - [ ] Console: delete `19.0` from the Development stage (retired duplicate).
@@ -114,6 +117,13 @@ console either. Choose the production branch name once, at project creation.
       seeded by the module itself and need nothing.
 - [ ] Set the **Outstanding Payments** account on every bank, Mobile Money
       and Maviance journal (see step 4 above) before anybody pays by bank.
+- [ ] Check every journal's **Type** (*Accounting → Configuration →
+      Journals*): only tills are `Cash` and only banks, Mobile Money and
+      Maviance are `Bank`. The Payment Channel list on a disbursement is
+      exactly those; a purchase or miscellaneous journal typed Bank would
+      appear there.
+- [ ] Upload the company **logo** and fill the address, NIU, RCCM and
+      telephone on *Settings → Companies*: the cash voucher prints them.
 - [ ] Import the partner list (CSV) from the old Online database.
 - [ ] Decide on OCA `account_financial_report` if Trial Balance / P&L are
       wanted beyond what Enterprise ships.

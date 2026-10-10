@@ -8,7 +8,7 @@ billing that clears the balance sheet.
 | | |
 |---|---|
 | Module | `addons/elite_clearance` |
-| Version | `19.0.46.0.0` (staging) · `19.0.44.0.0` (production) |
+| Version | `19.0.47.0.0` (staging) · `19.0.44.0.0` (production) |
 | Odoo | 19.0 Community (lab) / 19.0 Enterprise (production, Odoo.sh) |
 | Licence | LGPL-3 |
 | Currency / locale | XAF, Cameroon (SYSCOHADA — `l10n_cm`) |
@@ -84,7 +84,17 @@ account (*Accounting → Configuration → Journals → Outgoing Payments*), or 
 payment through it is refused at the *Disburse / Pay* button. The bank
 account then moves once per payment, when the statement is matched, and the
 holding account's balance is what has been paid but is not yet through the
-bank.
+bank. Every journal item of a disbursement is labelled *category / file
+number*; the entry's reference names the disbursement.
+
+**Cash from the till.** *Disburse / Pay* on a cash journal needs no other
+evidence: it prints the **cash voucher** (*Avance frais* — letterhead from
+the company record, requester, till, date of the request, file and client,
+category, amount, and every approval with its name and time stamp) and keeps
+it on the disbursement. The Cashier has it signed by the person taking the
+cash and uploads the signed copy; the file cannot be closed for operations
+until every cash payment has one. The *Payment Channel* field lists every
+till and bank of the company, the same list for everybody.
 
 **Staff advances.** An advance must name a registered employee. It is carried
 on a single account — 421101 — with that person's work contact as the
@@ -109,9 +119,9 @@ them.
 
 **Opening a file.** Everything under Cargo & Routing is keyed when the file
 is opened (the Responsible user names who follows it; there is no separate
-follow-up employee field), and a draft stays its author's own until the
-opening is approved — Finance, Transit and Operations see it from that
-moment, not before. Cargo that is not in a container is marked **Not Containerised**, and
+follow-up employee field). From the moment it is saved, every clearance
+team — Customer Service, Operations, Transit, their heads and Finance — sees
+it under *Files*. Cargo that is not in a container is marked **Not Containerised**, and
 the container count and type are then switched off. Supporting documents are
 dragged straight onto the Document Checklist.
 
@@ -145,7 +155,14 @@ Administrator passes either way.
 **My Tasks and the bell.** Every checkpoint is a row in *My Tasks*, narrowed
 to what the reader can act on, and lands with a toast and a beep; the bell
 lists the newest task first. A recharge awaiting approval opens on the
-billing screen, not on the file.
+billing screen, not on the file. *My Tasks* also has an **Ongoing files**
+section: every file in progress on which the reader has keyed a cost.
+
+**Recharge review, line by line.** Any disbursement charged at other than
+what it cost sends the bill for review — even when an overcharge on one line
+and an undercharge on another add up to cost. Operations approves; the
+General Manager too where any line or the total is below cost. Changing the
+lines after approval lapses it; a refusal bills at cost.
 
 ## Legacy data (Elimelec / Teese)
 

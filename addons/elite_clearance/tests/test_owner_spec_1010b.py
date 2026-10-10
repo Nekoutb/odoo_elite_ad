@@ -209,7 +209,7 @@ class TestOwnerSpec1010b(TransactionCase):
         self.assertRegex(arch, r'<field name="journal_id"[^>]*widget="selection"')
         # what the selection widget lists: name_search under that domain
         listed = self.env['account.journal'].with_user(self.finance).name_search(
-            "", args=[('type', 'in', ('cash', 'bank'))])
+            "", domain=[('type', 'in', ('cash', 'bank'))])
         names = {name for _id, name in listed}
         self.assertIn("Caisse principale", names)
         self.assertIn("AFB", names)
@@ -340,9 +340,11 @@ class TestOwnerSpec1010b(TransactionCase):
         self.assertFalse(wizard.needs_review, "approved for exactly these lines")
         wizard.action_create_invoice()
         self.assertTrue(file.invoice_id)
-        charged = {l.clearance_charged for l in file.invoice_id.invoice_line_ids
-                   if l.clearance_category == 'debours'}
-        self.assertEqual(charged, {120000.0, 60000.0})
+        # the lines post at cost and each carries its share of the
+        # adjustment: +20,000 on one, -20,000 on the other
+        self.assertEqual(first.billed_line_id.move_id, file.invoice_id)
+        self.assertEqual(first.billed_line_id.clearance_adjustment, 20000)
+        self.assertEqual(second.billed_line_id.clearance_adjustment, -20000)
 
     def test_07_moving_the_lines_after_approval_tears_the_approval_up(self):
         file = self._working_file()
@@ -401,6 +403,5 @@ class TestOwnerSpec1010b(TransactionCase):
         self.assertFalse(wizard.needs_review, "the screen proposes cost again")
         wizard.action_create_invoice()
         self.assertTrue(file.invoice_id)
-        charged = {l.clearance_charged for l in file.invoice_id.invoice_line_ids
-                   if l.clearance_category == 'debours'}
-        self.assertEqual(charged, {100000.0, 80000.0})
+        self.assertEqual(first.billed_line_id.clearance_adjustment, 0)
+        self.assertEqual(second.billed_line_id.clearance_adjustment, 0)

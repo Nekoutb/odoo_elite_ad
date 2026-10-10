@@ -15,7 +15,7 @@ working memory that is *not* obvious from the code.
   <in the Odoo.sh project settings — never in this repository, it is public>, Custom plan). The old Odoo Online db (elite-advisors,
   saas~19.3) holds no data and will lapse. Never build against 19.3 minor APIs.
 
-## The module: addons/elite_clearance (v19.0.46.0.0)
+## The module: addons/elite_clearance (v19.0.47.0.0)
 Customs clearance job files for a logistics/clearance services provider.
 - `logistics.file` — one file = one clearance job. States:
   draft → in_progress → ops_closed → done (+cancel, +imported). `imported`
@@ -620,6 +620,78 @@ Customs clearance job files for a logistics/clearance services provider.
      `res.partner.clearance_vat_exempt` (default off); with nothing
      configured and a non-exempt customer, billing is REFUSED. The
      commission line prints "Commission sur débours" with no percentage.
+- **Owner spec 10/10/2026, second message, six instructions** (tests:
+  `test_owner_spec_1010b.py`).
+  1. **Every clearance team sees every file from the moment Customer
+     Service opens it** - draft included. This REVERSES the 08/09/2026
+     draft-is-the-author's rule: `rule_logistics_file_team_sees_every_file`
+     and `rule_logistics_file_document_team` (group_clearance_user, domain
+     all) replace it, and the old two rules are DELETED by
+     `migrations/19.0.47.0.0/post-migrate.py` because
+     `clearance_record_rules.xml` is noupdate and `_process_end` never
+     removes noupdate records. The Manager and CS-head rules stay,
+     harmless.
+  2. **"Ongoing files"** is a `clearance.task` kind (`ongoing_file`,
+     offset 19): one row per (file in progress, requester who keyed a
+     cost on it), id built from their FIRST expense so it is unique,
+     `holder_user_id` = the requester. `PERSONAL_KINDS` generalises the
+     advance_justify narrowing in `_search`. The systray EXCLUDES it
+     (`[["kind", "!=", "ongoing_file"]]`): it is a section of My Tasks,
+     not a thing waiting on anybody, and a bell that counts your own
+     files is a bell nobody reads.
+  3. **The Payment Channel is `widget="selection"`** on the expense form,
+     the capture form and the capture wizard. The owner saw "Achats,
+     Différence de change, TVA sur encaissements..." on one profile and
+     "AFB" on theirs: a many2one dropdown shows the first SEVEN matches
+     (`searchLimit`) by journal sequence and hides the rest behind Search
+     More, so what you see depends on what you type. The field's domain
+     was and is `type in (cash, bank)` - if a journal that is not a till
+     or a bank shows in that list, it is TYPED bank/cash in that
+     database, which is a journal configuration to correct, not code.
+  4. **The ledger reads `<category> / <file>`** on every journal item of
+     a disbursement (`logistics.expense._ledger_label()`: accrual,
+     settlement and justification entries). The entry's `ref` still
+     starts with the expense reference, so the trace back is kept.
+  5. **The petty-cash voucher** (`report/cash_voucher_*.xml`,
+     `action_report_cash_voucher`, French, reproduced from Teese's
+     "AVANCE FRAIS"). Disburse / Pay on a `cash` journal needs NO other
+     evidence: `action_settle` renders it (`_issue_cash_voucher`, via
+     `_render_qweb_pdf`, which under --test-enable returns HTML without
+     wkhtmltopdf - so it is safe inside a TransactionCase) and keeps it
+     as `ir.attachment.clearance_kind = 'voucher'`; the Cashier uploads
+     the signed copy as kind `'signed'`
+     (`cash_voucher_ids` / `signed_voucher_ids`, two boxes on the form,
+     shown for a till only); `action_close_operations` REFUSES while a
+     cash payment has no signed copy (`_unsigned_cash_vouchers()`,
+     su-exempt like the other evidence gates). `attachment_ids` on the
+     expense is now the request documents + payment evidence ONLY
+     (`DOCUMENT_KINDS`): a voucher must never count as the document
+     that justifies an advance. Who did each step is stamped beside when
+     (`approved_by_id`, `settlement_submitted_by_id`,
+     `settlement_approved_by_id`, `settled_by_id`) and the voucher prints
+     all four with their time stamps; rows settled before 19.0.47 print
+     the dates with blank names. Letterhead = the company record (logo,
+     name, address, NIU, RCCM, phone via
+     `res.company._clearance_letterhead_details()`) plus two settings,
+     `clearance_letterhead_tagline` and `clearance_cash_voucher_title`,
+     wired in the three settings places. DEMANDEUR is `create_uid`, DATE
+     is `create_date` (the moment the request was keyed), CAISSE the
+     journal, AUTRES INFOS the file and the client's full invoice name.
+     `test_clearance_admin.test_02` gained the signed-voucher step.
+  6. **The recharge review is LINE BY LINE.** `needs_review` used to
+     compare the recharged TOTAL with cost: an overcharge on one
+     disbursement and an undercharge on another cancelled out and the
+     invoice went through with nobody asked (owner's test on staging).
+     Now any line off cost needs the review; "approved" means approved
+     for THESE lines (each compared with the persisted
+     `expense.recharge_amount`); `_persist` asks for
+     `_sync_recharge_state()` itself when the lines moved but the total
+     did not (the write hook only sees the total); `_recharge_below_cost()`
+     (total OR any line) decides the General Manager's signature and the
+     written-reason rule; `_create_client_invoice` refuses lines off
+     cost that are not approved whichever way it is called; and a
+     refusal resets `recharge_amount` to 0 on the file AND the lines, or
+     the screen would propose the refused figures again for ever.
 - **Payment evidence (owner, 01/10/2026).** `ir.attachment.clearance_kind`
   ('request' / 'payment', NULL = request) tells a disbursement's documents
   apart: `logistics.expense.request_document_ids` and
@@ -871,7 +943,7 @@ Customs clearance job files for a logistics/clearance services provider.
 - Apply code changes: `docker compose restart odoo` then Apps → module → Upgrade
   (XML/schema need the Upgrade; Python needs the restart).
 - Logs: `docker compose logs odoo`
-- Tests (throwaway db, currently 293 tests across both modules, must stay green):
+- Tests (throwaway db, currently 302 tests across both modules, must stay green):
   `docker compose run --rm odoo odoo -d clr_test -i elite_clearance,elite_clearance_teese --with-demo --test-enable --test-tags /elite_clearance,/elite_clearance_teese --stop-after-init`
 - Static repo checks CI also runs:
   `python tools/check_manifest.py addons/elite_clearance addons/elite_clearance_teese`
