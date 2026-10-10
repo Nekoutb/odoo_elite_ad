@@ -562,6 +562,63 @@ Customs clearance job files for a logistics/clearance services provider.
   journal. A till is still credited directly. The vendor's 401 still nets
   to nil on the day Finance pays. Test fixtures give a bank journal its
   account with `tests/holding.py`. Tests: `test_bank_holding_accounts.py`.
+- **Owner spec 10/10/2026, nine instructions** (tests: `test_owner_spec_1010.py`).
+  1. `logistics.file.employee_id` ("Follow-up Employee") is off the form
+     and the search; the column stays for the Teese import.
+  2. **Numbering continues from the old system.**
+     `logistics.service.type.legacy_last_file_ref` (Settings -> File
+     Numbering, or the service form): `_continue_legacy_numbering()`
+     parses year + code + number, refuses a malformed reference or one
+     behind a file already opened here, and restarts that year's
+     `ir.sequence.date_range` at last + 1 (create, THEN write - the
+     documented trap). Undisclosed clients keep their own series.
+  3. **The bell lists newest first** (`clearance.task.date_landed` =
+     the record's write_date, ordered in the systray's searchRead), and
+     three queues that nobody was told about now ring:
+     `_notify_if_queued(kind, record)` asks the SQL view whether the
+     record is actually in the queue, then rings - from
+     `account.move._post` (file_close, when the last document posts),
+     the cancel wizard (billing, when a bill is withdrawn) and
+     `logistics.billing.service.create` (billing_service).
+  4. **The Clearance Administrator passes the NAMED approver lists**
+     too (`_clearance_check_approver` returns early for the group): a
+     list naming other people was what refused the one role meant to do
+     everything.
+  5. Disbursement free text reads "Additional Comments" everywhere; the
+     Submit Justification button is hidden when `justification_required`
+     is false.
+  6. **The approver reviews a recharge ON the billing screen.**
+     `logistics.file.action_open_billing_review()` opens
+     `logistics.billing.wizard` with context `clearance_billing_review`
+     (`review_mode`): every field readonly, footer = Approve the
+     Recharge / Refuse. `clearance.task.action_open` and the systray's
+     Open go there for `recharge_*`. The wizard's reads that touch
+     invoices go through `sudo()` because the Ops head and the GM have
+     no `account.*` group; their ACL rows on the four wizard models are
+     the `*_review_*` lines.
+  7. **Each line says why** (`logistics.billing.wizard.debours.comment`,
+     persisted to `logistics.expense.recharge_comment`). Submit for
+     Review refuses a line with a variance and no comment; the overall
+     `review_reason` is optional and, left empty, is composed from the
+     line comments so `_check_recharge_documented` and the chatter read
+     them.
+  8. **Every Refuse asks for a reason.** `clearance.rejection.mixin`
+     (`models/clearance_rejection.py`): the nine Refuse buttons call
+     `action_open_rejection` with `rejection_method` in context, the
+     dialog (`clearance.rejection.wizard`) calls the real method with
+     `clearance_rejection_reason` in context, and each method posts the
+     reason through `_clearance_post_rejection(body, requesters)`, which
+     notifies the requester (`partner_ids`). `REJECTIONS` is the closed
+     list of callable (model, method) pairs. Called without a reason -
+     tests, hooks - the methods behave as before; the opening refusal
+     writes the reason into `opening_note`.
+  9. **VAT.** `res.company._clearance_service_taxes(partner)`: Clearance
+     Settings' "VAT on Service Fees", else the Accounting Default Sales
+     Tax (`account_sale_tax_id`) - an invoice went out without VAT
+     because only the first was read; none for a customer ticked
+     `res.partner.clearance_vat_exempt` (default off); with nothing
+     configured and a non-exempt customer, billing is REFUSED. The
+     commission line prints "Commission sur débours" with no percentage.
 - **Payment evidence (owner, 01/10/2026).** `ir.attachment.clearance_kind`
   ('request' / 'payment', NULL = request) tells a disbursement's documents
   apart: `logistics.expense.request_document_ids` and

@@ -109,7 +109,12 @@ class TestBillingWizard(TransactionCase):
         self.assertTrue(any("Commission sur débours" in n for n in names), names)
         self.assertTrue(any("Honoraires Agréés en Douane" in n for n in names), names)
         self.assertEqual(wizard.service_total, 2000 + 30000)
-        self.assertEqual(wizard.invoice_total, 132000)
+        # VAT on the services is the company's default sales tax when
+        # Clearance names none (owner 10/10/2026)
+        rate = self.env.company.account_sale_tax_id.amount / 100.0
+        self.assertAlmostEqual(wizard.service_tax_total, 32000 * rate, places=2)
+        self.assertAlmostEqual(wizard.invoice_total,
+                               132000 + wizard.service_tax_total, places=2)
 
     def test_03_billing_at_cost_needs_no_approval(self):
         wizard = self._wizard()
@@ -354,7 +359,8 @@ class TestBillingWizard(TransactionCase):
         wizard = self._wizard()
         wizard.split_invoices = True
         self.assertEqual(wizard.split_debours_total, 100000)
-        self.assertEqual(wizard.split_services_total, 32000)
+        self.assertAlmostEqual(wizard.split_services_total,
+                               32000 + wizard.service_tax_total, places=2)
         action = wizard.action_create_invoice()
         self.assertEqual(action['res_model'], 'account.move')
         self.assertNotIn('res_id', action, "two invoices open as a list")
@@ -633,7 +639,10 @@ class TestBillingWizard(TransactionCase):
         wizard.action_create_invoice()
         debours, services = self.file.debours_invoice_id, self.file.invoice_id
         self.assertEqual(debours._clearance_advances(), (None, None, 20000))
-        self.assertEqual(services._clearance_advances(), (5000, 0.0, None))
+        self.assertTrue(wizard.advance_had_vat_amount,
+                        "the default sales tax applies to the HAD advance")
+        self.assertEqual(services._clearance_advances(),
+                         (5000, wizard.advance_had_vat_amount, None))
         self.assertEqual(debours._clearance_advance_total(), 20000)
         self.assertEqual(services._clearance_advance_total(), 5000)
         self.assertFalse(debours._clearance_prints_vat())

@@ -18,7 +18,7 @@
                     <button name="action_approve_opening" type="object" string="Approve Opening &amp; Start Work"
                             class="oe_highlight" invisible="opening_state != 'requested'"
                             groups="elite_clearance.group_clearance_customer_service_manager"/>
-                    <button name="action_refuse_opening" type="object" string="Refuse Opening"
+                    <button name="action_open_rejection" type="object" context="{'rejection_method': 'action_refuse_opening'}" string="Refuse Opening"
                             invisible="opening_state != 'requested'"
                             groups="elite_clearance.group_clearance_customer_service_manager"/>
                     <button name="action_request_waiver" type="object" string="Request Waiver"
@@ -27,7 +27,7 @@
                     <button name="action_approve_waiver" type="object" string="Approve Waiver &amp; Start Work"
                             class="oe_highlight" invisible="waiver_state != 'requested'"
                             groups="elite_clearance.group_clearance_customer_service_manager"/>
-                    <button name="action_refuse_waiver" type="object" string="Refuse Waiver"
+                    <button name="action_open_rejection" type="object" context="{'rejection_method': 'action_refuse_waiver'}" string="Refuse Waiver"
                             invisible="waiver_state != 'requested'"
                             groups="elite_clearance.group_clearance_customer_service_manager"/>
                     <button name="action_approve_recharge_ops" type="object" string="Approve Recharge (Operations)"
@@ -36,7 +36,14 @@
                     <button name="action_approve_recharge_gm" type="object" string="Approve Undercharge (General Manager)"
                             class="oe_highlight" invisible="recharge_state != 'ops_approved'"
                             groups="elite_clearance.group_clearance_manager"/>
-                    <button name="action_refuse_recharge" type="object" string="Refuse Recharge"
+                    <!-- The approver reads the adjustment where its impact
+                         shows: on the billing screen, line by line, with the
+                         biller's comment on each (owner 10/10/2026). -->
+                    <button name="action_open_billing_review" type="object" string="Review on the Billing Screen"
+                            class="oe_highlight"
+                            invisible="recharge_state not in ('requested', 'ops_approved')"
+                            groups="elite_clearance.group_clearance_ops_manager,elite_clearance.group_clearance_manager"/>
+                    <button name="action_open_rejection" type="object" context="{'rejection_method': 'action_refuse_recharge'}" string="Refuse Recharge"
                             invisible="recharge_state not in ('requested', 'ops_approved')"
                             groups="elite_clearance.group_clearance_ops_manager"/>
                     <button name="action_request_reopen_imported" type="object" string="Request Reopening"
@@ -45,7 +52,7 @@
                     <button name="action_approve_reopen_imported" type="object" string="Approve Reopening"
                             class="oe_highlight" invisible="reopen_request_state != 'requested'"
                             groups="elite_clearance.group_clearance_ops_manager"/>
-                    <button name="action_refuse_reopen_imported" type="object" string="Refuse Reopening"
+                    <button name="action_open_rejection" type="object" context="{'rejection_method': 'action_refuse_reopen_imported'}" string="Refuse Reopening"
                             invisible="reopen_request_state != 'requested'"
                             groups="elite_clearance.group_clearance_ops_manager"/>
                     <button name="action_request_advance_waiver" type="object" string="Request Advance Waiver"
@@ -53,7 +60,7 @@
                     <button name="action_approve_advance_waiver" type="object" string="Approve Advance Waiver"
                             class="oe_highlight" invisible="advance_waiver_state != 'requested'"
                             groups="elite_clearance.group_clearance_ops_manager"/>
-                    <button name="action_refuse_advance_waiver" type="object" string="Refuse Advance Waiver"
+                    <button name="action_open_rejection" type="object" context="{'rejection_method': 'action_refuse_advance_waiver'}" string="Refuse Advance Waiver"
                             invisible="advance_waiver_state != 'requested'"
                             groups="elite_clearance.group_clearance_ops_manager"/>
                     <button name="%(action_document_date_wizard)d" type="action" string="Set Received Date/Time"

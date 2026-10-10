@@ -16,7 +16,7 @@ class LogisticsFile(models.Model):
     _name = 'logistics.file'
     _description = "Clearance File"
     _inherit = ['mail.thread', 'mail.activity.mixin',
-                'clearance.documents.mixin']
+                'clearance.documents.mixin', 'clearance.rejection.mixin']
     _order = 'date_opened desc, create_date desc, id desc'
     _rec_names_search = ['name', 'partner_id.name', 'customs_declaration_ref']
 
@@ -1110,6 +1110,10 @@ class LogisticsFile(models.Model):
             if file.opening_state != 'requested':
                 raise UserError(self.env._(
                     "No opening is awaiting approval on %s.", file.name))
+            # the reason given in the Refuse dialog IS the opening note
+            reason = file._clearance_rejection_reason()
+            if reason and not file.opening_note:
+                file.opening_note = reason
             if not file.opening_note:
                 raise UserError(self.env._(
                     "Say why the opening of %s is refused, in the Opening "
@@ -1119,9 +1123,10 @@ class LogisticsFile(models.Model):
                 'opening_approved_by_id': self.env.user.id,
                 'opening_date': fields.Datetime.now(),
             })
-            file.message_post(body=self.env._(
-                "Opening refused by %(who)s: %(why)s",
-                who=self.env.user.name, why=file.opening_note))
+            file._clearance_post_rejection(
+                self.env._("Opening refused by %s.", self.env.user.name),
+                requesters=file.opening_requested_by_id,
+                reason=file.opening_note)
         return True
 
     def action_request_waiver(self):
@@ -1187,7 +1192,9 @@ class LogisticsFile(models.Model):
                 'waiver_approved_by_id': self.env.user.id,
                 'waiver_date': fields.Datetime.now(),
             })
-            file.message_post(body=self.env._("Documentation waiver refused."))
+            file._clearance_post_rejection(
+                self.env._("Documentation waiver refused."),
+                requesters=file.waiver_requested_by_id)
         return True
 
     def action_request_advance_waiver(self):
@@ -1241,9 +1248,10 @@ class LogisticsFile(models.Model):
             file.write({'advance_waiver_state': 'refused',
                         'advance_waiver_approved_by_id': self.env.user.id,
                         'advance_waiver_date': fields.Datetime.now()})
-            file.message_post(body=self.env._(
+            file._clearance_post_rejection(self.env._(
                 "Unjustified-advance waiver refused: the advance must be "
-                "justified with supporting documents before billing."))
+                "justified with supporting documents before billing."),
+                requesters=file.advance_waiver_requested_by_id)
         return True
 
     # --- reopening an imported file -------------------------------------
@@ -1290,8 +1298,9 @@ class LogisticsFile(models.Model):
             file.write({'reopen_request_state': 'refused',
                         'reopen_approved_by_id': self.env.user.id,
                         'reopen_request_date': fields.Datetime.now()})
-            file.message_post(body=self.env._(
-                "Reopening refused: the file stays an imported record."))
+            file._clearance_post_rejection(self.env._(
+                "Reopening refused: the file stays an imported record."),
+                requesters=file.reopen_requested_by_id)
         return True
 
     # What the printed invoice cannot do without. Checked when the file is
@@ -1537,8 +1546,9 @@ class LogisticsFile(models.Model):
                     "No recharge adjustment is awaiting approval on %s.",
                     file.name))
             file.write({'recharge_state': 'refused'})
-            file.message_post(body=self.env._(
-                "Recharge adjustment refused: the invoice bills at cost."))
+            file._clearance_post_rejection(self.env._(
+                "Recharge adjustment refused: the invoice bills at cost."),
+                requesters=file._clearance_users('billing'))
         return True
 
     # =====================================================================
@@ -1624,6 +1634,30 @@ class LogisticsFile(models.Model):
             'view_mode': 'form',
             'target': 'new',
             'context': {'active_id': self.id, 'default_file_id': self.id},
+        }
+
+    def action_open_billing_review(self):
+        """The billing screen, read-only, for whoever approves a recharge.
+
+        An adjustment is approved where its impact shows - disbursed, to
+        recharge and variance side by side, with the biller's comment on
+        each line (owner 10/10/2026) - not from a figure on the file form.
+        The screen's Approve and Refuse buttons call the file's own
+        checkpoints, so who may sign is unchanged.
+        """
+        self.ensure_one()
+        if self.recharge_state not in ('requested', 'ops_approved'):
+            raise UserError(self.env._(
+                "No recharge adjustment is awaiting approval on %s.",
+                self.name))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': self.env._("Recharge review — %s", self.name),
+            'res_model': 'logistics.billing.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'active_id': self.id, 'default_file_id': self.id,
+                        'clearance_billing_review': True},
         }
 
     def _check_client_billable(self):

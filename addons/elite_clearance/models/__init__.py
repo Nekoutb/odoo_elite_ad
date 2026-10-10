@@ -8,6 +8,7 @@ from . import account_payment
 from . import account_analytic_account
 from . import ir_attachment
 from . import clearance_documents
+from . import clearance_rejection
 from . import logistics_port
 from . import logistics_document_type
 from . import logistics_service_type

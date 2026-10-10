@@ -11,6 +11,12 @@
                 <field name="needs_review" invisible="1"/>
                 <field name="reissue_kind" invisible="1"/>
                 <field name="billed_before" invisible="1"/>
+                <field name="review_mode" invisible="1"/>
+                <div class="alert alert-info" role="alert" invisible="not review_mode">
+                    <b>Recharge review.</b> This is the bill as the biller proposes it. The
+                    Why column says why each disbursement is charged at other than cost.
+                    Approve or refuse it below; nothing here can be edited.
+                </div>
                 <div class="alert alert-info" role="alert" invisible="not billed_before">
                     This file has been billed before. Only what has been incurred since is on
                     this invoice — everything already recharged is listed below, greyed, and
@@ -56,34 +62,34 @@
                         <!-- First, and first on the printed page: the short
                              name beside it is the handle everyone searches
                              by, not what a client should read on their bill. -->
-                        <field name="client_name" required="1"
+                        <field name="client_name" required="1" readonly="review_mode"
                                placeholder="e.g. CAPITAL TRADING PRIVATE LTD"/>
-                        <field name="client_street"/>
-                        <field name="client_email"/>
-                        <field name="client_vat"/>
-                        <field name="client_registry"/>
+                        <field name="client_street" readonly="review_mode"/>
+                        <field name="client_email" readonly="review_mode"/>
+                        <field name="client_vat" readonly="review_mode"/>
+                        <field name="client_registry" readonly="review_mode"/>
                     </group>
                     <group string="Shipment">
-                        <field name="shipment_bl_awb_ref"/>
-                        <field name="shipment_goods"/>
-                        <field name="shipment_cargo_value"/>
+                        <field name="shipment_bl_awb_ref" readonly="review_mode"/>
+                        <field name="shipment_goods" readonly="review_mode"/>
+                        <field name="shipment_cargo_value" readonly="review_mode"/>
                     </group>
                 </group>
 
                 <separator string="Billing parameters"/>
                 <group>
                     <group>
-                        <field name="commission_rate"/>
+                        <field name="commission_rate" readonly="review_mode"/>
                         <field name="commission_amount" readonly="1"/>
-                        <field name="customs_fee_amount"/>
+                        <field name="customs_fee_amount" readonly="review_mode"/>
                         <field name="customs_fee_billed" readonly="1"
                                invisible="not customs_fee_billed"/>
-                        <field name="file_fee_amount"/>
+                        <field name="file_fee_amount" readonly="review_mode"/>
                         <field name="file_fee_billed" readonly="1"
                                invisible="not file_fee_billed"/>
                         <field name="commission_billed" readonly="1"
                                invisible="not commission_billed"/>
-                        <field name="split_invoices" readonly="reissue_kind"/>
+                        <field name="split_invoices" readonly="reissue_kind or review_mode"/>
                     </group>
                     <group string="Advances already paid by the client">
                         <field name="advance_had_amount" readonly="1"/>
@@ -99,7 +105,7 @@
                 </group>
 
                 <separator string="Out-of-pocket expenses (débours)"/>
-                <field name="debours_line_ids">
+                <field name="debours_line_ids" readonly="review_mode">
                     <list editable="bottom" create="0" delete="0">
                         <field name="expense_id" column_invisible="1" force_save="1"/>
                         <field name="name" readonly="1" force_save="1"/>
@@ -109,6 +115,8 @@
                         <field name="variance" sum="Variance"
                                decoration-danger="variance &lt; 0"
                                decoration-success="variance &gt; 0"/>
+                        <field name="comment" placeholder="why it differs from cost"
+                               required="variance != 0"/>
                         <field name="currency_id" column_invisible="1"/>
                     </list>
                 </field>
@@ -138,7 +146,7 @@
                     Anything beyond the commission and the customs fee. Only services an
                     Head of Service Operations has approved can be picked here.
                 </div>
-                <field name="service_line_ids">
+                <field name="service_line_ids" readonly="review_mode">
                     <list editable="bottom">
                         <field name="service_id" options="{'no_create': True}"/>
                         <field name="name" placeholder="e.g. Frais d'ouverture de dossier"/>
@@ -162,14 +170,18 @@
                     <field name="split_services_total" readonly="1" invisible="not split_invoices"/>
                 </group>
 
-                <field name="review_reason" invisible="not needs_review"
-                       placeholder="Why is the client charged other than what was disbursed? Required before anyone can approve it."/>
+                <field name="review_reason" invisible="not needs_review" readonly="review_mode"
+                       placeholder="Optional: anything about the adjustment as a whole. Each line that differs already says why in its Why column."/>
 
                 <footer>
                     <button name="action_create_invoice" type="object" string="Create Invoice"
-                            class="btn-primary" invisible="needs_review"/>
+                            class="btn-primary" invisible="needs_review or review_mode"/>
                     <button name="action_submit_for_review" type="object" string="Submit for Review"
-                            class="btn-primary" invisible="not needs_review"/>
+                            class="btn-primary" invisible="not needs_review or review_mode"/>
+                    <button name="action_approve_review" type="object" string="Approve the Recharge"
+                            class="btn-primary" invisible="not review_mode"/>
+                    <button name="action_refuse_review" type="object" string="Refuse..."
+                            class="btn-danger" invisible="not review_mode"/>
                     <button string="Cancel" special="cancel"/>
                 </footer>
             </form>

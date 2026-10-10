@@ -171,7 +171,7 @@ class LogisticsBillingWizard(models.TransientModel):
                     fee, currency=wizard.currency_id)['taxes'])
             wizard.advance_had_vat_amount = vat
             wizard.advance_other_amount = (
-                wizard.file_id._client_advances_in_the_ledger()
+                wizard.file_id.sudo()._client_advances_in_the_ledger()
                 if wizard.file_id else 0.0)
 
     # The bill in two (owner 07/09/2026): the disbursements on one invoice,
@@ -200,9 +200,16 @@ class LogisticsBillingWizard(models.TransientModel):
         string="Services invoice (incl. VAT)")
 
     review_reason = fields.Text(
-        string="Why the recharge differs from cost",
-        help="Required before anyone can approve it. Below cost the company "
-             "absorbs the difference, so this is the record of why.")
+        string="Overall note on the recharge",
+        help="Optional. Each line that differs from cost carries its own "
+             "comment; this is for anything that applies to the whole "
+             "adjustment. Left empty, the line comments are the record.")
+    # The screen opened by an approver (owner 10/10/2026): everything is
+    # read-only and the footer offers Approve and Refuse instead of
+    # Create Invoice.
+    review_mode = fields.Boolean(
+        default=lambda self: bool(
+            self.env.context.get('clearance_billing_review')))
 
     # ------------------------------------------------------------------
     @api.model
@@ -221,6 +228,7 @@ class LogisticsBillingWizard(models.TransientModel):
                 'unit_label': expense.unit_label or "Par dossier",
                 'amount_recharged': (
                     expense.recharge_amount or expense.amount),
+                'comment': expense.recharge_comment or False,
             })
             for expense in file._billable_expenses()
         ]
@@ -242,10 +250,10 @@ class LogisticsBillingWizard(models.TransientModel):
         # What an earlier bill already took is not offered again: the box
         # opens on the balance of the declaration's fee, which is zero
         # once it has been charged in full.
-        charged = sum(file._billed_service_lines('customs_fee').mapped(
+        charged = sum(file.sudo()._billed_service_lines('customs_fee').mapped(
             'price_subtotal'))
         vals['customs_fee_amount'] = max(file.customs_fee_amount - charged, 0.0)
-        charged = sum(file._billed_service_lines('file_fee').mapped(
+        charged = sum(file.sudo()._billed_service_lines('file_fee').mapped(
             'price_subtotal'))
         vals['file_fee_amount'] = max(file.file_fee_amount - charged, 0.0)
         vals['shipment_bl_awb_ref'] = file.bl_awb_ref
@@ -253,14 +261,15 @@ class LogisticsBillingWizard(models.TransientModel):
         vals['shipment_cargo_value'] = file.cargo_value
         # the split choice survives a recharge review, and is forced while
         # one half of a split bill stands
-        vals['split_invoices'] = bool(file.billing_split or file._standing_half())
+        vals['split_invoices'] = bool(
+            file.billing_split or file.sudo()._standing_half())
         vals['service_line_ids'] = []
         return vals
 
     @api.depends('file_id', 'file_id.invoice_ids.state')
     def _compute_already_billed(self):
         for wizard in self:
-            file = wizard.file_id
+            file = wizard.file_id.sudo()
             if not file:
                 wizard.customs_fee_billed = 0.0
                 wizard.commission_billed = 0.0
@@ -280,7 +289,7 @@ class LogisticsBillingWizard(models.TransientModel):
     @api.depends('file_id')
     def _compute_reissue(self):
         for wizard in self:
-            standing = (wizard.file_id._standing_half() if wizard.file_id
+            standing = (wizard.file_id.sudo()._standing_half() if wizard.file_id
                         else self.env['account.move'])
             wizard.standing_invoice_id = standing
             wizard.reissue_kind = False
@@ -373,7 +382,7 @@ class LogisticsBillingWizard(models.TransientModel):
             # no disbursement rows - they are billed - so the base is that
             # standing half, which is exactly what it was issued at.
             base = recharged
-            standing = wizard.standing_invoice_id
+            standing = wizard.standing_invoice_id.sudo()
             if standing and standing.clearance_invoice_kind == 'debours':
                 base = standing.amount_untaxed
             wizard.commission_amount = wizard.currency_id.round(
@@ -430,7 +439,10 @@ class LogisticsBillingWizard(models.TransientModel):
         if frozen != 'debours':
             for line in self.debours_line_ids:
                 if line.expense_id:
-                    line.expense_id.recharge_amount = line.amount_recharged
+                    line.expense_id.write({
+                        'recharge_amount': line.amount_recharged,
+                        'recharge_comment': (line.comment or "").strip() or False,
+                    })
         recharged = self.debours_recharged_total
         at_cost = not self.file_id.currency_id.compare_amounts(
             recharged, self.debours_engaged_total)
@@ -473,12 +485,44 @@ class LogisticsBillingWizard(models.TransientModel):
             raise UserError(self.env._(
                 "%s recharges exactly what was disbursed - there is nothing "
                 "to review.", self.file_id.name))
-        if not self.review_reason:
+        # Every line charged at other than cost says why, on the line
+        # itself (owner 10/10/2026). The overall note is optional; left
+        # empty, the line comments become the file's recharge reason, which
+        # is what the approver and the chatter read.
+        silent = self.debours_line_ids.filtered(
+            lambda l: not self.currency_id.is_zero(l.variance)
+            and not (l.comment or "").strip())
+        if silent:
             raise UserError(self.env._(
-                "Say why the recharge differs from what was disbursed before "
-                "sending it for review."))
+                "Say why each of these is charged at other than cost, in "
+                "its own Why column: %s",
+                ", ".join(silent.mapped('name'))))
+        if not (self.review_reason or "").strip():
+            self.review_reason = "; ".join(
+                "%s: %s" % (l.name, l.comment.strip())
+                for l in self.debours_line_ids
+                if not self.currency_id.is_zero(l.variance))
         self._persist()
         return {'type': 'ir.actions.act_window_close'}
+
+    def action_approve_review(self):
+        """The approver signs from the billing screen."""
+        self.ensure_one()
+        file = self.file_id
+        if file.recharge_state == 'requested':
+            file.action_approve_recharge_ops()
+        elif file.recharge_state == 'ops_approved':
+            file.action_approve_recharge_gm()
+        else:
+            raise UserError(self.env._(
+                "No recharge adjustment is awaiting approval on %s.",
+                file.name))
+        return {'type': 'ir.actions.act_window_close'}
+
+    def action_refuse_review(self):
+        self.ensure_one()
+        return self.file_id.with_context(
+            rejection_method='action_refuse_recharge').action_open_rejection()
 
     def action_create_invoice(self):
         self.ensure_one()
@@ -529,6 +573,10 @@ class LogisticsBillingWizardDebours(models.TransientModel):
         string="To Recharge", currency_field='currency_id',
         help="What the client is charged for this disbursement. Any "
              "difference from what was disbursed needs approving.")
+    comment = fields.Char(
+        string="Why",
+        help="Why this disbursement is charged at other than cost. Required "
+             "on every line that differs; the approver reads it here.")
     variance = fields.Monetary(
         compute='_compute_variance', currency_field='currency_id',
         string="Variance")

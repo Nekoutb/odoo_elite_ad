@@ -359,8 +359,9 @@ class TestInvoiceReversal(TransactionCase):
         invoice.action_post()
         # the 30 000 customs fee is charged and advanced in the same
         # breath, so it is off the balance from the start
-        advanced = self.file.advance_had_amount
-        self.assertEqual(advanced, 30000)
+        self.assertEqual(self.file.advance_had_amount, 30000)
+        advanced = (self.file.advance_had_amount
+                    + self.file.advance_had_vat_amount)
         total = invoice.amount_total
         self.assertEqual(self.file.invoice_balance_due, total - advanced)
         self._credit(invoice, lambda line: line.amount == 60000)

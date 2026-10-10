@@ -32,7 +32,7 @@
           <button name="action_approve" type="object" string="Approve"
                   class="oe_highlight" invisible="state == 'approved'"
                   groups="elite_clearance.group_clearance_ops_manager"/>
-          <button name="action_refuse" type="object" string="Refuse"
+          <button name="action_open_rejection" type="object" context="{'rejection_method': 'action_refuse'}" string="Refuse"
                   invisible="state != 'draft'"
                   groups="elite_clearance.group_clearance_ops_manager"/>
           <button name="action_reset_draft" type="object" string="Reset to Draft"

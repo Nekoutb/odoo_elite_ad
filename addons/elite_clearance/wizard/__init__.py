@@ -6,3 +6,4 @@ from . import payment_attribution_wizard
 from . import invoice_reversal_wizard
 from . import clearance_settings_wizard
 from . import expense_settle_wizard
+from . import rejection_wizard

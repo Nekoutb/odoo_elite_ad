@@ -97,13 +97,32 @@ class TestTasksAndVat(TransactionCase):
         self.assertEqual(invoice.amount_untaxed, 100000 + 2000 + 30000)
         self.assertAlmostEqual(invoice.amount_tax, 32000 * 0.1925, places=2)
 
-    def test_03_no_vat_configured_means_no_vat_charged(self):
-        self.env.company.clearance_service_tax_ids = [(5, 0, 0)]
+    def test_03_no_vat_configured_means_the_default_sales_tax_or_a_refusal(self):
+        """Owner 10/10/2026: VAT is billed unless the customer is exempt.
+        With no Clearance tax the Accounting default applies; with neither,
+        billing a non-exempt customer is refused rather than issued bare."""
+        company = self.env.company
+        company.clearance_service_tax_ids = [(5, 0, 0)]
         self.file.action_close_operations()
+        default = company.account_sale_tax_id
+        self.assertTrue(default, "generic_coa sets a default sales tax")
         self.file.action_create_invoice()
         invoice = self.file.invoice_id
-        self.assertEqual(invoice.amount_tax, 0)
-        self.assertFalse(invoice.invoice_line_ids.mapped('tax_ids'))
+        self.assertEqual(invoice.invoice_line_ids.filtered(
+            lambda l: l.clearance_category == 'prestation').tax_ids, default)
+        self.assertTrue(invoice.amount_tax)
+
+    def test_03b_nothing_configured_refuses_unless_the_customer_is_exempt(self):
+        from odoo.exceptions import UserError
+        company = self.env.company
+        company.clearance_service_tax_ids = [(5, 0, 0)]
+        company.account_sale_tax_id = False
+        self.file.action_close_operations()
+        with self.assertRaisesRegex(UserError, "No VAT is configured"):
+            self.file.action_create_invoice()
+        self.file.partner_id.clearance_vat_exempt = True
+        self.file.action_create_invoice()
+        self.assertEqual(self.file.invoice_id.amount_tax, 0)
 
     def test_04_the_billing_screen_shows_the_tax_it_will_charge(self):
         self.file.action_close_operations()

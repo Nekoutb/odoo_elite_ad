@@ -13,7 +13,7 @@
                     <button name="action_approve" type="object" string="Approve"
                             class="oe_highlight" invisible="state != 'submitted'"
                             groups="elite_clearance.group_clearance_ops_manager,elite_clearance.group_clearance_customer_service_manager,elite_clearance.group_clearance_transit_manager"/>
-                    <button name="action_refuse" type="object" string="Refuse"
+                    <button name="action_open_rejection" type="object" context="{'rejection_method': 'action_refuse'}" string="Refuse"
                             invisible="state != 'submitted'"
                             groups="elite_clearance.group_clearance_ops_manager,elite_clearance.group_clearance_customer_service_manager,elite_clearance.group_clearance_transit_manager"/>
                     <button name="action_submit_settlement" type="object" string="Send to Head of Service Finance"
@@ -22,7 +22,7 @@
                     <button name="action_approve_settlement" type="object" string="Approve Settlement"
                             class="oe_highlight" invisible="state != 'settlement_submitted'"
                             groups="elite_clearance.group_clearance_finance_manager"/>
-                    <button name="action_return_settlement" type="object" string="Return to Finance"
+                    <button name="action_open_rejection" type="object" context="{'rejection_method': 'action_return_settlement'}" string="Return to Finance"
                             invisible="state != 'settlement_submitted'"
                             groups="elite_clearance.group_clearance_finance_manager"/>
                     <!-- Opens the dialog that demands the payment evidence
@@ -47,7 +47,7 @@
                     <button name="action_justify_finance" type="object" string="Sign Justification (Head of Service Finance)"
                             class="oe_highlight" invisible="state != 'justification_ops_approved'"
                             groups="elite_clearance.group_clearance_finance_manager"/>
-                    <button name="action_refuse_justification" type="object" string="Refuse Justification"
+                    <button name="action_open_rejection" type="object" context="{'rejection_method': 'action_refuse_justification'}" string="Refuse Justification"
                             invisible="state not in ('justification_submitted', 'justification_ops_approved')"
                             groups="elite_clearance.group_clearance_ops_manager,elite_clearance.group_clearance_finance_manager"/>
                     <button name="action_reset_to_draft" type="object" string="Reset to Draft"

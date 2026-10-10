@@ -115,7 +115,7 @@ class LogisticsExpense(models.Model):
     _name = 'logistics.expense'
     _description = "Clearance Out-of-Pocket Expense"
     _inherit = ['mail.thread', 'mail.activity.mixin',
-                'clearance.documents.mixin']
+                'clearance.documents.mixin', 'clearance.rejection.mixin']
     _order = 'file_id, id'
 
     name = fields.Char(
@@ -279,6 +279,11 @@ class LogisticsExpense(models.Model):
              "biller has changed it. Empty means at cost. Recorded from the "
              "billing screen so it is known later which disbursement was "
              "discounted and by how much.")
+    recharge_comment = fields.Char(
+        string="Why the Recharge Differs", copy=False,
+        help="The biller's reason for charging this disbursement at other "
+             "than cost, keyed on its own line of the billing screen "
+             "(owner 10/10/2026).")
 
     # --- billed, or still to bill (owner spec 13/09/2026) ---------------
     # A file is billed as costs are incurred, not once at the end, so the
@@ -1002,6 +1007,10 @@ class LogisticsExpense(models.Model):
                     "Accounting before refusing it.", exp.name))
             exp._reverse_accrual(self.env._("the disbursement was refused"))
         self.write({'state': 'cancel'})
+        for exp in self:
+            exp._clearance_post_rejection(
+                self.env._("Disbursement refused by %s.", self.env.user.name),
+                requesters=exp.create_uid)
 
     def action_submit_settlement(self):
         """Finance has confirmed - or corrected - how it is paid; hand it
@@ -1047,8 +1056,9 @@ class LogisticsExpense(models.Model):
                 raise UserError(self.env._(
                     "%s is not awaiting the Head of Service Finance.", exp.name))
             exp.state = 'approved'
-            exp.message_post(body=self.env._(
-                "Settlement returned to Finance by the Head of Service Finance."))
+            exp._clearance_post_rejection(self.env._(
+                "Settlement returned to Finance by the Head of Service Finance."),
+                requesters=exp._clearance_users('settlement_key'))
 
     def action_approve_settlement(self):
         """The Head of Service Finance signs how Finance proposes to pay."""
@@ -1249,9 +1259,11 @@ class LogisticsExpense(models.Model):
                     "No justification is awaiting approval on %s.", exp.name))
             exp.write({'state': 'settled',
                        'date_justification_submitted': False})
-            exp.message_post(body=self.env._(
+            exp._clearance_post_rejection(self.env._(
                 "Justification refused: the advance stays on 421101 against "
-                "the holder and is not billable."))
+                "the holder and is not billable."),
+                requesters=(exp.employee_id.user_id
+                            | exp._clearance_users('settlement_key')))
 
     def action_justify(self):
         """The Head of Service Operations accepts the documents as evidence of

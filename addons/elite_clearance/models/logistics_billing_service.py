@@ -12,7 +12,7 @@ class LogisticsBillingService(models.Model):
     """
     _name = 'logistics.billing.service'
     _description = "Billable Service"
-    _inherit = ['mail.thread']
+    _inherit = ['mail.thread', 'clearance.rejection.mixin']
     _order = 'sequence, name'
 
     # NOT translate=True: a translated Char is stored as jsonb and
@@ -87,9 +87,12 @@ class LogisticsBillingService(models.Model):
         for service in self:
             service.company_id._clearance_check_approver('billing_service')
             service.write({'state': 'refused', 'approved_by_id': False,
-                           'approved_date': False})
-            service.message_post(body=self.env._(
-                "Refused by %s.", self.env.user.name))
+                           'approved_date': False,
+                           'refusal_reason':
+                               service._clearance_rejection_reason() or False})
+            service._clearance_post_rejection(
+                self.env._("Refused by %s.", self.env.user.name),
+                requesters=service.requested_by_id)
         return True
 
     def action_reset_draft(self):

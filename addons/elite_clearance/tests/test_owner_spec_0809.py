@@ -96,7 +96,7 @@ class TestOwnerSpec0809(TransactionCase):
         arch = self._form_arch()
         cargo = arch.xpath("//group[@name='cargo']//field")
         asked = {node.get('name'): node.get('required') for node in cargo}
-        for name in ('port_id', 'employee_id', 'shipment_type', 'incoterm_id',
+        for name in ('port_id', 'shipment_type', 'incoterm_id',
                      'package_count', 'weight_kg', 'cargo_value_currency_id',
                      'importer_name'):
             self.assertEqual(asked.get(name), "state == 'draft'",

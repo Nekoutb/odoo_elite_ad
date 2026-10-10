@@ -473,6 +473,10 @@ class ClearanceTask(models.Model):
         walk, and a one-row list would be a click for nothing.
         """
         self.ensure_one()
+        if self.kind in ('recharge_ops', 'recharge_gm'):
+            # straight to the billing screen, where the impact shows
+            return self.env['logistics.file'].browse(
+                self.res_id).action_open_billing_review()
         siblings = self.search([('kind', '=', self.kind),
                                 ('res_model', '=', self.res_model)])
         action = {

@@ -84,8 +84,15 @@ export class ClearanceTaskSystray extends Component {
         });
     }
 
-    openTask(task) {
+    async openTask(task) {
         this.state.open = false;
+        if (task.kind === "recharge_ops" || task.kind === "recharge_gm") {
+            // the approver reads the recharge where its impact shows
+            const action = await this.orm.call(
+                "logistics.file", "action_open_billing_review", [[task.res_id]]);
+            this.action.doAction(action);
+            return;
+        }
         this.action.doAction({
             type: "ir.actions.act_window",
             res_model: task.res_model,
