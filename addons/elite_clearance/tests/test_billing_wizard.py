@@ -648,10 +648,13 @@ class TestBillingWizard(TransactionCase):
                          5000 + wizard.advance_had_vat_amount)
         self.assertFalse(debours._clearance_prints_vat())
         self.assertTrue(services._clearance_prints_vat())
-        # 100 000 recharged + 2 000 commission + 5 000 HAD, less the
-        # 5 000 advanced against that HAD and the 20 000 in the ledger
-        self.assertEqual(self.file.invoice_balance_due,
-                         100000 + 7000 - 25000)
+        # 100 000 recharged + 2 000 commission + 5 000 HAD and the VAT on
+        # those services, less the 5 000 advanced against that HAD, its
+        # VAT, and the 20 000 in the ledger
+        self.assertAlmostEqual(
+            self.file.invoice_balance_due,
+            100000 + 7000 + services.amount_tax
+            - 25000 - wizard.advance_had_vat_amount, places=2)
         action = self.file.action_preview_invoice()
         self.assertEqual(sorted(action['context']['active_ids']),
                          sorted((debours | services).ids),
