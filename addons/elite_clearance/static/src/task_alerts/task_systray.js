@@ -45,15 +45,18 @@ export class ClearanceTaskSystray extends Component {
 
     async load() {
         try {
+            // "Ongoing files" is a section of My Tasks, not something
+            // waiting on the reader: the bell leaves it out.
+            const waiting = [["kind", "!=", "ongoing_file"]];
             const tasks = await this.orm.searchRead(
                 "clearance.task",
-                [],
+                waiting,
                 ["name", "kind", "kind_label", "detail", "res_model", "res_id"],
                 // newest on top (owner 10/10/2026)
                 { limit: 15, order: "date_landed desc, id desc" }
             );
             this.state.tasks = tasks;
-            this.state.count = await this.orm.searchCount("clearance.task", []);
+            this.state.count = await this.orm.searchCount("clearance.task", waiting);
         } catch {
             // A bell that cannot count is not a reason to break the top
             // of everybody's screen.

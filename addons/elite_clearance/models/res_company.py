@@ -179,6 +179,16 @@ class ResCompany(models.Model):
     clearance_invoice_title = fields.Char(
         string="Invoice Title", default="Facture doit N°",
         help="Printed above the invoice number.")
+    # The letterhead of the cash voucher (owner 10/10/2026): logo, name,
+    # address, NIU, RCCM and telephone are the company's own record; only
+    # the tagline under the name has nowhere else to live.
+    clearance_letterhead_tagline = fields.Char(
+        string="Letterhead Tagline",
+        default="Commissionnaire en Douane Agréé Cameroun & Zone CEMAC",
+        help="Printed under the company name on the cash voucher.")
+    clearance_cash_voucher_title = fields.Char(
+        string="Cash Voucher Title", default="AVANCE FRAIS N°",
+        help="Printed above the disbursement reference on the cash voucher.")
     clearance_invoice_vat_label = fields.Char(
         string="VAT Line Label", default="TVA SUR PRESTATIONS",
         help="The rate is appended automatically from the tax actually "
@@ -310,6 +320,21 @@ class ResCompany(models.Model):
         string="Unjustified Advance Waiver Approvers",
         help="Who may allow a file to be billed while a staff advance is "
              "still unjustified. Empty = any Clearance Head of Service Operations.")
+
+    def _clearance_letterhead_details(self):
+        """Address, NIU, RCCM and telephone, as the invoice footer reads
+        them: one line, dash-separated, from the company record."""
+        self.ensure_one()
+        address = " ".join(p for p in (self.street, self.street2, self.zip,
+                                       self.city) if p)
+        parts = [address]
+        if self.vat:
+            parts.append("NIU : %s" % self.vat)
+        if self.company_registry:
+            parts.append("RCCM : %s" % self.company_registry)
+        if self.phone:
+            parts.append("Tel : %s" % self.phone)
+        return " - ".join(p for p in parts if p)
 
     def _clearance_service_taxes(self, partner=None):
         """The VAT charged on a clearance invoice's service lines.

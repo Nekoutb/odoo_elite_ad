@@ -18,6 +18,10 @@ class ResConfigSettings(models.TransientModel):
         related='company_id.clearance_service_tax_ids', readonly=False)
     clearance_invoice_title = fields.Char(
         related='company_id.clearance_invoice_title', readonly=False)
+    clearance_letterhead_tagline = fields.Char(
+        related='company_id.clearance_letterhead_tagline', readonly=False)
+    clearance_cash_voucher_title = fields.Char(
+        related='company_id.clearance_cash_voucher_title', readonly=False)
     clearance_invoice_vat_label = fields.Char(
         related='company_id.clearance_invoice_vat_label', readonly=False)
     clearance_invoice_payment_terms = fields.Char(

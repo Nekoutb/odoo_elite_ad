@@ -548,7 +548,10 @@ class LogisticsFile(models.Model):
         self.ensure_one()
         variance = (self.recharge_amount - self.oop_total
                     if self.recharge_amount else 0.0)
-        target = 'none' if self.currency_id.is_zero(variance) else 'requested'
+        # A total at cost with lines off it is still a recharge to approve
+        # (owner 10/10/2026).
+        target = ('none' if self.currency_id.is_zero(variance)
+                  and not self._recharge_lines_differ() else 'requested')
         if self.recharge_state == target and target == 'none':
             return
         self.with_context(clearance_recharge_sync=True).write({
@@ -569,6 +572,25 @@ class LogisticsFile(models.Model):
         else:
             self.message_post(body=self.env._(
                 "Recharge back at cost; no approval needed."))
+
+    def _recharge_lines(self):
+        """The billable disbursements carrying a recharge figure."""
+        self.ensure_one()
+        return self._billable_expenses().filtered(
+            lambda e: e.recharge_amount
+            and e.currency_id.compare_amounts(e.recharge_amount, e.amount))
+
+    def _recharge_lines_differ(self):
+        """Is any disbursement charged at other than its cost?"""
+        return bool(self._recharge_lines())
+
+    def _recharge_below_cost(self):
+        """Does the company absorb a difference anywhere - on the total,
+        or on any one line? Either way the General Manager signs."""
+        self.ensure_one()
+        if self.recharge_variance < 0:
+            return True
+        return any(e.recharge_amount < e.amount for e in self._recharge_lines())
 
     def _recharge_total(self):
         """What the invoice actually recharges: cost, unless an adjustment
@@ -1474,6 +1496,18 @@ class LogisticsFile(models.Model):
             # A settled-but-unjustified advance is handled separately: it is
             # waivable, where a half-processed expense is simply unfinished.
             file._check_advances_billable()
+            # Cash is evidenced by the SIGNED voucher (owner 10/10/2026):
+            # printed at Disburse / Pay, signed by whoever took the cash,
+            # uploaded by the Cashier. su-exempt like the other evidence
+            # gates - fixtures and the importer are not cashiers.
+            unsigned = file.expense_ids._unsigned_cash_vouchers()
+            if unsigned and not self.env.su:
+                raise UserError(self.env._(
+                    "%(name)s cannot be closed for operations: the signed "
+                    "cash voucher has not been uploaded by the Cashier for "
+                    "%(refs)s. Print the voucher from the disbursement, have "
+                    "it signed, and upload it under Cash Voucher (signed).",
+                    name=file.name, refs=", ".join(unsigned.mapped('name'))))
             file.write({'state': 'ops_closed',
                         'date_ops_closed': fields.Datetime.now()})
         return True
@@ -1488,12 +1522,13 @@ class LogisticsFile(models.Model):
         attachment as well only taught people to upload anything.
         """
         self.ensure_one()
-        if self.recharge_variance >= 0:
+        if not self._recharge_below_cost():
             return
         if not self.recharge_reason:
             raise UserError(self.env._(
-                "Recharging %(amount)s BELOW what was disbursed has to be "
-                "explained in writing before anyone can approve it (%(file)s).",
+                "Recharging BELOW what was disbursed - %(amount)s on the "
+                "total, or on any one line - has to be explained in writing "
+                "before anyone can approve it (%(file)s).",
                 amount=abs(self.recharge_variance), file=self.name))
 
     def action_approve_recharge_ops(self):
@@ -1505,7 +1540,7 @@ class LogisticsFile(models.Model):
                     "No recharge adjustment is awaiting Operations on %s.",
                     file.name))
             file._check_recharge_documented()
-            below = file.recharge_variance < 0
+            below = file._recharge_below_cost()
             file.write({
                 'recharge_state': 'ops_approved' if below else 'approved',
                 'recharge_ops_approved_by_id': self.env.user.id,
@@ -1545,7 +1580,13 @@ class LogisticsFile(models.Model):
                 raise UserError(self.env._(
                     "No recharge adjustment is awaiting approval on %s.",
                     file.name))
-            file.write({'recharge_state': 'refused'})
+            # Refused means AT COST: the figures go, on the file and on
+            # every line, or the screen would propose them again and the
+            # biller could never get past the refusal.
+            file.with_context(clearance_recharge_sync=True).write({
+                'recharge_state': 'refused', 'recharge_amount': 0.0})
+            file._billable_expenses().filtered('recharge_amount').sudo().write(
+                {'recharge_amount': 0.0})
             file._clearance_post_rejection(self.env._(
                 "Recharge adjustment refused: the invoice bills at cost."),
                 requesters=file._clearance_users('billing'))
@@ -1747,6 +1788,11 @@ class LogisticsFile(models.Model):
             raise UserError(self.env._(
                 "The recharge adjustment on %s is still awaiting approval.",
                 self.name))
+        if self.recharge_state != 'approved' and self._recharge_lines_differ():
+            raise UserError(self.env._(
+                "%s charges at least one disbursement at other than its "
+                "cost and nobody has approved it. Send it for review from "
+                "the billing screen first.", self.name))
         # Re-checked here and not only at ops-close: a file can be reopened,
         # expenses added, and closed again through the wizard.
         self._check_advances_billable()

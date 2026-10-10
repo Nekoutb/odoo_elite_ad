@@ -7,6 +7,8 @@ import base64
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
+from .holding import give_holding_account
+
 
 @tagged('post_install', '-at_install')
 class TestPaymentEvidence(TransactionCase):
@@ -25,6 +27,9 @@ class TestPaymentEvidence(TransactionCase):
         company.write({'clearance_oop_account_id': cls.engaged.id})
         cls.cash = env['account.journal'].create({
             'name': "Cash evidence", 'type': 'cash', 'code': 'PCSH'})
+        cls.bank = env['account.journal'].create({
+            'name': "Bank evidence", 'type': 'bank', 'code': 'PBNK'})
+        give_holding_account(cls.bank)
         cls.client = env['res.partner'].create({
             'name': "Evidence Client", 'is_company': True})
         cls.vendor = env['res.partner'].create({
@@ -46,18 +51,21 @@ class TestPaymentEvidence(TransactionCase):
                 'group_ids': [(6, 0, [env.ref(
                     'elite_clearance.group_clearance_' + group).id])]})
         cls.cashier = user("Evidence Cashier", 'cashier')
+        cls.treasury = user("Evidence Treasury", 'treasury')
         cls.cs_agent = user("Evidence CS", 'customer_service')
         cls.ops_agent = user("Evidence Ops", 'operations')
 
-    def _approved(self):
-        """A cash disbursement the Head of Service Finance has signed."""
+    def _approved(self, journal=None):
+        """A disbursement the Head of Service Finance has signed - from
+        the till unless a journal is given."""
+        journal = journal or self.cash
         exp = self.env['logistics.expense'].create({
             'file_id': self.file.id, 'category_id': self.category.id,
             'description': "Handling", 'amount': 50000})
         exp.action_submit()
         exp.action_approve()
-        exp.write({'payment_mode': 'cash', 'journal_id': self.cash.id,
-                   'vendor_id': self.vendor.id})
+        exp.write({'payment_mode': 'cash' if journal.type == 'cash' else 'electronic',
+                   'journal_id': journal.id, 'vendor_id': self.vendor.id})
         exp.action_submit_settlement()
         exp.action_approve_settlement()
         return exp
@@ -69,16 +77,18 @@ class TestPaymentEvidence(TransactionCase):
 
     # =================================================================
     def test_01_nothing_is_paid_out_without_evidence(self):
-        exp = self._approved()
+        """From a bank. A till prints its own evidence - the voucher -
+        since 10/10/2026, see test_owner_spec_1010b."""
+        exp = self._approved(journal=self.bank)
         with self.assertRaises(UserError) as caught:
-            exp.with_user(self.cashier).action_settle()
+            exp.with_user(self.treasury).action_settle()
         self.assertIn("evidence", str(caught.exception))
         self.assertEqual(exp.state, 'settlement_approved')
 
-        action = exp.with_user(self.cashier).action_open_settle_wizard()
+        action = exp.with_user(self.treasury).action_open_settle_wizard()
         self.assertEqual(action['res_model'], 'logistics.expense.settle.wizard')
         wizard = self.env['logistics.expense.settle.wizard'].with_user(
-            self.cashier).with_context(active_id=exp.id).create({})
+            self.treasury).with_context(active_id=exp.id).create({})
         self.assertEqual(wizard.expense_id, exp)
         with self.assertRaises(UserError, msg="the dialog refuses too"):
             wizard.action_pay()

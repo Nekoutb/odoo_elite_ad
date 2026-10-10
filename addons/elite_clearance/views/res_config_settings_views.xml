@@ -99,6 +99,17 @@
                                  help="Printed above the invoice number.">
                             <field name="clearance_invoice_title"/>
                         </setting>
+                        <setting string="Letterhead tagline"
+                                 help="Printed under the company name on the cash
+                                       voucher. The logo, address, NIU, RCCM and
+                                       telephone come from the company record.">
+                            <field name="clearance_letterhead_tagline"/>
+                        </setting>
+                        <setting string="Cash voucher title"
+                                 help="Printed above the disbursement reference on
+                                       the petty-cash voucher.">
+                            <field name="clearance_cash_voucher_title"/>
+                        </setting>
                         <setting string="VAT line label"
                                  help="The rate is appended automatically from the
                                        tax actually charged, e.g. (19,25%).">

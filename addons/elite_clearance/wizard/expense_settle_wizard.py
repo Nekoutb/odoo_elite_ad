@@ -24,6 +24,7 @@ class LogisticsExpenseSettleWizard(models.TransientModel):
     currency_id = fields.Many2one(related='expense_id.currency_id')
     amount = fields.Monetary(related='expense_id.amount')
     journal_id = fields.Many2one(related='expense_id.journal_id')
+    journal_type = fields.Selection(related='expense_id.journal_id.type')
     vendor_id = fields.Many2one(related='expense_id.vendor_id')
     employee_id = fields.Many2one(related='expense_id.employee_id')
     payment_mode = fields.Selection(related='expense_id.payment_mode')
@@ -39,7 +40,9 @@ class LogisticsExpenseSettleWizard(models.TransientModel):
 
     def action_pay(self):
         self.ensure_one()
-        if not self.attachment_ids:
+        # A till prints its own evidence: the voucher, which Disburse /
+        # Pay generates and the cashier has signed (owner 10/10/2026).
+        if not self.attachment_ids and self.journal_type != 'cash':
             raise UserError(self.env._(
                 "Attach the payment evidence - the receipt, the transfer "
                 "advice or the mobile-money confirmation - before %s is "

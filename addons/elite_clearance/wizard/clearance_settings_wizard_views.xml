@@ -53,6 +53,8 @@
                             <p class="text-muted">Only the wording the printed invoice invents. The logo, NIU, RC, address and bank accounts are read from the company itself, and the client block from the customer - so there is never a second copy to keep in step.</p>
                             <group>
                             <field name="clearance_invoice_title" string="Invoice title" help="Printed above the invoice number."/>
+                            <field name="clearance_letterhead_tagline" string="Letterhead tagline" help="Printed under the company name on the cash voucher. The logo, address, NIU, RCCM and telephone come from the company record (Settings &gt; Companies)."/>
+                            <field name="clearance_cash_voucher_title" string="Cash voucher title" help="Printed above the disbursement reference on the petty-cash voucher."/>
                             <field name="clearance_invoice_vat_label" string="VAT line label" help="The rate is appended automatically from the tax actually charged, e.g. (19,25%)."/>
                             <field name="clearance_invoice_payment_terms" string="Payment conditions" help="Used when the invoice carries no payment term of its own."/>
                             <field name="clearance_invoice_complaint_days" string="Complaints window (days)"/>

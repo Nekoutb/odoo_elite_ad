@@ -7,6 +7,7 @@
         <field name="arch" type="xml">
             <form string="Out-of-Pocket Expense">
                 <field name="justification_required" invisible="1"/>
+                <field name="journal_type" invisible="1"/>
                 <header>
                     <button name="action_submit" type="object" string="Submit"
                             class="oe_highlight" invisible="state != 'draft'"/>
@@ -31,6 +32,10 @@
                     <button name="action_open_settle_wizard" type="object" string="Disburse / Pay"
                             class="oe_highlight" invisible="state != 'settlement_approved'"
                             groups="elite_clearance.group_clearance_cashier,elite_clearance.group_clearance_treasury"/>
+                    <!-- The petty-cash voucher, printed again (owner 10/10/2026). -->
+                    <button name="action_print_cash_voucher" type="object" string="Print Cash Voucher"
+                            invisible="journal_type != 'cash' or state not in ('settlement_approved', 'settled', 'justification_submitted', 'justification_ops_approved', 'justified')"
+                            groups="elite_clearance.group_clearance_cashier,elite_clearance.group_clearance_finance"/>
                     <!-- Customer Service tells the third party it has been paid. -->
                     <button name="action_send_payment_evidence" type="object" string="Send Payment Evidence to Third Party"
                             invisible="state not in ('settled', 'justification_submitted', 'justification_ops_approved', 'justified') or not vendor_id"
@@ -78,8 +83,12 @@
                              clears one makes it readonly in the same breath, and
                              a readonly value is never sent on save. -->
                         <group string="Payment">
+                            <!-- A fixed list of every till and bank, the same for
+                                 everybody (owner 10/10/2026): a many2one dropdown shows
+                                 only the first seven matches and hides the rest behind
+                                 Search More, so two users saw two different lists. -->
                             <field name="journal_id" readonly="not can_edit_payment"
-                                   options="{'no_create': True}"
+                                   widget="selection"
                                    placeholder="till, bank, Mobile Money, Maviance"/>
                             <field name="vendor_id" force_save="1"
                                    readonly="not can_edit_payment or payment_mode == 'advance' or employee_id"
@@ -106,6 +115,19 @@
                     <group string="Payment Evidence">
                         <field name="payment_evidence_ids" widget="many2many_binary" nolabel="1" colspan="2"
                                readonly="state not in ('settlement_approved', 'settled', 'justification_submitted', 'justification_ops_approved', 'justified')"/>
+                    </group>
+                    <!-- Cash from a till (owner 10/10/2026): the voucher the
+                         system printed at Disburse / Pay, and the signed copy
+                         the Cashier brings back. Two boxes, two kinds. -->
+                    <group string="Cash Voucher (generated at Disburse / Pay)"
+                           invisible="journal_type != 'cash'">
+                        <field name="cash_voucher_ids" widget="many2many_binary" nolabel="1" colspan="2"
+                               readonly="1"/>
+                    </group>
+                    <group string="Cash Voucher (signed - uploaded by the Cashier)"
+                           invisible="journal_type != 'cash'">
+                        <field name="signed_voucher_ids" widget="many2many_binary" nolabel="1" colspan="2"
+                               readonly="state not in ('settled', 'justification_submitted', 'justification_ops_approved', 'justified')"/>
                     </group>
                     <group string="Timeline">
                         <group>
@@ -166,7 +188,8 @@
             <!-- the requester's say on the payment (owner 02/10/2026) -->
             <group string="Payment">
               <field name="journal_id" readonly="not can_edit_payment"
-                     options="{'no_create': True}"/>
+                     widget="selection"
+                     placeholder="till, bank, Mobile Money, Maviance"/>
               <field name="vendor_id" force_save="1" placeholder="who is paid"
                      readonly="not can_edit_payment or employee_id"
                      options="{'no_create': True}"/>

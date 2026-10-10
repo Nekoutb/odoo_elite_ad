@@ -4,6 +4,8 @@ The proof is a file walked from opening to closing by that one user."""
 
 import base64
 
+from odoo.exceptions import UserError
+
 from odoo.tests import TransactionCase, tagged
 
 
@@ -104,8 +106,17 @@ class TestClearanceAdmin(TransactionCase):
         wizard.write({'attachment_ids': [(4, receipt.id)]})
         wizard.action_pay()
         self.assertEqual(exp.state, 'settled')
-
+        # paid from a till: the voucher was printed, and the file waits for
+        # the signed copy (owner 10/10/2026)
+        self.assertTrue(exp.cash_voucher_ids)
         file.customs_fee_amount = 30000
+        with self.assertRaises(UserError):
+            file.action_close_operations()
+        signed = self.env['ir.attachment'].with_user(boss).create({
+            'name': "avance-frais-signee.pdf", 'res_model': exp._name,
+            'res_id': 0, 'datas': base64.b64encode(b"%PDF-1.4 signed")})
+        exp.write({'signed_voucher_ids': [(4, signed.id)]})
+        self.assertEqual(signed.clearance_kind, 'signed')
         file.action_close_operations()
         self.assertEqual(file.state, 'ops_closed')
         self.env['logistics.billing.wizard'].with_user(boss).with_context(

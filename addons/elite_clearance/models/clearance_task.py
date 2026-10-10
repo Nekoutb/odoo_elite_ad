@@ -34,7 +34,14 @@ KIND_GROUPS = {
     'ops_close': ('elite_clearance.group_clearance_ops_manager',),
     'billing': ('elite_clearance.group_clearance_billing',),
     'billing_service': ('elite_clearance.group_clearance_ops_manager',),
+    # anybody who has keyed a cost on a file is working it; the row is
+    # then narrowed to that person, in _search
+    'ongoing_file': ('elite_clearance.group_clearance_user',),
 }
+
+# The kinds that are one PERSON's rather than a department's: _search
+# shows the row to the user named in holder_user_id and nobody else.
+PERSONAL_KINDS = ('advance_justify', 'ongoing_file')
 
 KINDS = [
     ('expense_approve', "Approve expense"),
@@ -55,6 +62,7 @@ KINDS = [
     ('ops_close', "Close for operations"),
     ('billing', "Bill the file"),
     ('billing_service', "Approve a billable service"),
+    ('ongoing_file', "Ongoing files"),
 ]
 
 
@@ -81,9 +89,10 @@ class ClearanceTask(models.Model):
         help="Set only on a disbursement awaiting approval: the row is "
              "shown to the head of that service alone.")
     holder_user_id = fields.Many2one(
-        'res.users', readonly=True, string="Advance Held By",
-        help="Set only on an advance awaiting justification: the row is "
-             "shown to that person alone.")
+        'res.users', readonly=True, string="Whose",
+        help="Set only on a row that is one person's - an advance awaiting "
+             "its holder's justification, a file somebody has keyed a cost "
+             "on. The row is shown to that person alone.")
     partner_id = fields.Many2one('res.partner', string="Client", readonly=True)
     detail = fields.Char(string="What is waiting", readonly=True)
     amount = fields.Monetary(readonly=True, currency_field='currency_id')
@@ -301,6 +310,39 @@ class ClearanceTask(models.Model):
                       "OR bm.state = 'cancel' "
                       "OR COALESCE(bm.clearance_voided, FALSE) "
                       "OR COALESCE(bl.clearance_credited, FALSE))))"),
+            # The files this user is working on (owner 10/10/2026): a
+            # request for an out-of-pocket cost says "I am on this file",
+            # and the file then sits in that person's My Tasks under
+            # "Ongoing files" until it is closed for operations. One row
+            # per (file, requester), keyed on their FIRST cost on it so
+            # the synthetic id is unique; narrowed to the requester in
+            # _search, like an advance to its holder.
+            """
+            SELECT (19 * 10000000 + w.expense_id) AS id,
+                   %s AS name,
+                   'ongoing_file' AS kind,
+                   'logistics.file' AS res_model,
+                   f.id AS res_id,
+                   f.id AS file_id,
+                   f.partner_id AS partner_id,
+                   'You have keyed costs on this file' AS detail,
+                   f.oop_total AS amount,
+                   f.create_date::date AS date_deadline,
+                   f.company_id AS company_id,
+                   c.currency_id AS currency_id,
+                   w.user_id AS holder_user_id,
+                   NULL::varchar AS originating_team,
+                   f.write_date AS date_landed
+              FROM (SELECT e.file_id, e.create_uid AS user_id,
+                           MIN(e.id) AS expense_id
+                      FROM logistics_expense e
+                     WHERE e.state <> 'cancel'
+                       AND NOT COALESCE(e.is_legacy, FALSE)
+                     GROUP BY e.file_id, e.create_uid) w
+              JOIN logistics_file f ON f.id = w.file_id
+              JOIN res_company c ON c.id = f.company_id
+             WHERE f.state = 'in_progress'
+            """ % self._text('f.name'),
             # a proposed revenue line, waiting for Operations to allow it
             """
             SELECT (14 * 10000000 + s.id) AS id,
@@ -431,9 +473,10 @@ class ClearanceTask(models.Model):
         # role and nobody sees a queue they cannot act on.
         domain = [('kind', 'in', self._allowed_kinds())] + list(domain or [])
         # An advance to justify is one person's, not a department's: it
-        # stands against them until the receipts are accepted.
+        # stands against them until the receipts are accepted. A file
+        # somebody is working on is theirs the same way.
         if not self.env.su:
-            domain = ['|', ('kind', '!=', 'advance_justify'),
+            domain = ['|', ('kind', 'not in', PERSONAL_KINDS),
                       ('holder_user_id', '=', self.env.user.id)] + domain
         # A cost awaiting approval is its own service's head's: the Head
         # of Service Operations sees Operations' costs and nobody else's

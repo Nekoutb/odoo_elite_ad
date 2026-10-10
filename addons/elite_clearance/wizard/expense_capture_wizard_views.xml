@@ -21,7 +21,7 @@
                 </group>
                 <group string="Payment (Finance may change it)">
                     <field name="company_id" invisible="1"/>
-                    <field name="journal_id" options="{'no_create': True}"
+                    <field name="journal_id" widget="selection"
                            placeholder="till, bank, Mobile Money, Maviance"/>
                     <!-- a supplier OR a member of staff: each greys the other -->
                     <field name="vendor_id" options="{'no_create': True}"

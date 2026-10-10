@@ -20,6 +20,7 @@
                         <field name="employee_id" invisible="not employee_id"/>
                     </group>
                 </group>
+                <field name="journal_type" invisible="1"/>
                 <separator string="Payment Evidence"/>
                 <!-- The whole dialog is a drop target: the receipt or the
                      transfer advice dragged anywhere onto it is uploaded,
@@ -27,12 +28,20 @@
                      payment evidence. -->
                 <field name="attachment_ids" widget="clearance_documents"
                        nolabel="1" colspan="2"/>
-                <div class="alert alert-warning" role="alert">
+                <div class="alert alert-warning" role="alert" invisible="journal_type == 'cash'">
                     Nothing is paid out without evidence. Attach the till receipt, the
                     transfer advice or the mobile-money confirmation, then press
                     <b>Disburse / Pay</b>: the journal entry is posted and the evidence
                     stays on the disbursement for Customer Service to send to the third
                     party.
+                </div>
+                <div class="alert alert-info" role="alert" invisible="journal_type != 'cash'">
+                    <b>Cash from the till.</b> Press <b>Disburse / Pay</b>: the journal
+                    entry is posted and the <b>cash voucher</b> is printed and kept on the
+                    disbursement. Download it, have it signed by the person taking the
+                    cash, and upload the signed copy under <i>Cash Voucher (signed)</i> -
+                    the file cannot be closed for operations until it is there. Any
+                    receipt attached here is kept as payment evidence as well.
                 </div>
                 <footer>
                     <button name="action_pay" type="object"

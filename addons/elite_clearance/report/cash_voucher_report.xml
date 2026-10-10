@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+  <!-- The petty-cash voucher ("Avance frais"), owner 10/10/2026. Rendered
+       by Disburse / Pay on a cash journal and kept on the disbursement as
+       its generated voucher; re-printable from the Print Cash Voucher
+       button. Same tight A4 as the invoice. -->
+  <record id="action_report_cash_voucher" model="ir.actions.report">
+    <field name="name">Cash Voucher</field>
+    <field name="model">logistics.expense</field>
+    <field name="report_type">qweb-pdf</field>
+    <field name="report_name">elite_clearance.report_cash_voucher</field>
+    <field name="report_file">elite_clearance.report_cash_voucher</field>
+    <field name="print_report_name">'Avance frais - %s' % (object.name or '').replace('/', '-')</field>
+    <field name="paperformat_id" ref="paperformat_clearance_invoice"/>
+    <field name="binding_model_id" ref="model_logistics_expense"/>
+    <field name="binding_type">report</field>
+  </record>
+
+</odoo>

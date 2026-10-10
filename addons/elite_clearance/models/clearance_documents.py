@@ -64,7 +64,7 @@ class ClearanceDocumentsMixin(models.AbstractModel):
                 if kind:
                     vals['clearance_kind'] = kind
                 added.write(vals)
-                if kind != 'payment':
+                if kind not in Attachment.PAYMENT_KINDS:
                     record._clearance_documents_added(added)
             removed = current - wanted
             if removed:

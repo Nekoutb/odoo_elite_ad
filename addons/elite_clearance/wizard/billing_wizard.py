@@ -409,19 +409,30 @@ class LogisticsBillingWizard(models.TransientModel):
             wizard.split_debours_total = recharged
             wizard.split_services_total = wizard.service_total + tax
             file = wizard.file_id
+            cur = file.currency_id
+            # Line by line, never on the total (owner 10/10/2026): an
+            # overcharge here and an undercharge there add up to cost and
+            # went through with nobody asked.
+            off_cost = wizard.debours_line_ids.filtered(
+                lambda l: cur.compare_amounts(l.amount_recharged, l.amount_engaged))
+            # Approved means approved for THESE figures: the total the file
+            # carries, and each line as it was persisted when the review
+            # was sent.
             settled = (
                 file.recharge_state == 'approved'
-                and not file.currency_id.compare_amounts(
-                    file.recharge_amount, recharged))
+                and not cur.compare_amounts(file.recharge_amount, recharged)
+                and all(
+                    not cur.compare_amounts(
+                        l.amount_recharged,
+                        l.expense_id.recharge_amount or l.amount_engaged)
+                    for l in off_cost if l.expense_id))
             # While the disbursements invoice stands, its figures cannot
             # move: the screen is only here to issue the services half, and
             # _check_standing_half refuses anything else outright.
             if wizard.reissue_kind == 'services':
                 wizard.needs_review = False
                 continue
-            wizard.needs_review = bool(
-                file.currency_id.compare_amounts(recharged, engaged)
-                and not settled)
+            wizard.needs_review = bool(off_cost and not settled)
 
     # ------------------------------------------------------------------
     def _persist(self):
@@ -436,16 +447,25 @@ class LogisticsBillingWizard(models.TransientModel):
         # half being issued is written back.
         frozen = {'services': 'debours',
                   'debours': 'services'}.get(self.reissue_kind)
+        lines_moved = False
         if frozen != 'debours':
+            cur = self.file_id.currency_id
             for line in self.debours_line_ids:
                 if line.expense_id:
+                    before = line.expense_id.recharge_amount or line.amount_engaged
+                    if cur.compare_amounts(before, line.amount_recharged):
+                        lines_moved = True
                     line.expense_id.write({
                         'recharge_amount': line.amount_recharged,
                         'recharge_comment': (line.comment or "").strip() or False,
                     })
         recharged = self.debours_recharged_total
-        at_cost = not self.file_id.currency_id.compare_amounts(
-            recharged, self.debours_engaged_total)
+        # At cost means EVERY line at cost: a total that happens to equal
+        # the cost while the lines differ is a recharge all the same.
+        at_cost = not any(
+            self.file_id.currency_id.compare_amounts(
+                line.amount_recharged, line.amount_engaged)
+            for line in self.debours_line_ids)
         vals = {
             'advance_had_amount': self.advance_had_amount,
             'advance_had_vat_amount': self.advance_had_vat_amount,
@@ -477,7 +497,13 @@ class LogisticsBillingWizard(models.TransientModel):
         }
         vals.update({name: value for name, value in shipment.items()
                      if (value or False) != (self.file_id[name] or False)})
-        self.file_id.write(vals)
+        file = self.file_id
+        total_moves = 'recharge_amount' in vals and file.currency_id.compare_amounts(
+            file.recharge_amount, vals['recharge_amount'] or 0.0)
+        file.write(vals)
+        if lines_moved and not total_moves:
+            # the write hook syncs only when the total moves; the lines did
+            file._sync_recharge_state()
 
     def action_submit_for_review(self):
         self.ensure_one()

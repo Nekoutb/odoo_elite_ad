@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+  <!--
+    The petty-cash voucher, reproduced from Elimelec's Teese "AVANCE FRAIS"
+    form (owner 10/10/2026). The letterhead is the company record: logo,
+    name, the tagline from Clearance Settings, and then the address, NIU,
+    RCCM and telephone exactly as the invoice footer reads them - there is
+    no second copy of any of it to keep in step. DEMANDEUR is whoever keyed
+    the disbursement, CAISSE the till it is paid from, DATE the moment the
+    request was keyed, AUTRES INFOS the file and the client in full,
+    DESIGNATION the expense category. Below the figures, every approval
+    the disbursement went through, with the name and the time stamp the
+    system recorded, and then the two signatures the paper collects: the
+    person receiving the cash, and the cashier.
+  -->
+
+  <template id="report_cash_voucher_document">
+    <t t-set="company" t-value="o.company_id"/>
+    <t t-set="file" t-value="o.file_id"/>
+    <t t-set="cur" t-value="o.currency_id"/>
+    <div class="page o_clearance_voucher">
+
+      <style>
+        .o_clearance_voucher { font-size: 11px; color: #000; }
+        .o_clearance_voucher table { width: 100%; border-collapse: collapse; }
+        .o_clearance_voucher .head td { vertical-align: top; padding: 0; }
+        .o_clearance_voucher .co { font-size: 14px; font-weight: bold; }
+        .o_clearance_voucher .tag { font-weight: bold; }
+        .o_clearance_voucher .det { font-size: 9px; }
+        .o_clearance_voucher h2 { font-size: 16px; font-weight: bold;
+                                  text-align: center; margin: 18px 0 10px 0; }
+        .o_clearance_voucher .grid { margin-bottom: 8px; }
+        .o_clearance_voucher .grid th,
+        .o_clearance_voucher .grid td { border: 1px solid #000; padding: 3px 6px; }
+        .o_clearance_voucher .grid th { background: #d9d9d9; text-align: center;
+                                        font-weight: bold; }
+        .o_clearance_voucher .grid th.lbl { width: 22%; text-align: left; }
+        .o_clearance_voucher .grid td.ctr { text-align: center; }
+        .o_clearance_voucher .grid td.num { text-align: right; white-space: nowrap; }
+        .o_clearance_voucher .sect { font-weight: bold; text-align: center;
+                                     margin: 14px 0 4px 0; }
+        .o_clearance_voucher .sign td { width: 50%; padding: 26px 6px 4px 6px;
+                                        vertical-align: bottom; }
+        .o_clearance_voucher .sign .line { border-top: 1px solid #000;
+                                           margin-top: 36px; padding-top: 3px;
+                                           font-size: 9px; }
+        .o_clearance_voucher .foot { font-size: 8px; margin-top: 14px; }
+      </style>
+
+      <!-- letterhead: the company record, nothing re-keyed -->
+      <table class="head">
+        <tr>
+          <td style="width:22%;">
+            <img t-if="company.logo" t-att-src="image_data_uri(company.logo)"
+                 style="max-height:60px;" alt="Logo"/>
+          </td>
+          <td style="text-align:center;">
+            <div class="co"><span t-field="company.name"/></div>
+            <div class="tag" t-if="company.clearance_letterhead_tagline">
+              <span t-field="company.clearance_letterhead_tagline"/>
+            </div>
+            <div class="det"><span t-esc="company._clearance_letterhead_details()"/></div>
+          </td>
+          <td style="width:22%;"></td>
+        </tr>
+      </table>
+
+      <h2>
+        <span t-esc="company.clearance_cash_voucher_title or 'AVANCE FRAIS N°'"/>
+        <span t-field="o.name"/>
+      </h2>
+
+      <!-- who asked, which till, when -->
+      <table class="grid">
+        <tr>
+          <th style="width:40%;">DEMANDEUR</th>
+          <th style="width:30%;">CAISSE</th>
+          <th>DATE</th>
+        </tr>
+        <tr>
+          <td><span t-field="o.create_uid.name"/></td>
+          <td><span t-field="o.journal_id.name"/></td>
+          <td class="ctr"><span t-esc="o._voucher_stamp(o.create_date)"/></td>
+        </tr>
+      </table>
+
+      <table class="grid">
+        <tr>
+          <th class="lbl">AUTRES INFOS.</th>
+          <td>
+            <span t-field="file.name"/>
+            <t t-if="o._voucher_client_name()"> - <span t-esc="o._voucher_client_name()"/></t>
+          </td>
+        </tr>
+        <tr t-if="o.vendor_id or o.employee_id">
+          <th class="lbl">BÉNÉFICIAIRE</th>
+          <td>
+            <span t-if="o.employee_id" t-field="o.employee_id.name"/>
+            <span t-else="" t-field="o.vendor_id.name"/>
+          </td>
+        </tr>
+      </table>
+
+      <!-- the figures -->
+      <table class="grid">
+        <tr>
+          <th>DESIGNATION</th>
+          <th style="width:12%;">QUANTITE</th>
+          <th style="width:18%;">M. UNITAIRE</th>
+          <th style="width:18%;">M. TOTAL</th>
+        </tr>
+        <tr>
+          <td>
+            <span t-field="o.category_id.name"/>
+            <t t-if="o.description"><br/><span style="font-size:9px;" t-field="o.description"/></t>
+          </td>
+          <td class="ctr">1</td>
+          <td class="num">
+            <span t-field="o.amount"
+                  t-options="{'widget': 'monetary', 'display_currency': cur}"/>
+          </td>
+          <td class="num">
+            <span t-field="o.amount"
+                  t-options="{'widget': 'monetary', 'display_currency': cur}"/>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="3" class="num"><b>TOTAL</b></td>
+          <td class="num">
+            <b><span t-field="o.amount"
+                     t-options="{'widget': 'monetary', 'display_currency': cur}"/></b>
+          </td>
+        </tr>
+      </table>
+
+      <!-- every approval the disbursement went through -->
+      <div class="sect">APPROBATIONS</div>
+      <table class="grid">
+        <tr>
+          <th style="width:40%;">Rôle</th>
+          <th style="width:35%;">Nom</th>
+          <th>Date et heure</th>
+        </tr>
+        <tr t-foreach="o._voucher_approvals()" t-as="step">
+          <td><span t-esc="step['role']"/></td>
+          <td><span t-esc="step['name']"/></td>
+          <td class="ctr"><span t-esc="step['date']"/></td>
+        </tr>
+      </table>
+
+      <!-- the two signatures the paper collects -->
+      <div class="sect">SIGNATURES</div>
+      <table class="sign">
+        <tr>
+          <td>
+            <div>Reçu la somme de
+              <b><span t-field="o.amount"
+                       t-options="{'widget': 'monetary', 'display_currency': cur}"/></b>
+            </div>
+            <div class="line">Le demandeur - nom, date et signature</div>
+          </td>
+          <td>
+            <div>Remis par le caissier</div>
+            <div class="line">Le caissier - nom, date et signature</div>
+          </td>
+        </tr>
+      </table>
+
+      <div class="foot">
+        Imprimé le <span t-esc="o._voucher_stamp(None)"/>
+        par <span t-esc="user.name"/>
+      </div>
+
+    </div>
+  </template>
+
+  <template id="report_cash_voucher">
+    <t t-call="web.html_container">
+      <t t-foreach="docs" t-as="o">
+        <t t-call="elite_clearance.report_cash_voucher_document"/>
+      </t>
+    </t>
+  </template>
+
+</odoo>

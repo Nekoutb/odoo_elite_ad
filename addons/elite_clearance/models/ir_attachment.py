@@ -18,8 +18,17 @@ class IrAttachment(models.Model):
     # field existed was one.
     clearance_kind = fields.Selection(
         [('request', "Supporting document (request)"),
-         ('payment', "Payment evidence")],
+         ('payment', "Payment evidence"),
+         # the petty-cash voucher (owner 10/10/2026): the one the system
+         # prints at Disburse / Pay, and the signed copy the cashier
+         # brings back
+         ('voucher', "Cash voucher (generated)"),
+         ('signed', "Cash voucher (signed)")],
         string="Clearance Document Kind", index=True)
+
+    # The kinds that are about the PAYMENT, not the request: none of them
+    # dates the arrival of supporting documents.
+    PAYMENT_KINDS = ('payment', 'voucher', 'signed')
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -28,7 +37,7 @@ class IrAttachment(models.Model):
         ids = {
             att.res_id for att in attachments
             if att.res_model == 'logistics.expense' and att.res_id
-            and att.clearance_kind != 'payment'
+            and att.clearance_kind not in self.PAYMENT_KINDS
         }
         if ids:
             self.env['logistics.expense'].browse(

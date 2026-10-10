@@ -3,7 +3,6 @@ import pathlib
 from lxml import etree
 
 from odoo import Command
-from odoo.exceptions import AccessError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -197,19 +196,31 @@ class TestOwnerSpec0809(TransactionCase):
 
     def test_10_a_queue_never_lists_a_file_it_cannot_open(self):
         """A _table_query model is raw SQL, so the file's record rules do
-        not reach it: a draft file would sit in a queue that raises
-        AccessError when clicked."""
+        not reach it: the queue narrows itself to the files its reader
+        can open. Since 10/10/2026 every clearance team can open every
+        file, so the narrowing is exercised with a user of ANOTHER
+        company, which the global company rule still keeps out."""
         file = self._file(user=self.author)
-        rows = self.env['clearance.turnaround'].with_user(self.other).search(
+        other_company = self.env['res.company'].create({'name': "Elsewhere"})
+        stranger = self.env['res.users'].create({
+            'name': "Spec Stranger", 'login': "spec.stranger@0809.test",
+            'company_id': other_company.id,
+            'company_ids': [(6, 0, other_company.ids)],
+            'group_ids': [(6, 0, [self.env.ref(
+                'elite_clearance.group_clearance_finance').id])]})
+        rows = self.env['clearance.turnaround'].with_user(stranger).search(
             [('file_id', '=', file.id)])
-        self.assertFalse(rows, "Finance sees no step of a file it cannot open")
+        self.assertFalse(rows, "another company sees no step of this file")
         self.assertTrue(
-            self.env['clearance.turnaround'].with_user(self.author).search(
+            self.env['clearance.turnaround'].with_user(self.other).search(
                 [('file_id', '=', file.id)]),
-            "its author does")
+            "Finance of the same company does, draft or not")
 
-    # -- 6. a draft file is its author's until work starts --------------
-    def test_06_a_draft_file_is_not_yet_anybody_elses(self):
+    # -- 6. a file is everybody's from the moment it is opened ----------
+    # (owner 10/10/2026, reversing the 08/09/2026 draft-is-the-author's
+    # rule: Customer Service opens it, and Operations, Transit and
+    # Finance see it under Files at once)
+    def test_06_a_draft_file_is_seen_by_every_team(self):
         file = self._file(user=self.author)
         self.assertEqual(file.state, 'draft')
         self.assertEqual(file.create_uid, self.author)
@@ -218,12 +229,15 @@ class TestOwnerSpec0809(TransactionCase):
                         "its author sees it")
         self.assertTrue(file.with_user(self.manager).read(['name']),
                         "a manager can find a file left behind")
-        self.assertFalse(
+        self.assertTrue(
             self.env['logistics.file'].with_user(self.other).search(
                 [('id', '=', file.id)]),
-            "Finance does not see a file whose work has not started")
-        with self.assertRaises(AccessError):
-            file.with_user(self.other).read(['name'])
+            "Finance sees it under Files before work has started")
+        self.assertTrue(file.with_user(self.other).read(['name']))
+        self.assertFalse(
+            self.env.ref('elite_clearance.rule_logistics_file_draft_is_the_authors',
+                         raise_if_not_found=False),
+            "the old rule is gone from a fresh install")
 
         file.write({'package_count': 12, 'weight_kg': 800.0,
                     'not_containerised': True})

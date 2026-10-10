@@ -238,6 +238,33 @@ class LogisticsExpense(models.Model):
         help="What proves the money left: the receipt, the transfer "
              "advice, the mobile-money confirmation. Demanded at "
              "Disburse / Pay.")
+    # The petty-cash voucher (owner 10/10/2026). Printed by Disburse / Pay
+    # on a till, kept here as the generated copy; the cashier has it
+    # signed by whoever takes the cash and uploads the signed copy, and
+    # the file cannot be closed for operations until they have.
+    journal_type = fields.Selection(related='journal_id.type')
+    cash_voucher_ids = fields.Many2many(
+        'ir.attachment', 'logistics_expense_voucher_rel',
+        string="Cash Voucher (generated)",
+        compute='_compute_cash_voucher_ids', inverse='_inverse_cash_voucher_ids',
+        help="The voucher the system printed when the cash was paid out. "
+             "Download it, have it signed, and upload the signed copy below.")
+    signed_voucher_ids = fields.Many2many(
+        'ir.attachment', 'logistics_expense_signed_voucher_rel',
+        string="Cash Voucher (signed)",
+        compute='_compute_signed_voucher_ids', inverse='_inverse_signed_voucher_ids',
+        help="The signed voucher, uploaded by the Cashier. Until it is here "
+             "the file cannot be closed for operations.")
+    # Who did each step, beside when (owner 10/10/2026): the voucher
+    # prints every approval with a name and a time stamp.
+    approved_by_id = fields.Many2one(
+        'res.users', string="Approved By", readonly=True, copy=False)
+    settlement_submitted_by_id = fields.Many2one(
+        'res.users', string="Settlement Prepared By", readonly=True, copy=False)
+    settlement_approved_by_id = fields.Many2one(
+        'res.users', string="Settlement Approved By", readonly=True, copy=False)
+    settled_by_id = fields.Many2one(
+        'res.users', string="Paid By", readonly=True, copy=False)
     payment_evidence_sent_date = fields.Datetime(
         string="Evidence Sent to Third Party On", readonly=True, copy=False)
     payment_evidence_sent_by_id = fields.Many2one(
@@ -366,6 +393,32 @@ class LogisticsExpense(models.Model):
 
     def _compute_payment_evidence_ids(self):
         self._clearance_compute_documents('payment_evidence_ids', ('payment',))
+
+    def _compute_cash_voucher_ids(self):
+        self._clearance_compute_documents('cash_voucher_ids', ('voucher',))
+
+    def _inverse_cash_voucher_ids(self):
+        self._clearance_adopt_documents(
+            'cash_voucher_ids', ('voucher',), kind='voucher')
+
+    def _compute_signed_voucher_ids(self):
+        self._clearance_compute_documents('signed_voucher_ids', ('signed',))
+
+    def _inverse_signed_voucher_ids(self):
+        self._clearance_adopt_documents(
+            'signed_voucher_ids', ('signed',), kind='signed')
+
+    # The union the chatter and the justification count read is the
+    # request documents and the payment evidence. The vouchers are left
+    # out: a voucher is not a receipt, and it must never count as the
+    # document that justifies an advance.
+    DOCUMENT_KINDS = ('request', False, 'payment')
+
+    def _compute_attachment_ids(self):
+        self._clearance_compute_documents('attachment_ids', self.DOCUMENT_KINDS)
+
+    def _inverse_attachment_ids(self):
+        self._clearance_adopt_documents('attachment_ids', self.DOCUMENT_KINDS)
 
     def _inverse_payment_evidence_ids(self):
         self._clearance_adopt_documents(
@@ -782,11 +835,11 @@ class LogisticsExpense(models.Model):
             'journal_id': self._accrual_journal().id,
             'logistics_file_id': self.file_id.id,
             'date': fields.Date.context_today(self),
-            'ref': self.env._("%(exp)s — %(file)s — à engager",
-                              exp=self.name, file=self.file_id.name),
+            'ref': self.env._("%(exp)s — %(label)s — à engager",
+                              exp=self.name, label=self._ledger_label()),
             'line_ids': [
                 fields.Command.create({
-                    'name': self.description,
+                    'name': self._ledger_label(),
                     'account_id': acc.id,
                     'partner_id': who.id if who else False,
                     'debit': debit, 'credit': credit,
@@ -864,6 +917,85 @@ class LogisticsExpense(models.Model):
         action['context'] = {'default_expense_id': self.id}
         return action
 
+    # --- the petty-cash voucher (owner 10/10/2026) -----------------------
+    def _issue_cash_voucher(self):
+        """Print the voucher and keep it on the disbursement.
+
+        Rendered once, at Disburse / Pay, so what the cashier hands over
+        to be signed is what the system recorded at that moment. Under
+        --test-enable Odoo renders the HTML instead of calling
+        wkhtmltopdf, which is why this can run inside a TransactionCase.
+        """
+        Report = self.env['ir.actions.report'].sudo()
+        Attachment = self.env['ir.attachment'].sudo()
+        for exp in self:
+            if exp.cash_voucher_ids or exp.is_legacy:
+                continue
+            content, kind = Report._render_qweb_pdf(
+                'elite_clearance.action_report_cash_voucher', res_ids=exp.ids)
+            if isinstance(content, str):
+                content = content.encode()
+            pdf = kind == 'pdf'
+            Attachment.create({
+                'name': "Avance frais %s.%s" % (
+                    (exp.name or "").replace('/', '-'), 'pdf' if pdf else 'html'),
+                'raw': content,
+                'mimetype': 'application/pdf' if pdf else 'text/html',
+                'res_model': exp._name,
+                'res_id': exp.id,
+                'clearance_kind': 'voucher',
+            })
+        self.invalidate_recordset(['cash_voucher_ids'])
+
+    def action_print_cash_voucher(self):
+        """The same document, printed again."""
+        self.ensure_one()
+        if self.journal_id.type != 'cash':
+            raise UserError(self.env._(
+                "%s is not paid from a till; a cash voucher is printed for "
+                "cash only.", self.name))
+        return self.env.ref(
+            'elite_clearance.action_report_cash_voucher').report_action(self)
+
+    def _voucher_stamp(self, when):
+        """A date and time in the reader's time zone, or now."""
+        if when is None:
+            when = fields.Datetime.now()
+        if not when:
+            return ""
+        return fields.Datetime.context_timestamp(
+            self, when).strftime('%d/%m/%Y %H:%M')
+
+    def _voucher_client_name(self):
+        self.ensure_one()
+        partner = self.file_id.partner_id
+        return partner.clearance_invoice_name or partner.name or ""
+
+    def _voucher_approvals(self):
+        """Every approval the disbursement went through: role, name, when."""
+        self.ensure_one()
+        teams = dict(self._fields['originating_team'].selection)
+        team = teams.get(self.originating_team)
+        head = ("Chef du service demandeur (%s)" % team if team
+                else "Chef du service demandeur")
+        steps = [
+            (head, self.approved_by_id, self.date_approved),
+            ("Agent Finance", self.settlement_submitted_by_id,
+             self.date_settlement_submitted),
+            ("Chef du service Finance", self.settlement_approved_by_id,
+             self.date_settlement_approved),
+            ("Caissier", self.settled_by_id, self.date_settled),
+        ]
+        return [{'role': role, 'name': user.name or "",
+                 'date': self._voucher_stamp(when) if when else ""}
+                for role, user, when in steps]
+
+    def _unsigned_cash_vouchers(self):
+        """The cash payments whose signed voucher has not come back."""
+        return self.filtered(
+            lambda e: e.settlement_move_id and e.journal_id.type == 'cash'
+            and not e.is_legacy and not e.signed_voucher_ids)
+
     def action_send_payment_evidence(self):
         """Customer Service sends the third party the proof it was paid.
 
@@ -919,6 +1051,17 @@ class LogisticsExpense(models.Model):
                 'payment_evidence_sent_date': fields.Datetime.now(),
                 'payment_evidence_sent_by_id': self.env.user.id})
         return message
+
+    def _ledger_label(self):
+        """What every journal item of this disbursement is called.
+
+        "<expense category> / <file number>" (owner 10/10/2026) - the
+        requester's free text used to be the label, and a ledger that
+        reads "2 days demurrage, see Paul" is a ledger nobody can sort.
+        The expense's own reference stays in the entry's Reference.
+        """
+        self.ensure_one()
+        return "%s / %s" % (self.category_id.name or "", self.file_id.name or "")
 
     def _check_disburser(self):
         """Cash leaves through the Cashier, bank money through Treasury."""
@@ -996,7 +1139,8 @@ class LogisticsExpense(models.Model):
                 raise UserError(self.env._(
                     "%s has not been submitted for approval.", exp.name))
             exp.write({'state': 'approved',
-                       'date_approved': fields.Datetime.now()})
+                       'date_approved': fields.Datetime.now(),
+                       'approved_by_id': self.env.user.id})
 
     def action_refuse(self):
         self._check_manager()
@@ -1040,7 +1184,8 @@ class LogisticsExpense(models.Model):
                     "Key %(what)s on %(exp)s before sending it to the "
                     "Head of Service Finance.", what=", ".join(missing), exp=exp.name))
             exp.write({'state': 'settlement_submitted',
-                       'date_settlement_submitted': fields.Datetime.now()})
+                       'date_settlement_submitted': fields.Datetime.now(),
+                       'settlement_submitted_by_id': self.env.user.id})
             exp.message_post(body=self.env._(
                 "Settlement sent to the Head of Service Finance for approval."))
             # The third party is named and the expense is approved: this
@@ -1073,7 +1218,8 @@ class LogisticsExpense(models.Model):
                     "Finance must set the payment mode and the settlement "
                     "journal on %s before it can be approved.", exp.name))
             exp.write({'state': 'settlement_approved',
-                       'date_settlement_approved': fields.Datetime.now()})
+                       'date_settlement_approved': fields.Datetime.now(),
+                       'settlement_approved_by_id': self.env.user.id})
             labels = dict(exp._fields['payment_mode'].selection)
             holder = ""
             if exp.payment_mode == 'advance':
@@ -1100,8 +1246,13 @@ class LogisticsExpense(models.Model):
             # No evidence, no payment (owner, 01/10/2026). The button
             # opens a dialog that asks for it; this is the rule the dialog
             # enforces, so a call from anywhere else meets it too. su is
-            # exempt: fixtures and the importer are not cashiers.
-            if not self.env.su and not exp.payment_evidence_ids:
+            # exempt: fixtures and the importer are not cashiers. A TILL
+            # is exempt as well (owner 10/10/2026): its evidence is the
+            # voucher this very action prints, signed by whoever takes
+            # the cash and uploaded afterwards - the ops-close gate holds
+            # the file until it is.
+            if (not self.env.su and not exp.payment_evidence_ids
+                    and exp.journal_id.type != 'cash'):
                 raise UserError(self.env._(
                     "Attach the payment evidence for %s - the receipt, "
                     "the transfer advice or the mobile-money confirmation "
@@ -1165,12 +1316,11 @@ class LogisticsExpense(models.Model):
                 'journal_id': exp.journal_id.id,
                 'logistics_file_id': exp.file_id.id,
                 'date': fields.Date.context_today(exp),
-                'ref': self.env._("%(exp)s — %(file)s — %(desc)s",
-                                  exp=exp.name, file=exp.file_id.name,
-                                  desc=exp.description),
+                'ref': self.env._("%(exp)s — %(label)s",
+                                  exp=exp.name, label=exp._ledger_label()),
                 'line_ids': [
                     fields.Command.create({
-                        'name': exp.description,
+                        'name': exp._ledger_label(),
                         'account_id': account.id,
                         'partner_id': counterparty.id if counterparty else False,
                         'debit': debit, 'credit': credit,
@@ -1184,7 +1334,10 @@ class LogisticsExpense(models.Model):
                 'settlement_move_id': move.id,
                 'state': 'settled',
                 'date_settled': fields.Datetime.now(),
+                'settled_by_id': self.env.user.id,
             })
+            if exp.journal_id.type == 'cash':
+                exp._issue_cash_voucher()
 
     def action_submit_justification(self):
         """The receipts go up for review.
@@ -1317,18 +1470,18 @@ class LogisticsExpense(models.Model):
                 'journal_id': journal.id,
                 'logistics_file_id': exp.file_id.id,
                 'date': fields.Date.context_today(exp),
-                'ref': self.env._("Justification %(exp)s — %(file)s",
-                                  exp=exp.name, file=exp.file_id.name),
+                'ref': self.env._("Justification %(exp)s — %(label)s",
+                                  exp=exp.name, label=exp._ledger_label()),
                 'line_ids': [
                     fields.Command.create({
-                        'name': exp.description,
+                        'name': exp._ledger_label(),
                         'account_id': oop.id,
                         'partner_id': exp.vendor_id.id or False,
                         'debit': exp.amount, 'credit': 0.0,
                         'analytic_distribution': exp._analytic_distribution(),
                     }),
                     fields.Command.create({
-                        'name': exp.description,
+                        'name': exp._ledger_label(),
                         'account_id': adv.id,
                         'partner_id': partner.id if partner else False,
                         'debit': 0.0, 'credit': exp.amount,
