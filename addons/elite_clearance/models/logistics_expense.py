@@ -128,7 +128,9 @@ class LogisticsExpense(models.Model):
     currency_id = fields.Many2one(related='company_id.currency_id')
     category_id = fields.Many2one(
         'logistics.expense.category', required=True, tracking=True)
-    description = fields.Char(required=True)
+    # "Additional Comments" on every screen (owner 10/10/2026): the
+    # category already says what the money is for.
+    description = fields.Char(string="Additional Comments", required=True)
     amount = fields.Monetary(required=True, tracking=True)
     unit_label = fields.Char(
         string="Unit", default="Par dossier",

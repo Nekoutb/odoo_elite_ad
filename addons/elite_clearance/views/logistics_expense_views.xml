@@ -6,6 +6,7 @@
         <field name="model">logistics.expense</field>
         <field name="arch" type="xml">
             <form string="Out-of-Pocket Expense">
+                <field name="justification_required" invisible="1"/>
                 <header>
                     <button name="action_submit" type="object" string="Submit"
                             class="oe_highlight" invisible="state != 'draft'"/>
@@ -39,7 +40,7 @@
                          queue whose row cannot be acted on is no queue. -->
                     <button name="action_submit_justification" type="object" string="Submit Justification"
                             class="oe_highlight"
-                            invisible="state != 'settled' or payment_mode != 'advance'"/>
+                            invisible="state != 'settled' or payment_mode != 'advance' or not justification_required"/>
                     <button name="action_justify" type="object" string="Approve Justification (Operations)"
                             class="oe_highlight" invisible="state != 'justification_submitted'"
                             groups="elite_clearance.group_clearance_ops_manager"/>
@@ -155,7 +156,7 @@
           <group>
             <group>
               <field name="category_id" readonly="state not in ('draft', 'submitted')"/>
-              <field name="description" placeholder="What the money was spent on"
+              <field name="description" placeholder="e.g. container MSCU1234567, 2 days"
                      readonly="state not in ('draft', 'submitted')"/>
               <field name="amount" readonly="state not in ('draft', 'submitted')"/>
               <field name="currency_id" invisible="1"/>

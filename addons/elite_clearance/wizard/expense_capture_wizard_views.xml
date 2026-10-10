@@ -12,7 +12,7 @@
                     <group>
                         <field name="category_id" options="{'no_create': True}"/>
                         <field name="description"
-                               placeholder="What the money was spent on"/>
+                               placeholder="e.g. container MSCU1234567, 2 days"/>
                     </group>
                     <group>
                         <field name="amount"/>

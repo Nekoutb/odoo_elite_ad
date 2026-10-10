@@ -29,8 +29,9 @@ class LogisticsExpenseCaptureWizard(models.TransientModel):
     category_id = fields.Many2one(
         'logistics.expense.category', string="Category", required=True)
     description = fields.Char(
-        string="Description", required=True,
-        help="What the money was spent on.")
+        string="Additional Comments", required=True,
+        help="Anything the category does not already say about this "
+             "disbursement.")
     amount = fields.Monetary(
         string="Amount", currency_field='currency_id', required=True)
     date_requested = fields.Date(
