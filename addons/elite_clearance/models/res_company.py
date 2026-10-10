@@ -332,6 +332,13 @@ class ResCompany(models.Model):
         field_name, group_xmlids, label = APPROVAL_KINDS[kind]
         approvers = self[field_name]
         user = self.env.user
+        # The Clearance Administrator passes every gate (owner 07/10/2026)
+        # - the named approver lists included. A list is how a company
+        # narrows a checkpoint to particular people; it was also, the owner
+        # found on 10/10/2026, what stopped the one role meant to do
+        # everything from doing anything the list covered.
+        if user.has_group('elite_clearance.group_clearance_admin'):
+            return
         if approvers:
             if user not in approvers:
                 raise UserError(self.env._(

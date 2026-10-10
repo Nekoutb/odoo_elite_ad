@@ -155,7 +155,17 @@ class AccountMove(models.Model):
 
     def _post(self, soft=True):
         self._clearance_stamp_analytic()
-        return super()._post(soft=soft)
+        posted = super()._post(soft=soft)
+        # The Head of Customer Service closes a file once everything on it
+        # is posted and nothing is left to bill: tell them when that
+        # moment comes (owner 10/10/2026 - nobody was).
+        Task = self.env['clearance.task']
+        for file in posted.filtered(
+                lambda m: m.move_type in ('out_invoice', 'out_refund')
+        ).logistics_file_id:
+            Task._notify_if_queued(
+                'file_close', file, detail=self.env._("Billed and posted"))
+        return posted
 
     def action_post(self):
         legacy = self.filtered('is_legacy')

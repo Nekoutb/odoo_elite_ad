@@ -88,6 +88,10 @@ class ClearanceTask(models.Model):
     detail = fields.Char(string="What is waiting", readonly=True)
     amount = fields.Monetary(readonly=True, currency_field='currency_id')
     date_deadline = fields.Date(string="Waiting since", readonly=True)
+    # The last time the record behind the row moved - which, for a row in a
+    # queue, is when it landed there. The bell lists newest first by it
+    # (owner 10/10/2026).
+    date_landed = fields.Datetime(string="Landed", readonly=True)
     company_id = fields.Many2one('res.company', readonly=True)
     currency_id = fields.Many2one('res.currency', readonly=True)
 
@@ -130,7 +134,8 @@ class ClearanceTask(models.Model):
                    e.company_id AS company_id,
                    c.currency_id AS currency_id,
                    NULL::integer AS holder_user_id,
-                   e.originating_team AS originating_team
+                   e.originating_team AS originating_team,
+                   e.write_date AS date_landed
               FROM logistics_expense e
               JOIN logistics_file f ON f.id = e.file_id
               JOIN res_company c ON c.id = e.company_id
@@ -150,7 +155,8 @@ class ClearanceTask(models.Model):
                    f.company_id AS company_id,
                    c.currency_id AS currency_id,
                    NULL::integer AS holder_user_id,
-                   NULL::varchar AS originating_team
+                   NULL::varchar AS originating_team,
+                   f.write_date AS date_landed
               FROM logistics_file f
               JOIN res_company c ON c.id = f.company_id
              WHERE %(where)s
@@ -213,7 +219,8 @@ class ClearanceTask(models.Model):
                    e.company_id AS company_id,
                    c.currency_id AS currency_id,
                    emp.user_id AS holder_user_id,
-                   NULL::varchar AS originating_team
+                   NULL::varchar AS originating_team,
+                   e.write_date AS date_landed
               FROM logistics_expense e
               JOIN logistics_file f ON f.id = e.file_id
               JOIN res_company c ON c.id = e.company_id
@@ -309,7 +316,8 @@ class ClearanceTask(models.Model):
                    s.company_id AS company_id,
                    c.currency_id AS currency_id,
                    NULL::integer AS holder_user_id,
-                   NULL::varchar AS originating_team
+                   NULL::varchar AS originating_team,
+                   s.write_date AS date_landed
               FROM logistics_billing_service s
               JOIN res_company c ON c.id = s.company_id
              WHERE s.state = 'draft' AND s.active = TRUE
@@ -374,6 +382,25 @@ class ClearanceTask(models.Model):
         bus = self.env['bus.bus'].sudo()
         for user in recipients:
             bus._sendone(user.partner_id, 'elite_clearance.task', payload)
+
+    @api.model
+    def _notify_if_queued(self, kind, record, detail=None):
+        """Ring the bell for `kind` if `record` is now actually in that
+        queue.
+
+        For the queues no single field opens: a file is ready to close
+        once its LAST document is posted, and back to billing once a bill
+        is withdrawn - conditions the SQL above already spells out, so it
+        is asked rather than repeated here.
+        """
+        if not record:
+            return
+        field = 'file_id' if record._name == 'logistics.file' else 'res_id'
+        queued = self.sudo().search_count([
+            ('kind', '=', kind), (field, '=', record.id),
+            ('res_model', '=', record._name)])
+        if queued:
+            self._notify_assignment(kind, record, detail=detail)
 
     # ------------------------------------------------------------------
     def _allowed_kinds(self):

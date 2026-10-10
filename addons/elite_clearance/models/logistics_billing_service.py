@@ -57,6 +57,15 @@ class LogisticsBillingService(models.Model):
         'UNIQUE(name, company_id)',
         "That service already exists for this company.")
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        services = super().create(vals_list)
+        for service in services.filtered(lambda s: s.state == 'draft'):
+            self.env['clearance.task']._notify_assignment(
+                'billing_service', service,
+                detail=self.env._("New billable service to approve"))
+        return services
+
     # ------------------------------------------------------------------
     def action_approve(self):
         for service in self:

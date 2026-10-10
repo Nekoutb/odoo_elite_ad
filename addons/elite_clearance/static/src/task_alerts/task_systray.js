@@ -48,8 +48,9 @@ export class ClearanceTaskSystray extends Component {
             const tasks = await this.orm.searchRead(
                 "clearance.task",
                 [],
-                ["name", "kind_label", "detail", "res_model", "res_id"],
-                { limit: 15 }
+                ["name", "kind", "kind_label", "detail", "res_model", "res_id"],
+                // newest on top (owner 10/10/2026)
+                { limit: 15, order: "date_landed desc, id desc" }
             );
             this.state.tasks = tasks;
             this.state.count = await this.orm.searchCount("clearance.task", []);

@@ -204,6 +204,8 @@ class LogisticsInvoiceCancelWizard(models.TransientModel):
                 "is billable again.",
                 inv=invoice.name, user=self.env.user.name,
                 reason=self.reason, gap=chr(10) * 2))
+            self.env['clearance.task']._notify_if_queued(
+                'billing', file, detail=self.env._("A bill was cancelled"))
         if credit:
             return {
                 'type': 'ir.actions.act_window',
