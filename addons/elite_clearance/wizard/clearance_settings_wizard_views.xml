@@ -59,6 +59,12 @@
                             <field name="clearance_invoice_bank_ids" string="Bank accounts on the invoice" help="Which accounts print, and in what order. Empty prints the first two the company has. Maintain the accounts themselves under Invoicing &gt; Bank Accounts." widget="many2many_tags"/>
                             </group>
                         </page>
+                        <page string="File Numbering" name="file_numbering">
+                            <p class="text-muted">For each service, the reference of the last file opened in the old system - for example 2026IM0019. The next file opened here for that service takes the number after it: 2026IM0020.</p>
+                            <group>
+                            <button name="action_open_file_numbering" type="object" string="Set the Last Legacy File Numbers" class="btn-link" icon="fa-arrow-right"/>
+                            </group>
+                        </page>
                         <page string="Turnaround Targets">
                             <p class="text-muted">How long each step of the workflow may take before Reporting flags it. An advance requested on Monday and paid on Friday shows as over target, so somebody can chase it.</p>
                             <group>

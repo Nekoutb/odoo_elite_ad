@@ -209,7 +209,6 @@
                         <group>
                             <field name="port_id" options="{'no_create': True}"
                                    required="state == 'draft'"/>
-                            <field name="employee_id" required="state == 'draft'"/>
                             <field name="shipment_type" required="state == 'draft'"/>
                             <field name="incoterm_id" options="{'no_create': True}"
                                    required="state == 'draft'"/>
@@ -544,7 +543,6 @@
                 <field name="bl_awb_ref"/>
                 <field name="user_id"/>
                 <field name="port_id"/>
-                <field name="employee_id"/>
                 <filter name="my_files" string="My Files" domain="[('user_id', '=', uid)]"/>
                 <filter name="legacy" string="Legacy (Teese)" domain="[('legacy_id', '!=', 0)]"/>
                 <separator/>

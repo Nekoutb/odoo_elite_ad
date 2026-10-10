@@ -190,6 +190,10 @@ class ClearanceSettingsWizard(models.TransientModel):
         button only exists so the page has an obvious way out."""
         return {'type': 'ir.actions.client', 'tag': 'reload'}
 
+    def action_open_file_numbering(self):
+        return self.env['ir.actions.act_window']._for_xml_id(
+            'elite_clearance.action_logistics_service_type_numbering')
+
     def action_open_turnaround_targets(self):
         return self.env['ir.actions.act_window']._for_xml_id(
             'elite_clearance.action_clearance_turnaround_target')

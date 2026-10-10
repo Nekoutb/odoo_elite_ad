@@ -87,8 +87,10 @@ class LogisticsFile(models.Model):
     port_id = fields.Many2one('logistics.port', string="Port", tracking=True)
     employee_id = fields.Many2one(
         'hr.employee', string="Follow-up Employee", tracking=True,
-        help="The staff member who follows the file day to day. Distinct "
-             "from the Responsible user: not every declarant has a login.")
+        help="The staff member who followed the file in Teese. Kept for the "
+             "imported files only: the owner removed it from the form on "
+             "10/10/2026, because the Responsible user already names who "
+             "follows a file.")
     shipment_type = fields.Selection(
         [('container', "Container"),
          ('conventional', "Conventional / break-bulk"),
