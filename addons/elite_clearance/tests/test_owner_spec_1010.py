@@ -325,11 +325,16 @@ class TestOwnerSpec1010(TransactionCase):
         rung = [m for m in self._bus()[before:]
                 if m['payload']['kind'] == 'billing_service']
         self.assertTrue(rung, "Operations is told a service awaits approval")
+        # Everything created in one transaction shares PostgreSQL's now(),
+        # so the test can only check that the order IS by date_landed and
+        # that the file just opened sits among the newest rows.
         file = self._file()
         tasks = self.env['clearance.task'].search(
-            [], order='date_landed desc, id desc', limit=5)
+            [], order='date_landed desc, id desc')
         self.assertTrue(tasks)
-        self.assertEqual(tasks[0].file_id, file,
-                         "the file just opened is the newest row")
         dates = tasks.mapped('date_landed')
         self.assertEqual(dates, sorted(dates, reverse=True))
+        mine = tasks.filtered(lambda t: t.file_id == file)
+        self.assertTrue(mine)
+        self.assertEqual(mine[0].date_landed, dates[0],
+                         "the file just opened is as new as anything listed")

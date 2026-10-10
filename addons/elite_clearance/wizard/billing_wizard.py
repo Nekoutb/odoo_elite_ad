@@ -485,17 +485,19 @@ class LogisticsBillingWizard(models.TransientModel):
             raise UserError(self.env._(
                 "%s recharges exactly what was disbursed - there is nothing "
                 "to review.", self.file_id.name))
-        # Every line charged at other than cost says why, on the line
-        # itself (owner 10/10/2026). The overall note is optional; left
-        # empty, the line comments become the file's recharge reason, which
-        # is what the approver and the chatter read.
+        # A line charged at other than cost says why on the line itself,
+        # or the overall note says it for all of them (owner 10/10/2026:
+        # the column is there to be seen and acted on, not to be filled
+        # twice). With no overall note, the line comments become the
+        # file's recharge reason, which is what the approver and the
+        # chatter read.
         silent = self.debours_line_ids.filtered(
             lambda l: not self.currency_id.is_zero(l.variance)
             and not (l.comment or "").strip())
-        if silent:
+        if silent and not (self.review_reason or "").strip():
             raise UserError(self.env._(
                 "Say why each of these is charged at other than cost, in "
-                "its own Why column: %s",
+                "its own Why column (or in the overall note below): %s",
                 ", ".join(silent.mapped('name'))))
         if not (self.review_reason or "").strip():
             self.review_reason = "; ".join(
@@ -575,8 +577,9 @@ class LogisticsBillingWizardDebours(models.TransientModel):
              "difference from what was disbursed needs approving.")
     comment = fields.Char(
         string="Why",
-        help="Why this disbursement is charged at other than cost. Required "
-             "on every line that differs; the approver reads it here.")
+        help="Why this disbursement is charged at other than cost. The "
+             "approver reads it on the line. A line that differs needs one, "
+             "unless the overall note covers it.")
     variance = fields.Monetary(
         compute='_compute_variance', currency_field='currency_id',
         string="Variance")

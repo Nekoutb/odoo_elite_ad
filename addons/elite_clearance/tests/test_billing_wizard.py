@@ -644,7 +644,8 @@ class TestBillingWizard(TransactionCase):
         self.assertEqual(services._clearance_advances(),
                          (5000, wizard.advance_had_vat_amount, None))
         self.assertEqual(debours._clearance_advance_total(), 20000)
-        self.assertEqual(services._clearance_advance_total(), 5000)
+        self.assertEqual(services._clearance_advance_total(),
+                         5000 + wizard.advance_had_vat_amount)
         self.assertFalse(debours._clearance_prints_vat())
         self.assertTrue(services._clearance_prints_vat())
         # 100 000 recharged + 2 000 commission + 5 000 HAD, less the

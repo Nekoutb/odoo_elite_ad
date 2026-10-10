@@ -115,8 +115,7 @@
                         <field name="variance" sum="Variance"
                                decoration-danger="variance &lt; 0"
                                decoration-success="variance &gt; 0"/>
-                        <field name="comment" placeholder="why it differs from cost"
-                               required="variance != 0"/>
+                        <field name="comment" placeholder="why it differs from cost"/>
                         <field name="currency_id" column_invisible="1"/>
                     </list>
                 </field>

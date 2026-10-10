@@ -598,10 +598,11 @@ Customs clearance job files for a logistics/clearance services provider.
      the `*_review_*` lines.
   7. **Each line says why** (`logistics.billing.wizard.debours.comment`,
      persisted to `logistics.expense.recharge_comment`). Submit for
-     Review refuses a line with a variance and no comment; the overall
-     `review_reason` is optional and, left empty, is composed from the
-     line comments so `_check_recharge_documented` and the chatter read
-     them.
+     Review refuses a line with a variance and no comment UNLESS the
+     overall `review_reason` is given (the owner said "allow", and the
+     seven older tests give only the note); left empty, the note is
+     composed from the line comments so `_check_recharge_documented`
+     and the chatter read them.
   8. **Every Refuse asks for a reason.** `clearance.rejection.mixin`
      (`models/clearance_rejection.py`): the nine Refuse buttons call
      `action_open_rejection` with `rejection_method` in context, the
