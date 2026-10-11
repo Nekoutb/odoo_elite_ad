@@ -102,7 +102,15 @@ class ReportViewerMixin(models.AbstractModel):
                     for key, text in field._description_selection(self.env)]
             fields.append(entry)
             filters[name] = value.isoformat() if kind == 'date' and value else (value or False)
+        notice = ''
+        if self._fields.get('target_move') and self.target_move == 'posted':
+            until = (self['date_to'] if 'date_to' in self._fields else self['date_at']) or fields.Date.context_today(self)
+            drafts = self.env['account.move'].search_count([
+                ('state', '=', 'draft'), ('company_id', '=', self.company_id.id), ('date', '<=', until)])
+            if drafts:
+                notice = self.env._("There are unposted journal entries prior to or included in this period.")
         return {
+            'notice': notice,
             'report_name': action.get('report_name'),
             'data': action.get('data') or {},
             'context': action.get('context') or {},

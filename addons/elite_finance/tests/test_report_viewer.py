@@ -98,6 +98,13 @@ class TestReportViewer(TransactionCase):
         self.assertRegex(html, r'tb-c1">\s*<span[^>]*res-model="account.account"[^>]*>\s*<b>\d')
         self.assertIn('tb-num tb-c5', html)
         self.assertIn('tb-totals', html)
+        # a movement is a link to the General Ledger of its account
+        self.assertRegex(html, r'<a class="tb-gl" href="#" data-account="\d+" data-kind="debit"')
+        self.assertIn('data-kind="credit"', html)
+        self.assertIn('tb-kebab', html)
+        # the unposted-entries notice is the viewer's, computed with the state
+        self.env['account.move'].create({'move_type': 'entry', 'date': wizard.date_to})
+        self.assertIn('unposted', wizard.elite_finance_viewer_state()['notice'])
         # the OCA rows stay for the partner-details layout
         detailed = self.env['trial.balance.report.wizard'].create({'show_partner_details': True})
         dstate = detailed.elite_finance_viewer_state()

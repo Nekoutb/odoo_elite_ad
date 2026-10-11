@@ -112,3 +112,68 @@
     border-top: 2px solid #999 !important; border-bottom: 0 !important; font-weight: bold; padding: 6px 8px;
 }
 .o_account_financial_reports_page .tb-line .act_as_cell span[res-model] { cursor: pointer; }
+
+/* ---- on screen: Enterprise's chrome (the PDF keeps its title block) --
+   The HTML page carries body.container; the PDF does not. The sheet is
+   centred and white on the grey view background, the report's own title
+   and filter block are hidden (the viewer's bar carries them), Odoo's
+   backend font is used, names read as links with a kebab, movements are
+   links to the General Ledger. */
+body.container {
+    background: #f3f4f7;
+    max-width: none;
+    padding: 0 16px 24px;
+    font-family: Roboto, "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+body.container .o_account_financial_reports_page {
+    background: #fff;
+    max-width: 880px;
+    margin: 16px auto;
+    padding: 14px 20px 18px;
+    border: 1px solid #e3e6ec;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(20, 24, 40, .06);
+    font-family: inherit;
+}
+body.container .o_account_financial_reports_page > .row,
+body.container .o_account_financial_reports_page > .row + .data_table,
+body.container .o_account_financial_reports_page > .list_table[style] {
+    display: none;
+}
+body.container .o_account_financial_reports_page .act_as_cell {
+    font-size: 13px !important;
+}
+body.container .o_account_financial_reports_page .tb-group-row {
+    margin-top: 0;
+}
+body.container .o_account_financial_reports_page .tb-line .act_as_cell {
+    padding: 6px 10px;
+}
+body.container .o_account_financial_reports_page .tb-name {
+    color: var(--bs-link-color, #714b67);
+    cursor: pointer;
+}
+body.container .o_account_financial_reports_page .tb-name b {
+    font-weight: 400;
+}
+.o_account_financial_reports_page .tb-kebab {
+    color: #b5bac5;
+    margin-left: 6px;
+    font-weight: 700;
+    font-size: 12px;
+}
+.o_account_financial_reports_page a.tb-gl {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px dotted transparent;
+}
+body.container .o_account_financial_reports_page a.tb-gl:hover {
+    color: var(--bs-link-color, #714b67);
+    border-bottom-color: currentColor;
+}
+.o_account_financial_reports_page .tb-num.zero a.tb-gl {
+    color: #9aa1ad;
+}
+body.container .o_account_financial_reports_page .tb-line .tb-c1 b {
+    margin-right: 4px;
+}

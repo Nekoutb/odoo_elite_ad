@@ -27,6 +27,35 @@ function iso(date) {
     return date.toISOString().slice(0, 10);
 }
 
+function fmtDate(isoDate) {
+    const [y, m, d] = isoDate.split("-");
+    return `${d}/${m}/${y}`;
+}
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** "Oct 2026" for a whole month, "Q4 2026" for a quarter, "2026" for a year, else the two dates. */
+function periodLabel(from, to) {
+    const f = new Date(from + "T00:00:00Z");
+    const t = new Date(to + "T00:00:00Z");
+    const lastDay = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();
+    const wholeMonths = f.getUTCDate() === 1 && t.getUTCDate() === lastDay;
+    if (wholeMonths && f.getUTCFullYear() === t.getUTCFullYear()) {
+        const fm = f.getUTCMonth();
+        const tm = t.getUTCMonth();
+        if (fm === tm) {
+            return `${MONTHS[fm]} ${f.getUTCFullYear()}`;
+        }
+        if (fm % 3 === 0 && tm === fm + 2) {
+            return `Q${fm / 3 + 1} ${f.getUTCFullYear()}`;
+        }
+        if (fm === 0 && tm === 11) {
+            return `${f.getUTCFullYear()}`;
+        }
+    }
+    return `${fmtDate(from)} → ${fmtDate(to)}`;
+}
+
 function presetsFor(hasRange) {
     const today = new Date();
     const y = today.getFullYear();
@@ -65,6 +94,9 @@ export class ReportViewer extends Component {
         this.model = context.wizard_model;
         this.partnerType = context.elite_finance_partner_type || false;
         this.title = this.props.action.name || this.props.action.display_name || "";
+        // values to create the wizard with: the General Ledger opened from a
+        // trial balance figure brings the account and the period along
+        this.prefill = context.elite_finance_prefill || {};
         this.state = useState({
             wizardId: false,
             fields: [],
@@ -72,6 +104,7 @@ export class ReportViewer extends Component {
             url: false,
             busy: true,
             version: 0,
+            notice: "",
             menu: false,        // which pill's menu is open: "period" | "entries" | false
             custom: false,      // the period menu shows the date inputs
             search: "",
@@ -85,7 +118,7 @@ export class ReportViewer extends Component {
         if (this.partnerType) {
             context.elite_finance_partner_type = this.partnerType;
         }
-        const [wizardId] = await this.orm.create(this.model, [{}], { context });
+        const [wizardId] = await this.orm.create(this.model, [{ ...this.prefill }], { context });
         this.state.wizardId = wizardId;
         await this.refresh();
     }
@@ -97,6 +130,7 @@ export class ReportViewer extends Component {
         ]);
         this.state.fields = state.fields;
         this.state.filters = state.filters;
+        this.state.notice = state.notice || "";
         const options = encodeURIComponent(JSON.stringify(state.data || {}));
         const context = encodeURIComponent(
             JSON.stringify({ ...user.context, ...(state.context || {}) })
@@ -132,10 +166,10 @@ export class ReportViewer extends Component {
     get periodLabel() {
         const f = this.state.filters;
         if (this.hasRange && f.date_from && f.date_to) {
-            return `${f.date_from} → ${f.date_to}`;
+            return periodLabel(f.date_from, f.date_to);
         }
         if (this.hasAt && f.date_at) {
-            return _t("As at %s", f.date_at);
+            return _t("As at %s", fmtDate(f.date_at));
         }
         return _t("Period");
     }
@@ -204,6 +238,39 @@ export class ReportViewer extends Component {
 
     onFrameLoad() {
         this.filterRows();
+        const doc = this.frame.el && this.frame.el.contentDocument;
+        if (doc && !doc.__eliteBound) {
+            doc.__eliteBound = true;
+            doc.addEventListener("click", (ev) => {
+                const link = ev.target.closest && ev.target.closest("a.tb-gl");
+                if (link) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    this.openGeneralLedger(Number(link.dataset.account));
+                }
+            }, true);
+        }
+    }
+
+    /** A movement on the trial balance opens the General Ledger of that account, same period. */
+    openGeneralLedger(accountId) {
+        const f = this.state.filters;
+        const prefill = { account_ids: [[6, 0, [accountId]]] };
+        if (f.date_from) {
+            prefill.date_from = f.date_from;
+        }
+        if (f.date_to) {
+            prefill.date_to = f.date_to;
+        }
+        if (f.target_move) {
+            prefill.target_move = f.target_move;
+        }
+        this.action.doAction({
+            type: "ir.actions.client",
+            tag: "elite_finance_report_viewer",
+            name: _t("General Ledger"),
+            context: { wizard_model: "general.ledger.report.wizard", elite_finance_prefill: prefill },
+        });
     }
 
     filterRows() {

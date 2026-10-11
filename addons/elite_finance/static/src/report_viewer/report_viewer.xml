@@ -3,7 +3,18 @@
 
     <t t-name="elite_finance.ReportViewer">
         <div class="o_elite_report_viewer d-flex flex-column h-100 w-100">
-            <div class="o_elite_report_bar d-flex flex-wrap align-items-center gap-2 px-3 py-2 border-bottom bg-view">
+            <!-- the control panel, as Enterprise lays it out: exports and
+                 the title on the left, the search and the filter pills on
+                 the right -->
+            <div class="o_elite_report_bar d-flex flex-wrap align-items-center gap-2 px-3 py-2 bg-view">
+                <button class="btn btn-primary btn-sm o_elite_report_pdf" t-on-click="() => this.exportAs('pdf')"
+                        t-att-disabled="state.busy">PDF</button>
+                <button class="btn btn-secondary btn-sm o_elite_report_xlsx" t-on-click="() => this.exportAs('xlsx')"
+                        t-att-disabled="state.busy">XLSX</button>
+                <span class="o_elite_title ms-1" t-esc="title"/>
+
+                <span class="flex-grow-1"/>
+
                 <div class="o_elite_search input-group input-group-sm w-auto">
                     <span class="input-group-text bg-transparent"><i class="fa fa-search" role="img" aria-label="Search"/></span>
                     <input type="search" class="form-control" name="search" placeholder="Search..."
@@ -16,7 +27,7 @@
                             t-att-disabled="state.busy">
                         <i class="fa fa-calendar me-1" role="img"/><t t-esc="periodLabel"/>
                     </button>
-                    <div t-if="state.menu === 'period'" class="dropdown-menu show o_elite_menu p-2">
+                    <div t-if="state.menu === 'period'" class="dropdown-menu dropdown-menu-end show o_elite_menu p-2">
                         <t t-if="!state.custom">
                             <a t-foreach="presets" t-as="preset" t-key="preset.key" class="dropdown-item"
                                href="#" t-on-click.prevent="() => this.pickPreset(preset)" t-esc="preset.label"/>
@@ -46,7 +57,7 @@
                             t-att-disabled="state.busy">
                         <i class="fa fa-sliders me-1" role="img"/><t t-esc="entriesLabel"/>
                     </button>
-                    <div t-if="state.menu === 'entries'" class="dropdown-menu show o_elite_menu">
+                    <div t-if="state.menu === 'entries'" class="dropdown-menu dropdown-menu-end show o_elite_menu">
                         <a class="dropdown-item" href="#" t-on-click.prevent="() => this.pickEntries('posted')">Posted Entries</a>
                         <a class="dropdown-item" href="#" t-on-click.prevent="() => this.pickEntries('all')">All Entries</a>
                     </div>
@@ -54,15 +65,12 @@
 
                 <button class="btn btn-light btn-sm border o_elite_report_more" t-on-click="openFilters"
                         t-att-disabled="state.busy"><i class="fa fa-filter me-1" role="img"/>More filters</button>
-
-                <span class="flex-grow-1"/>
-                <span class="fw-bold text-muted me-2" t-esc="title"/>
-                <button class="btn btn-light btn-sm border o_elite_report_pdf" t-on-click="() => this.exportAs('pdf')"
-                        t-att-disabled="state.busy"><i class="fa fa-file-pdf-o me-1" role="img"/>PDF</button>
-                <button class="btn btn-light btn-sm border o_elite_report_xlsx" t-on-click="() => this.exportAs('xlsx')"
-                        t-att-disabled="state.busy"><i class="fa fa-file-excel-o me-1" role="img"/>XLSX</button>
             </div>
-            <iframe t-if="state.url" t-ref="frame" class="o_elite_report_frame flex-grow-1 w-100 border-0 bg-white"
+
+            <!-- the notice band, full width, as Enterprise shows it -->
+            <div t-if="state.notice" class="o_elite_notice text-center py-2 px-3" t-esc="state.notice"/>
+
+            <iframe t-if="state.url" t-ref="frame" class="o_elite_report_frame flex-grow-1 w-100 border-0"
                     style="min-height: 75vh;" t-on-load="onFrameLoad"
                     t-att-src="state.url" t-key="state.version" title="Report"/>
         </div>

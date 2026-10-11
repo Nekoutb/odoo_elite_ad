@@ -1,20 +1,38 @@
-// The report viewer's bar, in Enterprise's shape: pill buttons with
-// their own small menus, a search box on the left, exports on the right.
+// The report viewer, in Enterprise's chrome: exports and the title on
+// the left of the control panel, the search and the filter pills on the
+// right, a full-width notice band, the report on the view background.
+.o_elite_report_viewer {
+    background: #f3f4f7;
+}
 .o_elite_report_bar {
+    border-bottom: 1px solid #e3e6ec;
+    .o_elite_title {
+        font-size: 15px;
+        color: #1c2230;
+    }
     .o_elite_pill {
         position: relative;
     }
     .o_elite_menu {
         position: absolute;
         top: 100%;
-        left: 0;
+        right: 0;
+        left: auto;
         min-width: 12rem;
         z-index: 1050;
     }
     .o_elite_search {
-        max-width: 16rem;
+        max-width: 14rem;
     }
     .btn-light.border {
         background: #fff;
+    }
+}
+.o_elite_notice {
+    background: #d6eef5;
+    color: #1b4f63;
+    font-size: 13px;
+    b {
+        font-weight: 700;
     }
 }

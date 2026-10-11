@@ -15,13 +15,6 @@
          ============================================================= -->
 
     <template id="trial_balance_base_elimelec" inherit_id="account_financial_report.report_trial_balance_base">
-        <!-- the unposted-entries notice, as Enterprise shows it -->
-        <xpath expr="//t[@t-call='account_financial_report.report_trial_balance_filters']" position="after">
-            <t t-set="unposted_count" t-value="only_posted_moves and res_company.env['account.move'].search_count([('state', '=', 'draft'), ('company_id', '=', res_company.id), ('date', '&lt;=', date_to)]) or 0"/>
-            <div t-if="unposted_count" class="tb-notice">
-                There are <b>unposted journal entries</b> prior to or included in this period.
-            </div>
-        </xpath>
         <!-- header: three occurrences -->
         <xpath expr="//t[@t-call='account_financial_report.report_trial_balance_lines_header']" position="attributes">
             <attribute name="t-call">elite_finance.tb_lines_header</attribute>
@@ -101,8 +94,8 @@
             <t t-set="acc_id" t-value="balance['id']"/>
             <div t-attf-class="act_as_row lines tb-line {{ 'tb-group-line' if is_group else '' }} tb-lvl-{{ balance.get('level', 0) }}">
                 <div class="act_as_cell left tb-c1">
-                    <span t-att-res-id="acc_id" t-att-res-model="'account.group' if is_group else 'account.account'" view-type="form">
-                        <b t-out="balance['code']"/> <t t-out="balance['name']"/>
+                    <span class="tb-name" t-att-res-id="acc_id" t-att-res-model="'account.group' if is_group else 'account.account'" view-type="form">
+                        <b t-out="balance['code']"/> <t t-out="balance['name']"/><span class="tb-kebab" title="Open the account">&#8942;</span>
                     </span>
                 </div>
                 <div t-attf-class="act_as_cell amount tb-num tb-c2 {{ 'neg' if balance['initial_balance'] &lt; 0 else ('zero' if not balance['initial_balance'] else '') }}">
@@ -117,17 +110,17 @@
                     <t t-if="is_group">
                         <t t-out="balance['debit']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
                     </t>
-                    <span t-else="" t-att-domain="[('account_id', '=', acc_id), ('date', '&gt;=', date_from), ('date', '&lt;=', date_to), ('debit', '&lt;&gt;', 0)] + aml_domain_common + aml_domain_extra" res-model="account.move.line">
+                    <a t-else="" class="tb-gl" href="#" t-att-data-account="acc_id" data-kind="debit" title="Open the General Ledger of this account for the period">
                         <t t-out="balance['debit']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
-                    </span>
+                    </a>
                 </div>
                 <div t-attf-class="act_as_cell amount tb-num tb-c4 {{ 'zero' if not balance['credit'] else '' }}">
                     <t t-if="is_group">
                         <t t-out="balance['credit']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
                     </t>
-                    <span t-else="" t-att-domain="[('account_id', '=', acc_id), ('date', '&gt;=', date_from), ('date', '&lt;=', date_to), ('credit', '&lt;&gt;', 0)] + aml_domain_common + aml_domain_extra" res-model="account.move.line">
+                    <a t-else="" class="tb-gl" href="#" t-att-data-account="acc_id" data-kind="credit" title="Open the General Ledger of this account for the period">
                         <t t-out="balance['credit']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
-                    </span>
+                    </a>
                 </div>
                 <div t-attf-class="act_as_cell amount tb-num tb-c5 {{ 'neg' if balance['ending_balance'] &lt; 0 else ('zero' if not balance['ending_balance'] else '') }}">
                     <t t-if="is_group">
