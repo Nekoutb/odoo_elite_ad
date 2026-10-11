@@ -32,9 +32,9 @@ jobs:
               sys.exit("Malformed XML:\n" + "\n".join(bad))
           PY
       - name: Manifest declares every data file that exists
-        run: python tools/check_manifest.py addons/elite_clearance addons/elite_clearance_teese
+        run: python tools/check_manifest.py addons/elite_clearance addons/elite_clearance_teese addons/elite_finance
       - name: No known Odoo 19 install-time pitfalls
-        run: python tools/check_view_pitfalls.py addons/elite_clearance addons/elite_clearance_teese
+        run: python tools/check_view_pitfalls.py addons/elite_clearance addons/elite_clearance_teese addons/elite_finance
 
   upgrade:
     name: Upgrade from what production runs
@@ -67,6 +67,33 @@ jobs:
         with:
           ref: prod
           path: prod-src
+      # The Finance module builds on four OCA repositories (19.0). They are
+      # checked out beside the repository, not vendored, and added to the
+      # addons path below. The server mounts the same four under /mnt/oca.
+      - name: OCA account-financial-reporting
+        uses: actions/checkout@v4
+        with:
+          repository: OCA/account-financial-reporting
+          ref: "19.0"
+          path: oca/account-financial-reporting
+      - name: OCA mis-builder
+        uses: actions/checkout@v4
+        with:
+          repository: OCA/mis-builder
+          ref: "19.0"
+          path: oca/mis-builder
+      - name: OCA server-ux
+        uses: actions/checkout@v4
+        with:
+          repository: OCA/server-ux
+          ref: "19.0"
+          path: oca/server-ux
+      - name: OCA reporting-engine
+        uses: actions/checkout@v4
+        with:
+          repository: OCA/reporting-engine
+          ref: "19.0"
+          path: oca/reporting-engine
       # The suite includes a browser test (tests/test_expense_dialog_tour.py):
       # Odoo drives a headless Chrome through the expense dialog. The odoo:19
       # image is Ubuntu noble, where apt's "chromium" is a snap stub with no
@@ -96,7 +123,7 @@ jobs:
         timeout-minutes: 25
         run: |
           set -euo pipefail
-          odoo -d up_test             --db_host=db --db_port=5432 --db_user=odoo --db_password=odoo             --addons-path=/usr/lib/python3/dist-packages/odoo/addons,"$GITHUB_WORKSPACE/addons"             -u elite_clearance -i elite_clearance_teese             --test-enable --test-tags /elite_clearance,/elite_clearance_teese             --log-level=test --stop-after-init 2>&1 | tee upgrade.log
+          odoo -d up_test             --db_host=db --db_port=5432 --db_user=odoo --db_password=odoo             --addons-path=/usr/lib/python3/dist-packages/odoo/addons,"$GITHUB_WORKSPACE/addons","$GITHUB_WORKSPACE/oca/account-financial-reporting","$GITHUB_WORKSPACE/oca/mis-builder","$GITHUB_WORKSPACE/oca/server-ux","$GITHUB_WORKSPACE/oca/reporting-engine"             -u elite_clearance -i elite_clearance_teese,elite_finance             --test-enable --test-tags /elite_clearance,/elite_clearance_teese,/elite_finance             --log-level=test --stop-after-init 2>&1 | tee upgrade.log
       - name: Fail on any test error in the upgraded database
         shell: bash
         run: |
@@ -153,6 +180,33 @@ jobs:
           --health-retries 20
     steps:
       - uses: actions/checkout@v4
+      # The Finance module builds on four OCA repositories (19.0). They are
+      # checked out beside the repository, not vendored, and added to the
+      # addons path below. The server mounts the same four under /mnt/oca.
+      - name: OCA account-financial-reporting
+        uses: actions/checkout@v4
+        with:
+          repository: OCA/account-financial-reporting
+          ref: "19.0"
+          path: oca/account-financial-reporting
+      - name: OCA mis-builder
+        uses: actions/checkout@v4
+        with:
+          repository: OCA/mis-builder
+          ref: "19.0"
+          path: oca/mis-builder
+      - name: OCA server-ux
+        uses: actions/checkout@v4
+        with:
+          repository: OCA/server-ux
+          ref: "19.0"
+          path: oca/server-ux
+      - name: OCA reporting-engine
+        uses: actions/checkout@v4
+        with:
+          repository: OCA/reporting-engine
+          ref: "19.0"
+          path: oca/reporting-engine
 
       # The suite includes a browser test (tests/test_expense_dialog_tour.py):
       # Odoo drives a headless Chrome through the expense dialog. The odoo:19
@@ -185,10 +239,10 @@ jobs:
           odoo \
             -d ci_clearance \
             --db_host=db --db_port=5432 --db_user=odoo --db_password=odoo \
-            --addons-path=/usr/lib/python3/dist-packages/odoo/addons,"$GITHUB_WORKSPACE/addons" \
-            -i elite_clearance,elite_clearance_teese \
+            --addons-path=/usr/lib/python3/dist-packages/odoo/addons,"$GITHUB_WORKSPACE/addons","$GITHUB_WORKSPACE/oca/account-financial-reporting","$GITHUB_WORKSPACE/oca/mis-builder","$GITHUB_WORKSPACE/oca/server-ux","$GITHUB_WORKSPACE/oca/reporting-engine" \
+            -i elite_clearance,elite_clearance_teese,elite_finance \
             --with-demo \
-            --test-enable --test-tags /elite_clearance,/elite_clearance_teese \
+            --test-enable --test-tags /elite_clearance,/elite_clearance_teese,/elite_finance \
             --log-level=test \
             --stop-after-init \
             2>&1 | tee odoo.log

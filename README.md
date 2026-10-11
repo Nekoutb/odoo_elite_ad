@@ -160,7 +160,15 @@ section: every file in progress on which the reader has keyed a cost.
 
 **The accounting app is called Finance.** Odoo Community labels it
 *Invoicing*; the module relabels the root menu *Finance* in every active
-language, the word the clearance teams use for the department.
+language, the word the clearance teams use for the department. A second
+module, **Finance (Elimelec)** (`addons/elite_finance`), shapes the app on
+the free OCA reports: a *Reports* section holding the general ledger,
+journal ledger, trial balance, open items, aged partner balance and VAT
+report, the *Financial Statements* (the SYSCOHADA *Compte de résultat* and
+*Bilan*, laid out by account class) and Odoo's own analyses; and, under
+*Customers* and *Vendors*, their ledger, open items and aged balance,
+opened on their own accounts. Every report previews on screen (*View*)
+with its filters before it is exported to PDF or Excel.
 
 **Recharge review, line by line.** Any disbursement charged at other than
 what it cost sends the bill for review — even when an overcharge on one line

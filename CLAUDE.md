@@ -9,11 +9,16 @@ working memory that is *not* obvious from the code.
   AI/process automation. Formal tone; never invent facts; verify everything;
   currency XAF; dates DD/MM/YYYY. English for technical material.
 - This folder is a local Odoo 19 **Community** lab (docker compose:
-  odoo:19 + postgres:16, port 8069). `addons/elite_clearance` is the ONLY
-  deliverable — everything else here is disposable scaffolding.
-- Production target: fresh Odoo.sh project on 19.0 (Enterprise subscription
-  <in the Odoo.sh project settings — never in this repository, it is public>, Custom plan). The old Odoo Online db (elite-advisors,
-  saas~19.3) holds no data and will lapse. Never build against 19.3 minor APIs.
+  odoo:19 + postgres:16, port 8069). `addons/elite_clearance` is the
+  deliverable, with `addons/elite_finance` (the Finance app's shape, on
+  OCA modules, since 11/10/2026) and `addons/elite_clearance_teese` (the
+  one-off importer) beside it — everything else here is disposable
+  scaffolding.
+- Production target, since 11/10/2026: a self-hosted Odoo 19 **Community**
+  server (Vultr, Docker, Caddy) — `docs/deployment-server.md`. Odoo.sh
+  (Enterprise) still runs production until the cutover and is then
+  cancelled; `docs/deployment-odoo-sh.md` describes it. Never build
+  against 19.3 minor APIs, and never against an Enterprise module.
 
 ## The module: addons/elite_clearance (v19.0.48.0.0)
 Customs clearance job files for a logistics/clearance services provider.
@@ -692,6 +697,34 @@ Customs clearance job files for a logistics/clearance services provider.
      cost that are not approved whichever way it is called; and a
      refusal resets `recharge_amount` to 0 on the file AND the lines, or
      the screen would propose the refused figures again for ever.
+- **`addons/elite_finance` (owner, 11/10/2026): the Finance app's shape.**
+  Depends on `account_financial_report` and `mis_builder` (OCA 19.0 -
+  CI checks out four OCA repositories beside the code; the server mounts
+  the same four at `/mnt/oca`). It (1) makes the OCA reports menu a
+  SECTION of Finance named "Reports", with the MIS statements
+  ("Financial Statements") and Odoo's analyses under it, and retires
+  Odoo's "Reporting" (`active=False` - Community leaves it with empty
+  folders); (2) gives Customers and Vendors their ledger, open items and
+  aged balance: the OCA wizard opened with context
+  `elite_finance_partner_type` = receivable|payable, whose `default_get`
+  (`models/report_wizards.py`, a mixin on the three wizards) ticks the
+  "accounts only" switch AND fills `account_ids` by calling the wizard's
+  own onchange - a context default alone leaves the list empty; (3) ships
+  the two SYSCOHADA statements as `mis.report` data, laid out by account
+  class (`pbale`/`nbale` split class 4 and 5 between the two sides).
+  Every label it sets or renames is in `hooks.LABELS`, written into
+  EVERY active language by the post-init hook: a data record writes
+  en_US only and OCA's French file had already put "Rapports comptables
+  OCA" on the menu. The OCA wizards preview on screen with their View
+  button; nothing had to be built for that. Tests:
+  `elite_finance/tests/test_finance_menus.py`.
+- **After uninstalling Enterprise, run `-u all` (11/10/2026).**
+  `account_accountant` re-parents account's section menus (Dashboard,
+  Customers, Vendors, Accounting, Review, Reporting, Configuration) under
+  its own root; deleting that root at uninstall left them floating at
+  the TOP LEVEL beside the apps, with Finance empty - the owner read it
+  as "Accounting is not renamed". `-u all` rewrites every core record to
+  its Community definition; order in `docs/deployment-server.md`.
 - **The accounting app reads "Finance" (owner, 11/10/2026)** - the move
   to Community, where account's root menu is "Invoicing" (Enterprise's
   account_accountant relabels it "Accounting"). `clearance_menus.xml`
@@ -952,11 +985,14 @@ Customs clearance job files for a logistics/clearance services provider.
 - Apply code changes: `docker compose restart odoo` then Apps → module → Upgrade
   (XML/schema need the Upgrade; Python needs the restart).
 - Logs: `docker compose logs odoo`
-- Tests (throwaway db, currently 304 tests across both modules, must stay green):
+- Tests (throwaway db, currently 309 tests across the three modules, must stay green):
   `docker compose run --rm odoo odoo -d clr_test -i elite_clearance,elite_clearance_teese --with-demo --test-enable --test-tags /elite_clearance,/elite_clearance_teese --stop-after-init`
 - Static repo checks CI also runs:
-  `python tools/check_manifest.py addons/elite_clearance addons/elite_clearance_teese`
-  `python tools/check_view_pitfalls.py addons/elite_clearance addons/elite_clearance_teese`
+  `python tools/check_manifest.py addons/elite_clearance addons/elite_clearance_teese addons/elite_finance`
+  `python tools/check_view_pitfalls.py addons/elite_clearance addons/elite_clearance_teese addons/elite_finance`
+- `elite_finance` needs the OCA 19.0 repositories account-financial-reporting,
+  mis-builder, server-ux and reporting-engine on the addons path (see
+  `.github/workflows/tests.yml` for the exact checkouts).
 
 ## Roadmap / backlog (owner-approved)
 1. Odoo.sh: project exists, production branch is `prod` (Odoo.sh pins the

@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- =============================================================
+         Reports: one section of Finance (owner, 11/10/2026).
+         The OCA accounting reports menu is renamed and moved up from
+         Odoo's Reporting to sit beside Customers and Vendors; the MIS
+         statements and Odoo's own analysis reports join it; Odoo's
+         Reporting, which Community leaves with empty folders, is
+         retired. These records belong to other modules: an update of
+         THOSE modules puts them back where they were until this module
+         is updated again, which `-u all` does in the right order.
+         Labels in French: hooks.py.
+         ============================================================= -->
+    <record id="account_financial_report.menu_oca_reports" model="ir.ui.menu">
+        <field name="name">Reports</field>
+        <field name="parent_id" ref="account.menu_finance"/>
+        <field name="sequence">20</field>
+    </record>
+    <record id="mis_builder.mis_report_finance_menu" model="ir.ui.menu">
+        <field name="name">Financial Statements</field>
+        <field name="parent_id" ref="account_financial_report.menu_oca_reports"/>
+        <field name="sequence">60</field>
+    </record>
+    <record id="account.account_reports_management_menu" model="ir.ui.menu">
+        <field name="parent_id" ref="account_financial_report.menu_oca_reports"/>
+        <field name="sequence">70</field>
+    </record>
+    <record id="account.menu_finance_reports" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+
+    <!-- =============================================================
+         Customers and Vendors carry their reports. Each opens the OCA
+         wizard on receivable or payable accounts only (the context key
+         is read by models/report_wizards.py), previews on screen with
+         View, and exports to PDF or Excel from the same dialog.
+         ============================================================= -->
+    <record id="action_customer_ledger" model="ir.actions.act_window">
+        <field name="name">Customer Ledger</field>
+        <field name="res_model">general.ledger.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'elite_finance_partner_type': 'receivable'}</field>
+    </record>
+    <record id="action_customer_open_items" model="ir.actions.act_window">
+        <field name="name">Customer Open Items</field>
+        <field name="res_model">open.items.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'elite_finance_partner_type': 'receivable'}</field>
+    </record>
+    <record id="action_aged_receivables" model="ir.actions.act_window">
+        <field name="name">Aged Receivables</field>
+        <field name="res_model">aged.partner.balance.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'elite_finance_partner_type': 'receivable'}</field>
+    </record>
+    <menuitem id="menu_customer_ledger" name="Customer Ledger"
+              parent="account.menu_finance_receivables" action="action_customer_ledger"
+              sequence="50" groups="account.group_account_readonly"/>
+    <menuitem id="menu_customer_open_items" name="Customer Open Items"
+              parent="account.menu_finance_receivables" action="action_customer_open_items"
+              sequence="51" groups="account.group_account_readonly"/>
+    <menuitem id="menu_aged_receivables" name="Aged Receivables"
+              parent="account.menu_finance_receivables" action="action_aged_receivables"
+              sequence="52" groups="account.group_account_readonly"/>
+
+    <record id="action_vendor_ledger" model="ir.actions.act_window">
+        <field name="name">Vendor Ledger</field>
+        <field name="res_model">general.ledger.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'elite_finance_partner_type': 'payable'}</field>
+    </record>
+    <record id="action_vendor_open_items" model="ir.actions.act_window">
+        <field name="name">Vendor Open Items</field>
+        <field name="res_model">open.items.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'elite_finance_partner_type': 'payable'}</field>
+    </record>
+    <record id="action_aged_payables" model="ir.actions.act_window">
+        <field name="name">Aged Payables</field>
+        <field name="res_model">aged.partner.balance.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'elite_finance_partner_type': 'payable'}</field>
+    </record>
+    <menuitem id="menu_vendor_ledger" name="Vendor Ledger"
+              parent="account.menu_finance_payables" action="action_vendor_ledger"
+              sequence="50" groups="account.group_account_readonly"/>
+    <menuitem id="menu_vendor_open_items" name="Vendor Open Items"
+              parent="account.menu_finance_payables" action="action_vendor_open_items"
+              sequence="51" groups="account.group_account_readonly"/>
+    <menuitem id="menu_aged_payables" name="Aged Payables"
+              parent="account.menu_finance_payables" action="action_aged_payables"
+              sequence="52" groups="account.group_account_readonly"/>
+
+</odoo>

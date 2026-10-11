@@ -1,0 +1,326 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- =============================================================
+         The two SYSCOHADA statements, laid out by account class with
+         MIS Builder (owner, 11/10/2026). Expressions are MIS Builder's:
+         bal = balance over the period, bale = balance at the end,
+         pbale / nbale = end balance of the accounts whose balance is
+         positive / negative - which is how class 4 and class 5 are split
+         between the two sides of the balance sheet. Charges are debits,
+         so every charge line is negated to read as a deduction and the
+         result adds up. Not noupdate: a corrected layout deploys with
+         the module. Refining to the official line numbers is the next
+         step once there are figures to read against.
+         ============================================================= -->
+
+    <!-- Compte de résultat -->
+    <record id="mis_report_compte_de_resultat" model="mis.report">
+        <field name="name">Compte de résultat (SYSCOHADA)</field>
+    </record>
+
+    <record id="kpi_cr_ca" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_compte_de_resultat"/>
+        <field name="name">ca</field>
+        <field name="description">Chiffre d'affaires (70)</field>
+        <field name="expression">-bal[70%]</field>
+        <field name="sequence">10</field>
+        <field name="auto_expand_accounts" eval="True"/>
+    </record>
+    <record id="kpi_cr_autp" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_compte_de_resultat"/>
+        <field name="name">autp</field>
+        <field name="description">Autres produits d'exploitation (71-75, 78)</field>
+        <field name="expression">-bal[71%] - bal[72%] - bal[73%] - bal[75%] - bal[78%]</field>
+        <field name="sequence">20</field>
+        <field name="auto_expand_accounts" eval="True"/>
+    </record>
+    <record id="kpi_cr_rep" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_compte_de_resultat"/>
+        <field name="name">rep</field>
+        <field name="description">Reprises de provisions (79)</field>
+        <field name="expression">-bal[79%]</field>
+        <field name="sequence">30</field>
+        <field name="auto_expand_accounts" eval="True"/>
+    </record>
+    <record id="kpi_cr_prod" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_compte_de_resultat"/>
+        <field name="name">prod</field>
+        <field name="description">PRODUITS D'EXPLOITATION</field>
+        <field name="expression">ca + autp + rep</field>
+        <field name="sequence">40</field>
+    </record>
+    <record id="kpi_cr_ach" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_compte_de_resultat"/>
+        <field name="name">ach</field>
+        <field name="description">Achats et variations de stocks (60)</field>
+        <field name="expression">-bal[60%]</field>
+        <field name="sequence">50</field>
+        <field name="auto_expand_accounts" eval="True"/>
+    </record>
+    <record id="kpi_cr_tra" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_compte_de_resultat"/>
+        <field name="name">tra</field>
+        <field name="description">Transports (61)</field>
+        <field name="expression">-bal[61%]</field>
+        <field name="sequence">60</field>
+        <field name="auto_expand_accounts" eval="True"/>
+    </record>
+    <record id="kpi_cr_sext" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_compte_de_resultat"/>
+        <field name="name">sext</field>
+        <field name="description">Services extérieurs (62, 63)</field>
+        <field name="expression">-bal[62%] - bal[63%]</field>
+        <field name="sequence">70</field>
+        <field name="auto_expand_accounts" eval="True"/>
+    </record>
+    <record id="kpi_cr_imp" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_compte_de_resultat"/>
+        <field name="name">imp</field>
+        <field name="description">Impôts et taxes (64)</field>
+        <field name="expression">-bal[64%]</field>
+        <field name="sequence">80</field>
+        <field name="auto_expand_accounts" eval="True"/>
+    </record>
+    <record id="kpi_cr_autc" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_compte_de_resultat"/>
+        <field name="name">autc</field>
+        <field name="description">Autres charges (65)</field>
+        <field name="expression">-bal[65%]</field>
+        <field name="sequence">90</field>
+        <field name="auto_expand_accounts" eval="True"/>
+    </record>
+    <record id="kpi_cr_pers" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_compte_de_resultat"/>
+        <field name="name">pers</field>
+        <field name="description">Charges de personnel (66)</field>
+        <field name="expression">-bal[66%]</field>
+        <field name="sequence">100</field>
+        <field name="auto_expand_accounts" eval="True"/>
+    </record>
+    <record id="kpi_cr_dot" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_compte_de_resultat"/>
+        <field name="name">dot</field>
+        <field name="description">Dotations aux amortissements et provisions (68)</field>
+        <field name="expression">-bal[68%]</field>
+        <field name="sequence">110</field>
+        <field name="auto_expand_accounts" eval="True"/>
+    </record>
+    <record id="kpi_cr_chex" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_compte_de_resultat"/>
+        <field name="name">chex</field>
+        <field name="description">CHARGES D'EXPLOITATION</field>
+        <field name="expression">ach + tra + sext + imp + autc + pers + dot</field>
+        <field name="sequence">120</field>
+    </record>
+    <record id="kpi_cr_rex" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_compte_de_resultat"/>
+        <field name="name">rex</field>
+        <field name="description">RÉSULTAT D'EXPLOITATION</field>
+        <field name="expression">prod + chex</field>
+        <field name="sequence">130</field>
+    </record>
+    <record id="kpi_cr_pfin" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_compte_de_resultat"/>
+        <field name="name">pfin</field>
+        <field name="description">Produits financiers (77)</field>
+        <field name="expression">-bal[77%]</field>
+        <field name="sequence">140</field>
+        <field name="auto_expand_accounts" eval="True"/>
+    </record>
+    <record id="kpi_cr_cfin" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_compte_de_resultat"/>
+        <field name="name">cfin</field>
+        <field name="description">Frais financiers (67)</field>
+        <field name="expression">-bal[67%]</field>
+        <field name="sequence">150</field>
+        <field name="auto_expand_accounts" eval="True"/>
+    </record>
+    <record id="kpi_cr_rfin" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_compte_de_resultat"/>
+        <field name="name">rfin</field>
+        <field name="description">RÉSULTAT FINANCIER</field>
+        <field name="expression">pfin + cfin</field>
+        <field name="sequence">160</field>
+    </record>
+    <record id="kpi_cr_rao" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_compte_de_resultat"/>
+        <field name="name">rao</field>
+        <field name="description">RÉSULTAT DES ACTIVITÉS ORDINAIRES</field>
+        <field name="expression">rex + rfin</field>
+        <field name="sequence">170</field>
+    </record>
+    <record id="kpi_cr_phao" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_compte_de_resultat"/>
+        <field name="name">phao</field>
+        <field name="description">Produits HAO (82, 84, 86, 88)</field>
+        <field name="expression">-bal[82%] - bal[84%] - bal[86%] - bal[88%]</field>
+        <field name="sequence">180</field>
+        <field name="auto_expand_accounts" eval="True"/>
+    </record>
+    <record id="kpi_cr_chao" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_compte_de_resultat"/>
+        <field name="name">chao</field>
+        <field name="description">Charges HAO (81, 83, 85)</field>
+        <field name="expression">-bal[81%] - bal[83%] - bal[85%]</field>
+        <field name="sequence">190</field>
+        <field name="auto_expand_accounts" eval="True"/>
+    </record>
+    <record id="kpi_cr_rhao" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_compte_de_resultat"/>
+        <field name="name">rhao</field>
+        <field name="description">RÉSULTAT HORS ACTIVITÉS ORDINAIRES</field>
+        <field name="expression">phao + chao</field>
+        <field name="sequence">200</field>
+    </record>
+    <record id="kpi_cr_part" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_compte_de_resultat"/>
+        <field name="name">part</field>
+        <field name="description">Participation des travailleurs (87)</field>
+        <field name="expression">-bal[87%]</field>
+        <field name="sequence">210</field>
+        <field name="auto_expand_accounts" eval="True"/>
+    </record>
+    <record id="kpi_cr_is" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_compte_de_resultat"/>
+        <field name="name">impres</field>
+        <field name="description">Impôts sur le résultat (89)</field>
+        <field name="expression">-bal[89%]</field>
+        <field name="sequence">220</field>
+        <field name="auto_expand_accounts" eval="True"/>
+    </record>
+    <record id="kpi_cr_rnet" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_compte_de_resultat"/>
+        <field name="name">rnet</field>
+        <field name="description">RÉSULTAT NET</field>
+        <field name="expression">rao + rhao + part + impres</field>
+        <field name="sequence">230</field>
+    </record>
+
+    <record id="mis_instance_compte_de_resultat" model="mis.report.instance">
+        <field name="name">Compte de résultat (SYSCOHADA)</field>
+        <field name="report_id" ref="mis_report_compte_de_resultat"/>
+        <field name="target_move">posted</field>
+    </record>
+    <record id="mis_period_compte_de_resultat" model="mis.report.instance.period">
+        <field name="report_instance_id" ref="mis_instance_compte_de_resultat"/>
+        <field name="name">Exercice en cours</field>
+        <field name="mode">relative</field>
+        <field name="type">y</field>
+        <field name="offset">0</field>
+        <field name="duration">1</field>
+    </record>
+
+    <!-- Bilan -->
+    <record id="mis_report_bilan" model="mis.report">
+        <field name="name">Bilan (SYSCOHADA)</field>
+    </record>
+
+    <record id="kpi_bl_immo" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_bilan"/>
+        <field name="name">immo</field>
+        <field name="description">Actif immobilisé (classe 2, net)</field>
+        <field name="expression">bale[2%]</field>
+        <field name="sequence">10</field>
+        <field name="auto_expand_accounts" eval="True"/>
+    </record>
+    <record id="kpi_bl_stk" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_bilan"/>
+        <field name="name">stk</field>
+        <field name="description">Stocks (classe 3, net)</field>
+        <field name="expression">bale[3%]</field>
+        <field name="sequence">20</field>
+        <field name="auto_expand_accounts" eval="True"/>
+    </record>
+    <record id="kpi_bl_cre" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_bilan"/>
+        <field name="name">cre</field>
+        <field name="description">Créances et emplois assimilés (classe 4, soldes débiteurs)</field>
+        <field name="expression">pbale[4%]</field>
+        <field name="sequence">30</field>
+        <field name="auto_expand_accounts" eval="True"/>
+    </record>
+    <record id="kpi_bl_tres" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_bilan"/>
+        <field name="name">tres</field>
+        <field name="description">Trésorerie - actif (classe 5, soldes débiteurs)</field>
+        <field name="expression">pbale[5%]</field>
+        <field name="sequence">40</field>
+        <field name="auto_expand_accounts" eval="True"/>
+    </record>
+    <record id="kpi_bl_actif" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_bilan"/>
+        <field name="name">actif</field>
+        <field name="description">TOTAL ACTIF</field>
+        <field name="expression">immo + stk + cre + tres</field>
+        <field name="sequence">50</field>
+    </record>
+    <record id="kpi_bl_cap" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_bilan"/>
+        <field name="name">cap</field>
+        <field name="description">Capitaux propres et ressources assimilées (10-15)</field>
+        <field name="expression">-bale[10%] - bale[11%] - bale[12%] - bale[13%] - bale[14%] - bale[15%]</field>
+        <field name="sequence">60</field>
+        <field name="auto_expand_accounts" eval="True"/>
+    </record>
+    <record id="kpi_bl_res" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_bilan"/>
+        <field name="name">res</field>
+        <field name="description">Résultat de l'exercice (classes 6 et 7)</field>
+        <field name="expression">-bale[6%] - bale[7%]</field>
+        <field name="sequence">70</field>
+    </record>
+    <record id="kpi_bl_dfin" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_bilan"/>
+        <field name="name">dfin</field>
+        <field name="description">Dettes financières et ressources assimilées (16-19)</field>
+        <field name="expression">-bale[16%] - bale[17%] - bale[18%] - bale[19%]</field>
+        <field name="sequence">80</field>
+        <field name="auto_expand_accounts" eval="True"/>
+    </record>
+    <record id="kpi_bl_dcir" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_bilan"/>
+        <field name="name">dcir</field>
+        <field name="description">Passif circulant (classe 4, soldes créditeurs)</field>
+        <field name="expression">-nbale[4%]</field>
+        <field name="sequence">90</field>
+        <field name="auto_expand_accounts" eval="True"/>
+    </record>
+    <record id="kpi_bl_tresp" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_bilan"/>
+        <field name="name">tresp</field>
+        <field name="description">Trésorerie - passif (classe 5, soldes créditeurs)</field>
+        <field name="expression">-nbale[5%]</field>
+        <field name="sequence">100</field>
+        <field name="auto_expand_accounts" eval="True"/>
+    </record>
+    <record id="kpi_bl_passif" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_bilan"/>
+        <field name="name">passif</field>
+        <field name="description">TOTAL PASSIF</field>
+        <field name="expression">cap + res + dfin + dcir + tresp</field>
+        <field name="sequence">110</field>
+    </record>
+    <record id="kpi_bl_ecart" model="mis.report.kpi">
+        <field name="report_id" ref="mis_report_bilan"/>
+        <field name="name">ecart</field>
+        <field name="description">Écart actif - passif (doit être nul)</field>
+        <field name="expression">actif - passif</field>
+        <field name="sequence">120</field>
+    </record>
+
+    <record id="mis_instance_bilan" model="mis.report.instance">
+        <field name="name">Bilan (SYSCOHADA)</field>
+        <field name="report_id" ref="mis_report_bilan"/>
+        <field name="target_move">posted</field>
+    </record>
+    <record id="mis_period_bilan" model="mis.report.instance.period">
+        <field name="report_instance_id" ref="mis_instance_bilan"/>
+        <field name="name">Exercice en cours</field>
+        <field name="mode">relative</field>
+        <field name="type">y</field>
+        <field name="offset">0</field>
+        <field name="duration">1</field>
+    </record>
+
+</odoo>
