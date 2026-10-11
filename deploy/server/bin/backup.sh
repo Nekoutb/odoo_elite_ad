@@ -66,6 +66,7 @@ else
     docker compose exec -T db psql -U odoo -d "$DB" -Atc "
         SELECT json_build_object(
             'db', '$DB', 'environment', '$ENV_NAME', 'taken', now(),
+            'commit', '$(git -C "$dir_env/repo" rev-parse --short HEAD 2> /dev/null || echo "")',
             'modules', (SELECT json_object_agg(name, latest_version) FROM ir_module_module WHERE name LIKE 'elite%' AND state = 'installed'),
             'attachments', (SELECT count(*) FROM ir_attachment WHERE store_fname IS NOT NULL),
             'filestore_files', $( [ -d "$FILESTORE" ] && find "$FILESTORE" -type f | wc -l || echo 0 ),
