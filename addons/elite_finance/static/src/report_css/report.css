@@ -1,0 +1,77 @@
+/* The OCA accounting reports as Elimelec reads them (owner, 11/10/2026):
+   a compact filter summary above the table instead of a second table
+   of four centred columns, figures in tabular digits aligned right with
+   no currency symbol (stripped by models/ir_qweb_fields.py), the code
+   column narrow and the account column wide. Loaded by the OCA layouts
+   through views/report_layouts.xml, so it applies to these reports and
+   to nothing else. */
+
+.o_account_financial_reports_page {
+    font-variant-numeric: tabular-nums;
+}
+
+/* the filter summary */
+.o_account_financial_reports_page .data_table {
+    width: auto !important;
+    margin: 0 0 10px 0;
+    font-size: 10px;
+}
+.o_account_financial_reports_page .data_table .act_as_cell {
+    text-align: left;
+    padding: 2px 10px 2px 0;
+    border: 0;
+    vertical-align: top;
+}
+.o_account_financial_reports_page .data_table .act_as_row.labels {
+    background-color: transparent !important;
+    font-weight: normal;
+    color: #666;
+}
+.o_account_financial_reports_page .data_table .act_as_row.labels .act_as_cell {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+/* the report table */
+.o_account_financial_reports_page .list_table {
+    border-top: 1px solid #999;
+    border-bottom: 1px solid #999;
+}
+.o_account_financial_reports_page .list_table .act_as_cell {
+    padding: 3px 6px;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+.o_account_financial_reports_page .list_table .act_as_row.labels .act_as_cell {
+    text-align: center;
+    font-weight: bold;
+    border-bottom: 1px solid #999 !important;
+}
+.o_account_financial_reports_page .list_table .act_as_cell.amount,
+.o_account_financial_reports_page .list_table .act_as_cell.right {
+    text-align: right;
+}
+.o_account_financial_reports_page .list_table .act_as_cell.left,
+.o_account_financial_reports_page .list_table .act_as_cell.first_column {
+    text-align: left;
+}
+.o_account_financial_reports_page .list_table .act_as_cell.left {
+    white-space: normal;
+}
+.o_account_financial_reports_page .totals_table .act_as_cell {
+    padding: 3px 6px;
+    white-space: nowrap;
+}
+.o_account_financial_reports_page .act_as_cell .oe_currency_value {
+    white-space: nowrap;
+}
+
+/* on screen, a little more room than on paper */
+.container .o_account_financial_reports_page .list_table,
+.container .o_account_financial_reports_page .totals_table {
+    font-size: 11px;
+}
+.container .o_account_financial_reports_page .list_table .act_as_cell {
+    padding: 4px 8px;
+}

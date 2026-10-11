@@ -27,11 +27,12 @@ before it is exported.
     'author': "Elite Advisors",
     'website': "https://eliteadvisors.cm-ea.com",
     'category': 'Accounting/Accounting',
-    'version': '19.0.2.0.0',
+    'version': '19.0.3.0.0',
     'license': 'LGPL-3',
     'depends': ['account', 'account_financial_report', 'mis_builder'],
     'data': [
         'views/report_wizard_views.xml',
+        'views/report_layouts.xml',
         'views/finance_menus.xml',
         'data/mis_syscohada.xml',
     ],

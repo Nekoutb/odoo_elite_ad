@@ -742,6 +742,18 @@ Customs clearance job files for a logistics/clearance services provider.
   two statements open on their MIS result page through `ir.actions.server`
   records calling `mis.report.instance.preview()`. Tour:
   `test_report_viewer_tour.py` (admin, general ledger).
+  **(5) Bare figures (19.0.3).** The OCA templates render every amount
+  through the monetary widget ("45,000 FCFA" in every cell) and the
+  journal ledger through the float widget at two decimals. The mixin's
+  `button_export_html/pdf/xlsx` run under context
+  `elite_finance_bare_amounts`, which rides in the action's context (the
+  HTML route and the PDF download render under it), and
+  `models/ir_qweb_fields.py` strips the symbol / uses the currency's own
+  decimals under that flag ONLY. The mixin is listed FIRST in each
+  wizard's `_inherit` so its methods win over the OCA abstract wizard's.
+  `views/report_layouts.xml` adds `static/src/report_css/report.css`
+  after the OCA stylesheet in `account_financial_report.internal_layout`:
+  filter block as a summary, tabular digits right-aligned.
 - **After uninstalling Enterprise, run `-u all` (11/10/2026).**
   `account_accountant` re-parents account's section menus (Dashboard,
   Customers, Vendors, Accounting, Review, Reporting, Configuration) under
@@ -1009,7 +1021,7 @@ Customs clearance job files for a logistics/clearance services provider.
 - Apply code changes: `docker compose restart odoo` then Apps → module → Upgrade
   (XML/schema need the Upgrade; Python needs the restart).
 - Logs: `docker compose logs odoo`
-- Tests (throwaway db, currently 314 tests across the three modules, must stay green):
+- Tests (throwaway db, currently 315 tests across the three modules, must stay green):
   `docker compose run --rm odoo odoo -d clr_test -i elite_clearance,elite_clearance_teese --with-demo --test-enable --test-tags /elite_clearance,/elite_clearance_teese --stop-after-init`
 - Static repo checks CI also runs:
   `python tools/check_manifest.py addons/elite_clearance addons/elite_clearance_teese addons/elite_finance`

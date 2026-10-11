@@ -63,6 +63,24 @@ class ReportViewerMixin(models.AbstractModel):
             res['account_ids'] = [(6, 0, accounts.ids)]
         return res
 
+    # Every export of these reports renders bare figures: no currency
+    # symbol after each amount, the currency's own decimals (see
+    # ir_qweb_fields.py). The flag rides in the action's context, which
+    # is what the HTML route and the PDF download render under. The
+    # mixin is listed FIRST in each wizard's _inherit so these win over
+    # the OCA abstract wizard's own methods.
+    def button_export_html(self):
+        return super(ReportViewerMixin, self.with_context(
+            elite_finance_bare_amounts=True)).button_export_html()
+
+    def button_export_pdf(self):
+        return super(ReportViewerMixin, self.with_context(
+            elite_finance_bare_amounts=True)).button_export_pdf()
+
+    def button_export_xlsx(self):
+        return super(ReportViewerMixin, self.with_context(
+            elite_finance_bare_amounts=True)).button_export_xlsx()
+
     def elite_finance_viewer_state(self):
         """The HTML report for this wizard's current values, and the quick
         filters to show above it."""
@@ -95,29 +113,29 @@ class ReportViewerMixin(models.AbstractModel):
 
 class GeneralLedgerWizard(models.TransientModel):
     _name = 'general.ledger.report.wizard'
-    _inherit = ['general.ledger.report.wizard', 'elite_finance.report_viewer_mixin']
+    _inherit = ['elite_finance.report_viewer_mixin', 'general.ledger.report.wizard']
 
 
 class JournalLedgerWizard(models.TransientModel):
     _name = 'journal.ledger.report.wizard'
-    _inherit = ['journal.ledger.report.wizard', 'elite_finance.report_viewer_mixin']
+    _inherit = ['elite_finance.report_viewer_mixin', 'journal.ledger.report.wizard']
 
 
 class TrialBalanceWizard(models.TransientModel):
     _name = 'trial.balance.report.wizard'
-    _inherit = ['trial.balance.report.wizard', 'elite_finance.report_viewer_mixin']
+    _inherit = ['elite_finance.report_viewer_mixin', 'trial.balance.report.wizard']
 
 
 class OpenItemsWizard(models.TransientModel):
     _name = 'open.items.report.wizard'
-    _inherit = ['open.items.report.wizard', 'elite_finance.report_viewer_mixin']
+    _inherit = ['elite_finance.report_viewer_mixin', 'open.items.report.wizard']
 
 
 class AgedPartnerBalanceWizard(models.TransientModel):
     _name = 'aged.partner.balance.report.wizard'
-    _inherit = ['aged.partner.balance.report.wizard', 'elite_finance.report_viewer_mixin']
+    _inherit = ['elite_finance.report_viewer_mixin', 'aged.partner.balance.report.wizard']
 
 
 class VatReportWizard(models.TransientModel):
     _name = 'vat.report.wizard'
-    _inherit = ['vat.report.wizard', 'elite_finance.report_viewer_mixin']
+    _inherit = ['elite_finance.report_viewer_mixin', 'vat.report.wizard']

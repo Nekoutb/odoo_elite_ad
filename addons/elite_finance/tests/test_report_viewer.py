@@ -58,7 +58,31 @@ class TestReportViewer(TransactionCase):
         after = wizard.elite_finance_viewer_state()['data']
         self.assertNotEqual(before, after)
 
-    def test_04_the_statements_open_on_their_result_page(self):
+    def test_04_the_figures_carry_no_currency_symbol_and_no_stray_decimals(self):
+        self.env.company.external_report_layout_id = self.env.ref('web.external_layout_standard')
+        currency = self.env.company.currency_id
+        wizard = self.env['trial.balance.report.wizard'].create({})
+        state = wizard.elite_finance_viewer_state()
+        self.assertTrue(state['context'].get('elite_finance_bare_amounts'),
+                        "the flag rides in the action context the viewer renders under")
+        html = self.env['ir.actions.report'].with_context(
+            **state['context'])._render_qweb_html(
+                state['report_name'], wizard.ids, data=state['data'])[0].decode()
+        self.assertIn('oe_currency_value', html)
+        self.assertNotIn(currency.symbol, html.split('<div class="article', 1)[1],
+                         "no symbol after the figures (the title may name the currency)")
+        if currency.decimal_places == 0:
+            self.assertNotRegex(html, r'oe_currency_value">[\d,. ]*[.,]\d\d<')
+        # the exports carry the flag too
+        for method in ('button_export_pdf', 'button_export_xlsx'):
+            action = getattr(wizard.with_context(discard_logo_check=True), method)()
+            self.assertTrue(action['context'].get('elite_finance_bare_amounts'), method)
+        # and nothing outside these reports is touched
+        plain = self.env['ir.qweb.field.monetary'].value_to_html(
+            1234.0, {'display_currency': currency})
+        self.assertIn(currency.symbol, plain)
+
+    def test_05_the_statements_open_on_their_result_page(self):
         ref = self.env.ref
         for server, instance in (
                 ('elite_finance.server_open_bilan', 'elite_finance.mis_instance_bilan'),

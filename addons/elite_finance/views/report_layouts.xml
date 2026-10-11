@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- The OCA reports load their own stylesheet from their layout;
+         ours follows it, on screen and on paper, so the figures sit in
+         tabular digits aligned right and the filter block reads as a
+         summary rather than a second table (owner, 11/10/2026). -->
+    <template id="internal_layout_elimelec" inherit_id="account_financial_report.internal_layout">
+        <xpath expr="//link" position="after">
+            <link href="/elite_finance/static/src/report_css/report.css" rel="stylesheet"/>
+        </xpath>
+    </template>
+
+</odoo>
