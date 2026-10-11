@@ -16,7 +16,7 @@ would, in ``default_get`` - a context default alone would leave the list
 empty, because defaults do not run onchanges.
 """
 
-from odoo import api, models
+from odoo import api, fields, models
 
 # the quick filters the bar offers, when the wizard has them
 QUICK_FILTERS = (
@@ -34,6 +34,19 @@ class ReportViewerMixin(models.AbstractModel):
     @api.model
     def default_get(self, fields_list):
         res = super().default_get(fields_list)
+        # The viewer creates the wizard with no values at all. Most OCA
+        # wizards default their dates to the fiscal year to date; the
+        # journal ledger does not, and its dates are required.
+        today = fields.Date.context_today(self)
+        if 'date_to' in self._fields and not res.get('date_to'):
+            res['date_to'] = today
+        if 'date_from' in self._fields and self._fields['date_from'].required \
+                and not res.get('date_from'):
+            company = self.env['res.company'].browse(res.get('company_id')) if res.get('company_id') \
+                else self.env.company
+            res['date_from'] = company.compute_fiscalyear_dates(today)['date_from']
+        if 'date_at' in self._fields and not res.get('date_at'):
+            res['date_at'] = today
         kind = self.env.context.get('elite_finance_partner_type')
         if kind in ('receivable', 'payable') and 'receivable_accounts_only' in self._fields:
             res['receivable_accounts_only'] = kind == 'receivable'
