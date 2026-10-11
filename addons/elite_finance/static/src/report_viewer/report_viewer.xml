@@ -4,39 +4,66 @@
     <t t-name="elite_finance.ReportViewer">
         <div class="o_elite_report_viewer d-flex flex-column h-100 w-100">
             <div class="o_elite_report_bar d-flex flex-wrap align-items-center gap-2 px-3 py-2 border-bottom bg-view">
-                <span class="fw-bold me-3" t-esc="title"/>
-                <t t-foreach="state.fields" t-as="field" t-key="field.name">
-                    <label class="small text-muted mb-0" t-att-for="'o_elite_filter_' + field.name" t-esc="field.label"/>
-                    <input t-if="field.type == 'date'" type="date"
-                           class="form-control form-control-sm w-auto"
-                           t-att-id="'o_elite_filter_' + field.name"
-                           t-att-name="field.name"
-                           t-att-required="field.required"
-                           t-att-value="state.filters[field.name] || ''"
-                           t-on-change="(ev) => this.onFilterChange(field.name, ev.target.value)"/>
-                    <select t-elif="field.type == 'selection'"
-                            class="form-select form-select-sm w-auto"
-                            t-att-id="'o_elite_filter_' + field.name"
-                            t-att-name="field.name"
-                            t-on-change="(ev) => this.onFilterChange(field.name, ev.target.value)">
-                        <option t-foreach="field.options" t-as="option" t-key="option.value"
-                                t-att-value="option.value"
-                                t-att-selected="state.filters[field.name] == option.value"
-                                t-esc="option.label"/>
-                    </select>
-                </t>
-                <button class="btn btn-primary btn-sm o_elite_report_apply" t-on-click="apply"
-                        t-att-disabled="state.busy">Apply</button>
-                <button class="btn btn-secondary btn-sm o_elite_report_more" t-on-click="openFilters"
-                        t-att-disabled="state.busy">More filters…</button>
+                <div class="o_elite_search input-group input-group-sm w-auto">
+                    <span class="input-group-text bg-transparent"><i class="fa fa-search" role="img" aria-label="Search"/></span>
+                    <input type="search" class="form-control" name="search" placeholder="Search..."
+                           t-att-value="state.search" t-on-input="(ev) => this.onSearch(ev.target.value)"/>
+                </div>
+
+                <!-- the period: presets, or custom dates -->
+                <div t-if="hasRange or hasAt" class="o_elite_pill dropdown">
+                    <button class="btn btn-light btn-sm border o_elite_period" t-on-click="() => this.toggleMenu('period')"
+                            t-att-disabled="state.busy">
+                        <i class="fa fa-calendar me-1" role="img"/><t t-esc="periodLabel"/>
+                    </button>
+                    <div t-if="state.menu === 'period'" class="dropdown-menu show o_elite_menu p-2">
+                        <t t-if="!state.custom">
+                            <a t-foreach="presets" t-as="preset" t-key="preset.key" class="dropdown-item"
+                               href="#" t-on-click.prevent="() => this.pickPreset(preset)" t-esc="preset.label"/>
+                            <div class="dropdown-divider"/>
+                            <a class="dropdown-item" href="#" t-on-click.prevent="() => state.custom = true">Custom dates…</a>
+                        </t>
+                        <div t-else="" class="d-flex flex-column gap-2 p-1">
+                            <t t-foreach="state.fields" t-as="field" t-key="field.name">
+                                <label t-if="field.type == 'date'" class="d-flex align-items-center gap-2 small mb-0">
+                                    <span class="text-muted" style="width: 4rem;" t-esc="field.label"/>
+                                    <input type="date" class="form-control form-control-sm w-auto"
+                                           t-att-name="field.name" t-att-value="state.filters[field.name] || ''"
+                                           t-on-change="(ev) => this.onDate(field.name, ev.target.value)"/>
+                                </label>
+                            </t>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-primary btn-sm o_elite_report_apply" t-on-click="applyCustom">Apply</button>
+                                <button class="btn btn-link btn-sm" t-on-click="() => state.custom = false">Back</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- posted or all entries -->
+                <div t-if="hasEntries" class="o_elite_pill dropdown">
+                    <button class="btn btn-light btn-sm border o_elite_entries" t-on-click="() => this.toggleMenu('entries')"
+                            t-att-disabled="state.busy">
+                        <i class="fa fa-sliders me-1" role="img"/><t t-esc="entriesLabel"/>
+                    </button>
+                    <div t-if="state.menu === 'entries'" class="dropdown-menu show o_elite_menu">
+                        <a class="dropdown-item" href="#" t-on-click.prevent="() => this.pickEntries('posted')">Posted Entries</a>
+                        <a class="dropdown-item" href="#" t-on-click.prevent="() => this.pickEntries('all')">All Entries</a>
+                    </div>
+                </div>
+
+                <button class="btn btn-light btn-sm border o_elite_report_more" t-on-click="openFilters"
+                        t-att-disabled="state.busy"><i class="fa fa-filter me-1" role="img"/>More filters</button>
+
                 <span class="flex-grow-1"/>
-                <button class="btn btn-secondary btn-sm o_elite_report_pdf" t-on-click="() => this.exportAs('pdf')"
+                <span class="fw-bold text-muted me-2" t-esc="title"/>
+                <button class="btn btn-light btn-sm border o_elite_report_pdf" t-on-click="() => this.exportAs('pdf')"
                         t-att-disabled="state.busy"><i class="fa fa-file-pdf-o me-1" role="img"/>PDF</button>
-                <button class="btn btn-secondary btn-sm o_elite_report_xlsx" t-on-click="() => this.exportAs('xlsx')"
-                        t-att-disabled="state.busy"><i class="fa fa-file-excel-o me-1" role="img"/>Excel</button>
+                <button class="btn btn-light btn-sm border o_elite_report_xlsx" t-on-click="() => this.exportAs('xlsx')"
+                        t-att-disabled="state.busy"><i class="fa fa-file-excel-o me-1" role="img"/>XLSX</button>
             </div>
-            <iframe t-if="state.url" class="o_elite_report_frame flex-grow-1 w-100 border-0 bg-white"
-                    style="min-height: 75vh;"
+            <iframe t-if="state.url" t-ref="frame" class="o_elite_report_frame flex-grow-1 w-100 border-0 bg-white"
+                    style="min-height: 75vh;" t-on-load="onFrameLoad"
                     t-att-src="state.url" t-key="state.version" title="Report"/>
         </div>
     </t>

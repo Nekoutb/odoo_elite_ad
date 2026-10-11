@@ -75,3 +75,40 @@
 .container .o_account_financial_reports_page .list_table .act_as_cell {
     padding: 4px 8px;
 }
+
+/* ---- the trial balance as Enterprise presents it ----------------- */
+.o_account_financial_reports_page .tb-notice {
+    background: #d6eef5; color: #1b4f63; padding: 10px 14px; margin: 8px 0 12px;
+    border-radius: 4px; text-align: center; font-size: 11px;
+}
+.o_account_financial_reports_page .tb-group-row {
+    display: flex; width: 100%; margin-top: 6px;
+}
+.o_account_financial_reports_page .tb-group-row .tb-group {
+    border: 1px solid #c9ccd3; border-bottom: 0; padding: 4px 6px; text-align: center;
+    font-weight: bold; background: #fafafa;
+}
+.o_account_financial_reports_page .tb-c1 { width: 44%; }
+.o_account_financial_reports_page .tb-c2, .o_account_financial_reports_page .tb-c3,
+.o_account_financial_reports_page .tb-c4, .o_account_financial_reports_page .tb-c5 { width: 14%; }
+.o_account_financial_reports_page .tb-c34 { width: 28%; }
+.o_account_financial_reports_page .tb-head .act_as_cell {
+    border: 1px solid #c9ccd3 !important; text-align: right; font-weight: bold; background: #fafafa;
+}
+.o_account_financial_reports_page .tb-head .act_as_cell.left { text-align: left; }
+.o_account_financial_reports_page .tb-line .act_as_cell {
+    border-bottom: 1px solid #e3e6ec !important; padding: 5px 8px;
+}
+.o_account_financial_reports_page .tb-line .tb-c1 { white-space: normal; }
+.o_account_financial_reports_page .tb-line .tb-c1 b { font-weight: 600; margin-right: 4px; }
+.o_account_financial_reports_page .tb-num { text-align: right; font-variant-numeric: tabular-nums; }
+.o_account_financial_reports_page .tb-num.neg { color: #c0392b; }
+.o_account_financial_reports_page .tb-num.zero { color: #9aa1ad; }
+.o_account_financial_reports_page .tb-group-line .act_as_cell { font-weight: bold; background: #f4f5f8; }
+.o_account_financial_reports_page .tb-lvl-1 .tb-c1 { padding-left: 18px; }
+.o_account_financial_reports_page .tb-lvl-2 .tb-c1 { padding-left: 32px; }
+.o_account_financial_reports_page .tb-lvl-3 .tb-c1 { padding-left: 46px; }
+.o_account_financial_reports_page .tb-totals .act_as_cell {
+    border-top: 2px solid #999 !important; border-bottom: 0 !important; font-weight: bold; padding: 6px 8px;
+}
+.o_account_financial_reports_page .tb-line .act_as_cell span[res-model] { cursor: pointer; }

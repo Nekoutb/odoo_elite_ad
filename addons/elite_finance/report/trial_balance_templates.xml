@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- =============================================================
+         The trial balance as Enterprise presents it (owner, 11/10/2026):
+         account code and name in one column, a two-level header with
+         Initial Balance, the period's Debit and Credit, and End Balance,
+         credit balances negative in red, zeros greyed. The figures, the
+         filters, the hierarchy and the drill-down links are the OCA
+         report's; only the rows are ours. Partner details and foreign
+         currency keep the OCA rows, which carry columns ours do not.
+         The t-calls of the OCA base template are re-pointed one by one:
+         Odoo applies an xpath to its first match, so the same xpath
+         repeated walks the occurrences.
+         ============================================================= -->
+
+    <template id="trial_balance_base_elimelec" inherit_id="account_financial_report.report_trial_balance_base">
+        <!-- the unposted-entries notice, as Enterprise shows it -->
+        <xpath expr="//t[@t-call='account_financial_report.report_trial_balance_filters']" position="after">
+            <t t-set="unposted_count" t-value="only_posted_moves and res_company.env['account.move'].search_count([('state', '=', 'draft'), ('company_id', '=', res_company.id), ('date', '&lt;=', date_to)]) or 0"/>
+            <div t-if="unposted_count" class="tb-notice">
+                There are <b>unposted journal entries</b> prior to or included in this period.
+            </div>
+        </xpath>
+        <!-- header: three occurrences -->
+        <xpath expr="//t[@t-call='account_financial_report.report_trial_balance_lines_header']" position="attributes">
+            <attribute name="t-call">elite_finance.tb_lines_header</attribute>
+        </xpath>
+        <xpath expr="//t[@t-call='account_financial_report.report_trial_balance_lines_header']" position="attributes">
+            <attribute name="t-call">elite_finance.tb_lines_header</attribute>
+        </xpath>
+        <xpath expr="//t[@t-call='account_financial_report.report_trial_balance_lines_header']" position="attributes">
+            <attribute name="t-call">elite_finance.tb_lines_header</attribute>
+        </xpath>
+        <!-- lines: four occurrences -->
+        <xpath expr="//t[@t-call='account_financial_report.report_trial_balance_line']" position="attributes">
+            <attribute name="t-call">elite_finance.tb_line</attribute>
+        </xpath>
+        <xpath expr="//t[@t-call='account_financial_report.report_trial_balance_line']" position="attributes">
+            <attribute name="t-call">elite_finance.tb_line</attribute>
+        </xpath>
+        <xpath expr="//t[@t-call='account_financial_report.report_trial_balance_line']" position="attributes">
+            <attribute name="t-call">elite_finance.tb_line</attribute>
+        </xpath>
+        <xpath expr="//t[@t-call='account_financial_report.report_trial_balance_line']" position="attributes">
+            <attribute name="t-call">elite_finance.tb_line</attribute>
+        </xpath>
+        <!-- totals: three occurrences -->
+        <xpath expr="//t[@t-call='account_financial_report.report_trial_balance_account_footer']" position="attributes">
+            <attribute name="t-call">elite_finance.tb_account_footer</attribute>
+        </xpath>
+        <xpath expr="//t[@t-call='account_financial_report.report_trial_balance_account_footer']" position="attributes">
+            <attribute name="t-call">elite_finance.tb_account_footer</attribute>
+        </xpath>
+        <xpath expr="//t[@t-call='account_financial_report.report_trial_balance_account_footer']" position="attributes">
+            <attribute name="t-call">elite_finance.tb_account_footer</attribute>
+        </xpath>
+    </template>
+
+    <!-- The two-level header. A div-table has no colspan, so the group
+         row is a flex row above the table row, both on the same five
+         widths that every line uses (tb-c1 .. tb-c5 in report.css). -->
+    <template id="tb_lines_header">
+        <t t-if="show_partner_details or foreign_currency"
+           t-call="account_financial_report.report_trial_balance_lines_header"/>
+        <t t-else="">
+            <div class="tb-group-row">
+                <div class="tb-c1"></div>
+                <div class="tb-c2 tb-group">Initial Balance</div>
+                <div class="tb-c34 tb-group">
+                    <span t-out="date_from" t-options="{'widget': 'date'}"/> – <span t-out="date_to" t-options="{'widget': 'date'}"/>
+                </div>
+                <div class="tb-c5 tb-group">End Balance</div>
+            </div>
+            <div class="act_as_thead tb-head">
+                <div class="act_as_row labels">
+                    <div class="act_as_cell left tb-c1">Account</div>
+                    <div class="act_as_cell tb-c2">Balance</div>
+                    <div class="act_as_cell tb-c3">Debit</div>
+                    <div class="act_as_cell tb-c4">Credit</div>
+                    <div class="act_as_cell tb-c5">Balance</div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- One account (or account group) line -->
+    <template id="tb_line">
+        <t t-if="show_partner_details or foreign_currency"
+           t-call="account_financial_report.report_trial_balance_line"/>
+        <t t-else="">
+            <t t-set="aml_domain_common" t-if="only_posted_moves" t-value="[('parent_state', '=', 'posted')]"/>
+            <t t-set="aml_domain_common" t-else="" t-value="[('parent_state', 'in', ('posted', 'draft'))]"/>
+            <t t-set="is_group" t-value="balance['type'] == 'group_type'"/>
+            <t t-set="acc_id" t-value="balance['id']"/>
+            <div t-attf-class="act_as_row lines tb-line {{ 'tb-group-line' if is_group else '' }} tb-lvl-{{ balance.get('level', 0) }}">
+                <div class="act_as_cell left tb-c1">
+                    <span t-att-res-id="acc_id" t-att-res-model="'account.group' if is_group else 'account.account'" view-type="form">
+                        <b t-out="balance['code']"/> <t t-out="balance['name']"/>
+                    </span>
+                </div>
+                <div t-attf-class="act_as_cell amount tb-num tb-c2 {{ 'neg' if balance['initial_balance'] &lt; 0 else ('zero' if not balance['initial_balance'] else '') }}">
+                    <t t-if="is_group">
+                        <t t-out="balance['initial_balance']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                    </t>
+                    <span t-else="" t-att-domain="[('account_id', '=', acc_id), ('date', '&lt;', date_from)] + aml_domain_common + aml_domain_extra" res-model="account.move.line">
+                        <t t-out="balance['initial_balance']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                    </span>
+                </div>
+                <div t-attf-class="act_as_cell amount tb-num tb-c3 {{ 'zero' if not balance['debit'] else '' }}">
+                    <t t-if="is_group">
+                        <t t-out="balance['debit']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                    </t>
+                    <span t-else="" t-att-domain="[('account_id', '=', acc_id), ('date', '&gt;=', date_from), ('date', '&lt;=', date_to), ('debit', '&lt;&gt;', 0)] + aml_domain_common + aml_domain_extra" res-model="account.move.line">
+                        <t t-out="balance['debit']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                    </span>
+                </div>
+                <div t-attf-class="act_as_cell amount tb-num tb-c4 {{ 'zero' if not balance['credit'] else '' }}">
+                    <t t-if="is_group">
+                        <t t-out="balance['credit']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                    </t>
+                    <span t-else="" t-att-domain="[('account_id', '=', acc_id), ('date', '&gt;=', date_from), ('date', '&lt;=', date_to), ('credit', '&lt;&gt;', 0)] + aml_domain_common + aml_domain_extra" res-model="account.move.line">
+                        <t t-out="balance['credit']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                    </span>
+                </div>
+                <div t-attf-class="act_as_cell amount tb-num tb-c5 {{ 'neg' if balance['ending_balance'] &lt; 0 else ('zero' if not balance['ending_balance'] else '') }}">
+                    <t t-if="is_group">
+                        <t t-out="balance['ending_balance']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                    </t>
+                    <span t-else="" t-att-domain="[('account_id', '=', acc_id), ('date', '&lt;=', date_to)] + aml_domain_common + aml_domain_extra" res-model="account.move.line">
+                        <t t-out="balance['ending_balance']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                    </span>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- The totals row -->
+    <template id="tb_account_footer">
+        <t t-if="show_partner_details or foreign_currency or not balance or 'initial_balance' not in balance"
+           t-call="account_financial_report.report_trial_balance_account_footer"/>
+        <t t-else="">
+            <div class="act_as_table list_table tb-totals" style="width: 100%;">
+                <div class="act_as_row labels tb-line">
+                    <div class="act_as_cell left tb-c1"><b t-out="balance.get('name') or 'Total'"/></div>
+                    <div t-attf-class="act_as_cell amount tb-num tb-c2 {{ 'neg' if balance['initial_balance'] &lt; 0 else ('zero' if not balance['initial_balance'] else '') }}">
+                        <t t-out="balance['initial_balance']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                    </div>
+                    <div t-attf-class="act_as_cell amount tb-num tb-c3 {{ 'zero' if not balance['debit'] else '' }}">
+                        <t t-out="balance['debit']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                    </div>
+                    <div t-attf-class="act_as_cell amount tb-num tb-c4 {{ 'zero' if not balance['credit'] else '' }}">
+                        <t t-out="balance['credit']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                    </div>
+                    <div t-attf-class="act_as_cell amount tb-num tb-c5 {{ 'neg' if balance['ending_balance'] &lt; 0 else ('zero' if not balance['ending_balance'] else '') }}">
+                        <t t-out="balance['ending_balance']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+</odoo>

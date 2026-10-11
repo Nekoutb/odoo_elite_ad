@@ -754,6 +754,23 @@ Customs clearance job files for a logistics/clearance services provider.
   `views/report_layouts.xml` adds `static/src/report_css/report.css`
   after the OCA stylesheet in `account_financial_report.internal_layout`:
   filter block as a summary, tabular digits right-aligned.
+  **(6) The trial balance in Enterprise's shape (19.0.4).**
+  `report/trial_balance_templates.xml` inherits the OCA base template
+  and re-points its `t-call`s (the same xpath repeated: Odoo applies
+  each to the FIRST match, so repeating walks the occurrences - 3
+  header, 4 line, 3 footer) to `tb_lines_header` / `tb_line` /
+  `tb_account_footer`: code+name in one column, a two-level header
+  (Initial Balance | period Debit, Credit | End Balance - a flex row
+  above the div-table, since a div-table has no colspan, on the same
+  tb-c1..c5 widths), `neg`/`zero` classes on the figures, the OCA
+  drill-down `res-model`/`domain` spans kept. Partner details and
+  foreign currency fall back to the OCA rows (t-call the originals).
+  The unposted-entries notice counts drafts through `res_company.env`.
+  The viewer's bar is Enterprise-shaped too: a search box that hides
+  the iframe's `.act_as_row.lines` not matching (same origin), a period
+  pill with presets (this/last month, quarter, year; or "as at" dates
+  for open items and aged balances) and custom dates, a posted/all pill,
+  More filters, PDF/XLSX. Tour updated.
 - **After uninstalling Enterprise, run `-u all` (11/10/2026).**
   `account_accountant` re-parents account's section menus (Dashboard,
   Customers, Vendors, Accounting, Review, Reporting, Configuration) under
@@ -1021,7 +1038,7 @@ Customs clearance job files for a logistics/clearance services provider.
 - Apply code changes: `docker compose restart odoo` then Apps → module → Upgrade
   (XML/schema need the Upgrade; Python needs the restart).
 - Logs: `docker compose logs odoo`
-- Tests (throwaway db, currently 315 tests across the three modules, must stay green):
+- Tests (throwaway db, currently 316 tests across the three modules, must stay green):
   `docker compose run --rm odoo odoo -d clr_test -i elite_clearance,elite_clearance_teese --with-demo --test-enable --test-tags /elite_clearance,/elite_clearance_teese --stop-after-init`
 - Static repo checks CI also runs:
   `python tools/check_manifest.py addons/elite_clearance addons/elite_clearance_teese addons/elite_finance`

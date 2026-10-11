@@ -82,7 +82,31 @@ class TestReportViewer(TransactionCase):
             1234.0, {'display_currency': currency})
         self.assertIn(currency.symbol, plain)
 
-    def test_05_the_statements_open_on_their_result_page(self):
+    def test_05_the_trial_balance_is_laid_out_as_enterprise_lays_it_out(self):
+        self.env.company.external_report_layout_id = self.env.ref('web.external_layout_standard')
+        wizard = self.env['trial.balance.report.wizard'].create({'hide_account_at_0': False})
+        state = wizard.elite_finance_viewer_state()
+        html = self.env['ir.actions.report'].with_context(
+            **state['context'])._render_qweb_html(
+                state['report_name'], wizard.ids, data=state['data'])[0].decode()
+        # the two-level header: Initial Balance, the period, End Balance
+        self.assertIn('tb-group-row', html)
+        self.assertIn('Initial Balance', html)
+        self.assertIn('End Balance', html)
+        self.assertNotIn('Period balance', html, "the period-balance column is gone")
+        # code and name in one cell, figures with their sign class
+        self.assertRegex(html, r'tb-c1">\s*<span[^>]*res-model="account.account"[^>]*>\s*<b>\d')
+        self.assertIn('tb-num tb-c5', html)
+        self.assertIn('tb-totals', html)
+        # the OCA rows stay for the partner-details layout
+        detailed = self.env['trial.balance.report.wizard'].create({'show_partner_details': True})
+        dstate = detailed.elite_finance_viewer_state()
+        dhtml = self.env['ir.actions.report'].with_context(
+            **dstate['context'])._render_qweb_html(
+                dstate['report_name'], detailed.ids, data=dstate['data'])[0].decode()
+        self.assertNotIn('tb-group-row', dhtml)
+
+    def test_06_the_statements_open_on_their_result_page(self):
         ref = self.env.ref
         for server, instance in (
                 ('elite_finance.server_open_bilan', 'elite_finance.mis_instance_bilan'),

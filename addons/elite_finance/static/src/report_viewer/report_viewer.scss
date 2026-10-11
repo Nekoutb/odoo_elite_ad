@@ -1,0 +1,20 @@
+// The report viewer's bar, in Enterprise's shape: pill buttons with
+// their own small menus, a search box on the left, exports on the right.
+.o_elite_report_bar {
+    .o_elite_pill {
+        position: relative;
+    }
+    .o_elite_menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        min-width: 12rem;
+        z-index: 1050;
+    }
+    .o_elite_search {
+        max-width: 16rem;
+    }
+    .btn-light.border {
+        background: #fff;
+    }
+}
