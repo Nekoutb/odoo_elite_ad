@@ -15,7 +15,7 @@ working memory that is *not* obvious from the code.
   <in the Odoo.sh project settings — never in this repository, it is public>, Custom plan). The old Odoo Online db (elite-advisors,
   saas~19.3) holds no data and will lapse. Never build against 19.3 minor APIs.
 
-## The module: addons/elite_clearance (v19.0.47.0.0)
+## The module: addons/elite_clearance (v19.0.48.0.0)
 Customs clearance job files for a logistics/clearance services provider.
 - `logistics.file` — one file = one clearance job. States:
   draft → in_progress → ops_closed → done (+cancel, +imported). `imported`
@@ -692,6 +692,15 @@ Customs clearance job files for a logistics/clearance services provider.
      cost that are not approved whichever way it is called; and a
      refusal resets `recharge_amount` to 0 on the file AND the lines, or
      the screen would propose the refused figures again for ever.
+- **The accounting app reads "Finance" (owner, 11/10/2026)** - the move
+  to Community, where account's root menu is "Invoicing" (Enterprise's
+  account_accountant relabels it "Accounting"). `clearance_menus.xml`
+  writes `account.menu_finance`'s name, which sets en_US ONLY: a
+  translated field keeps its other languages when the source changes, so
+  `hooks.rename_finance_menu()` writes the word into every active
+  language (`update_field_translations`), from the post-init hook and the
+  19.0.48 migration. A bare `-u account` puts "Invoicing" back until the
+  next update of this module. Test: `test_finance_menu.py`.
 - **Payment evidence (owner, 01/10/2026).** `ir.attachment.clearance_kind`
   ('request' / 'payment', NULL = request) tells a disbursement's documents
   apart: `logistics.expense.request_document_ids` and
@@ -943,7 +952,7 @@ Customs clearance job files for a logistics/clearance services provider.
 - Apply code changes: `docker compose restart odoo` then Apps → module → Upgrade
   (XML/schema need the Upgrade; Python needs the restart).
 - Logs: `docker compose logs odoo`
-- Tests (throwaway db, currently 302 tests across both modules, must stay green):
+- Tests (throwaway db, currently 304 tests across both modules, must stay green):
   `docker compose run --rm odoo odoo -d clr_test -i elite_clearance,elite_clearance_teese --with-demo --test-enable --test-tags /elite_clearance,/elite_clearance_teese --stop-after-init`
 - Static repo checks CI also runs:
   `python tools/check_manifest.py addons/elite_clearance addons/elite_clearance_teese`

@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
+    <!-- The accounting app is called Finance (owner, 11/10/2026): the
+         word the clearance teams already use, the same in both languages,
+         and a name that does not promise Enterprise's Accounting app.
+         Community labels this root menu "Invoicing"; Enterprise's
+         account_accountant relabels it "Accounting". Ours loads after
+         account, so an update of this module re-applies it. The French
+         label is set by rename_finance_menu() in hooks.py, because a
+         data record writes the source language only. -->
+    <record id="account.menu_finance" model="ir.ui.menu">
+        <field name="name">Finance</field>
+    </record>
+
     <menuitem id="menu_clearance_root" name="Clearance" sequence="85"
               web_icon="elite_clearance,static/description/icon.png"
               groups="group_clearance_user"/>

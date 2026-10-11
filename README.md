@@ -8,7 +8,7 @@ billing that clears the balance sheet.
 | | |
 |---|---|
 | Module | `addons/elite_clearance` |
-| Version | `19.0.47.0.0` (staging) · `19.0.44.0.0` (production) |
+| Version | `19.0.48.0.0` (staging) · `19.0.44.0.0` (production) |
 | Odoo | 19.0 Community (lab) / 19.0 Enterprise (production, Odoo.sh) |
 | Licence | LGPL-3 |
 | Currency / locale | XAF, Cameroon (SYSCOHADA — `l10n_cm`) |
@@ -157,6 +157,10 @@ to what the reader can act on, and lands with a toast and a beep; the bell
 lists the newest task first. A recharge awaiting approval opens on the
 billing screen, not on the file. *My Tasks* also has an **Ongoing files**
 section: every file in progress on which the reader has keyed a cost.
+
+**The accounting app is called Finance.** Odoo Community labels it
+*Invoicing*; the module relabels the root menu *Finance* in every active
+language, the word the clearance teams use for the department.
 
 **Recharge review, line by line.** Any disbursement charged at other than
 what it cost sends the bill for review — even when an overcharge on one line

@@ -102,7 +102,7 @@ console either. Choose the production branch name once, at project creation.
 - [x] Odoo.sh project exists and is connected to this repository.
 - [x] Production branch settled: `prod` (see *Branches* above).
 - [x] `prod` fast-forwarded to `staging` (v19.0.6.0.0) — the first real
-      promotion. Production now runs 19.0.44.0.0; staging 19.0.47.0.0.
+      promotion. Production now runs 19.0.44.0.0; staging 19.0.48.0.0.
 - [ ] Console: drag `staging` from Development into the **Staging** stage,
       so it builds on a copy of production rather than an empty database.
 - [ ] Console: delete `19.0` from the Development stage (retired duplicate).

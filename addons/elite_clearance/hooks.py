@@ -1,7 +1,25 @@
+FINANCE_MENU_LABEL = "Finance"
+
+
+def rename_finance_menu(env):
+    """The accounting root menu reads "Finance" in EVERY active language
+    (owner, 11/10/2026). The data record in clearance_menus.xml sets the
+    source (en_US) label; a translated field keeps its other languages,
+    so a French user would still read "Facturation" - this writes the
+    same word into each active language. Idempotent; called from the
+    post-init hook and from the 19.0.48 migration."""
+    menu = env.ref('account.menu_finance', raise_if_not_found=False)
+    if not menu:
+        return
+    langs = env['res.lang'].search([('active', '=', True)]).mapped('code')
+    menu.update_field_translations('name', {code: FINANCE_MENU_LABEL for code in langs})
+
+
 def seed_clearance_master_data(env):
     """Seed Elite Advisors' real service types, document checklists and
     expense categories. Create-if-missing by code, so it is safe on fresh
     installs AND on databases that already carry demo or manual records."""
+    rename_finance_menu(env)
     company = env.company
 
     # The undisclosed series exist as data; the company is pointed at them
