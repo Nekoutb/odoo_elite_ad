@@ -1,0 +1,45 @@
+# /opt/elimelec/caddy/Caddyfile - the front door. One block per
+# environment; Odoo answers on 8069, its live connection (the bell, the
+# task toasts) on 8072 under /websocket. The gate (basic auth) keeps the
+# non-production copies and the overview page off the open internet; its
+# password hash is filled in on the server (caddy hash-password).
+(gate) {
+	basic_auth {
+		elimelec GATE_PASSWORD_HASH
+	}
+}
+
+(odoo) {
+	encode zstd gzip
+	request_body {
+		max_size 128MB
+	}
+	reverse_proxy /websocket* {args[0]}:8072
+	reverse_proxy {args[0]}:8069
+}
+
+elimelecodoo.com {
+	import odoo prod-odoo
+}
+
+www.elimelecodoo.com {
+	redir https://elimelecodoo.com{uri} permanent
+}
+
+staging.elimelecodoo.com {
+	import gate
+	import odoo staging-odoo
+}
+
+dev.elimelecodoo.com {
+	import gate
+	import odoo dev-odoo
+}
+
+# the overview page: the environments side by side, backups, server
+status.elimelecodoo.com {
+	import gate
+	root * /srv/status
+	file_server
+	header Cache-Control "no-store"
+}

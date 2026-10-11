@@ -26,3 +26,7 @@ docker compose up -d < /dev/null > /dev/null 2>&1
 sleep 5
 docker ps --format "{{.Names}}\t{{.Status}}" | grep "^$env_name-odoo"
 docker compose exec -T db psql -U odoo -d "$db" -Atc "SELECT 'elite_clearance ' || latest_version FROM ir_module_module WHERE name='elite_clearance';" < /dev/null
+# the overview page reads this line, one per deploy
+mkdir -p /opt/elimelec/backups/log
+echo "$(date -Is)|$env_name|$cur $before->$after|$( [ -s /tmp/deploy_$env_name.log ] && grep -qE ' (ERROR|CRITICAL) ' /tmp/deploy_$env_name.log && echo 'upgrade with errors' || echo ok )" >> /opt/elimelec/backups/log/deploys.log
+[ -x /opt/elimelec/bin/status-page.py ] && /opt/elimelec/bin/status-page.py || true

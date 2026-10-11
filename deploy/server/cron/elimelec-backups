@@ -8,3 +8,5 @@ MAILTO=""
 0 7-20 * * 1-6  root /opt/elimelec/bin/backup.sh hourly >> /opt/elimelec/backups/log/cron.log 2>&1
 # every Sunday, prove the latest off-site set restores
 30 3 * * 0      root /opt/elimelec/bin/restore-test.sh --remote >> /opt/elimelec/backups/log/cron.log 2>&1
+# the overview page, every five minutes
+*/5 * * * *     root /opt/elimelec/bin/status-page.py >> /opt/elimelec/backups/log/cron.log 2>&1

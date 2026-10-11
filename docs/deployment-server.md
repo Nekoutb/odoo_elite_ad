@@ -33,6 +33,16 @@ Caddy routes to. `odoo.conf` carries `proxy_mode`, `workers` (2 on
 production, 1 elsewhere), `list_db = False` and the addons path: the
 repository's `addons/` first, then the OCA repositories.
 
+## The overview page
+
+`https://status.elimelecodoo.com`, behind the gate: the three environments
+side by side (state, branch and commit, last test run on that branch,
+module versions, database size, last deploy), the backups (last daily,
+hourly and restore test with their results, what is in the bucket) and
+the server (uptime, load, memory, disk, containers). Rendered by
+`bin/status-page.py` every five minutes and after each deploy, into
+`/opt/elimelec/status/index.html`, which Caddy serves as files.
+
 ## Deploying
 
 ```
