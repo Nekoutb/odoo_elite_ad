@@ -1,7 +1,8 @@
 # /opt/elimelec/caddy/Caddyfile - the front door. One block per
 # environment; Odoo answers on 8069, its live connection (the bell, the
-# task toasts) on 8072 under /websocket. The gate (basic auth) keeps the
-# non-production copies and the overview page off the open internet; its
+# task toasts) on 8072 under /websocket. Odoo's own login is the only
+# gate on the three environments (owner, 11/10/2026); the basic-auth
+# gate below protects the overview page's action buttons only. Its
 # password hash is filled in on the server (caddy hash-password).
 (gate) {
 	basic_auth {
@@ -27,12 +28,10 @@ www.elimelecodoo.com {
 }
 
 staging.elimelecodoo.com {
-	import gate
 	import odoo staging-odoo
 }
 
 dev.elimelecodoo.com {
-	import gate
 	import odoo dev-odoo
 }
 

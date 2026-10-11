@@ -11,7 +11,7 @@ reads.
 |---|---|
 | Provider, plan | Vultr, High Performance AMD, 4 vCPU / 12 GB / 260 GB NVMe, Paris |
 | OS | Ubuntu 24.04 LTS, Docker CE, Caddy 2 |
-| Names | `elimelecodoo.com` (production), `staging.` and `dev.` (behind a gate) |
+| Names | `elimelecodoo.com` (production), `staging.` and `dev.` (Odoo's own login, no extra gate) |
 | Access | SSH, keys only, port 22; firewall opens 22, 80, 443 |
 | Backups | Vultr automatic daily images, plus the server's own dumps (step 4 of the plan) |
 
@@ -110,6 +110,7 @@ The staging rehearsal of steps 2–6 took under fifteen minutes.
 
 Staging is a copy of production, refreshed from a backup, neutralised by
 Odoo (`odoo neutralize`, or the "test" backup Odoo.sh produces): no mail,
-no scheduled jobs. Dev is an empty database with demo data. Both sit
-behind a password at the front door (`caddy/.gate` on the server) because
-the staging copy holds client data.
+no scheduled jobs. Dev is an empty database with demo data. Both are
+reached with Odoo's own login and nothing else (owner, 11/10/2026); the
+front door's basic-auth gate (`caddy/.gate` on the server) protects only
+the overview page's action buttons.
