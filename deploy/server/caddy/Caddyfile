@@ -36,9 +36,19 @@ dev.elimelecodoo.com {
 	import odoo dev-odoo
 }
 
-# the overview page, open to read (owner's choice): no client data on it
+# the overview page, open to read (owner's choice): no client data on it.
+# Its buttons post to /actions/*, which the gate protects and the action
+# service on the host answers (deploy/server/bin/actions-server.py).
 status.elimelecodoo.com {
-	root * /srv/status
-	file_server
-	header Cache-Control "no-store"
+	handle /actions/* {
+		import gate
+		reverse_proxy host.docker.internal:8070 {
+			flush_interval -1
+		}
+	}
+	handle {
+		root * /srv/status
+		file_server
+		header Cache-Control "no-store"
+	}
 }

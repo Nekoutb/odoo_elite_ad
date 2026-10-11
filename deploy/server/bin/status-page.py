@@ -72,16 +72,17 @@ def github():
                                      headers={'User-Agent': 'elimelec-status'})
         with urllib.request.urlopen(req, timeout=10) as resp:
             return json.load(resp)
-    branches, runs = [], {}
+    branches, runs, by_sha = [], {}, {}
     try:
         branches = [(b['name'], b['commit']['sha'][:7]) for b in get('/branches?per_page=100')]
-        for run in get('/actions/runs?per_page=60').get('workflow_runs', []):
-            runs.setdefault(run['head_branch'], {
-                'state': run.get('conclusion') or run.get('status') or '',
-                'sha': run['head_sha'][:7], 'url': run['html_url'], 'when': run['updated_at']})
+        for run in get('/actions/runs?per_page=100').get('workflow_runs', []):
+            entry = {'state': run.get('conclusion') or run.get('status') or '',
+                     'sha': run['head_sha'][:7], 'url': run['html_url'], 'when': run['updated_at']}
+            runs.setdefault(run['head_branch'], entry)
+            by_sha.setdefault(run['head_sha'][:7], entry)
     except Exception:  # noqa: BLE001 - the page must render without GitHub
         pass
-    return branches, runs
+    return branches, runs, by_sha
 
 
 def environment(name, label, url, group):
@@ -215,8 +216,23 @@ def ci_light(run):
             else 'orange'), state
 
 
-def render(envs, branches, runs, bk, mon, lg):
+def render(envs, branches, runs, by_sha, bk, mon, lg):
     e = html.escape
+
+    def rev(sha):
+        """A revision with the colour of its test run beside it."""
+        if not sha:
+            return '—'
+        run = by_sha.get(sha[:7])
+        colour, title = ci_light(run)
+        link = f'<a href="{e(run["url"])}" title="tests: {e(title)}">' if run else ''
+        return f'<code>{e(sha[:7])}</code> {link}{light(colour, "tests: " + title)}{"</a>" if run else ""}'
+
+    def button(action, label, kind='', branch=''):
+        hidden = f'<input type="hidden" name="branch" value="{e(branch)}">' if branch else ''
+        ask = json.dumps(label + "?")
+        return (f'<form method="post" action="/actions/{action}" class="act" '
+                f"onsubmit='return confirm({ask})'>{hidden}<button class=\"btn {kind}\">{e(label)}</button></form>")
     # ---------------------------------------------------------- sidebar
     def side_row(key, name, colour, title, extra=''):
         return (f'<a class="branch" data-target="{e(key)}" href="#{e(key)}">'
@@ -237,7 +253,7 @@ def render(envs, branches, runs, bk, mon, lg):
         comment = {'daily': 'Automatic daily set' + (' + filestore' if row['full'] else ''), 'hourly': 'Hourly dump'}[row['kind']]
         version = row['modules'].get('elite_clearance', '')
         backups_table.append(f'<tr><td>{e(row["time"])}</td><td>{e(row["db"])}</td><td>{e(row["env"])}</td><td>{e(version)}</td>'
-                             f'<td><span class="tag">{e(comment)}</span></td><td><code>{e(row["commit"])}</code></td><td>{e(row["size"])}</td><td>{e(row["where"])}</td></tr>')
+                             f'<td><span class="tag">{e(comment)}</span></td><td>{rev(row["commit"])}</td><td>{e(row["size"])}</td><td>{e(row["where"])}</td></tr>')
     backups_table.append('</table>')
     test = bk['test']
     jobs = ''.join(
@@ -263,21 +279,28 @@ def render(envs, branches, runs, bk, mon, lg):
         run = runs.get(env['branch'], {})
         colour, title = ci_light(run)
         mods = ', '.join(f'{k} {v}' for k, v in env['modules'].items()) or 'no database'
+        actions = {
+            'prod': button('promote-prod', "Promote staging → production", 'danger'),
+            'staging': button('rebuild-staging', "Rebuild from the latest backup") + button('backup-now', "Backup now"),
+            'dev': button('rebuild-dev', "Rebuild with demo data"),
+        }[env['name']]
         head = (f'<div class="head"><h2>{e(env["branch"])}</h2>'
                 f'<span class="st">{light(env["light"], env["status"])} {e(env["status"])}</span>'
-                f'<a class="open" href="{env["url"]}">{e(env["url"].replace("https://", ""))}</a></div>'
+                f'<span class="acts">{actions}<a class="btn connect" href="{env["url"]}/odoo">Connect</a></span></div>'
                 f'<div class="facts"><span>Odoo {ODOO_SERIES} Community</span><span>{e(mods)}</span>'
                 f'<span>database <code>{e(env["db"])}</code> {e(env["size"])}</span>'
+                f'<span>revision {rev(env["commits"][0][0] if env["commits"] else "")}</span>'
                 f'<span>up since {stamp(env["started"], True) if env["started"] else "—"}</span>'
                 f'<span>tests on branch: {light(colour, title)} {e(title)}' + (f' <a href="{e(run["url"])}">see run</a>' if run else '') + '</span></div>')
         history = ['<h4>Deploys</h4><table><tr><th>When</th><th>Branch, revision</th><th>Result</th></tr>']
         for parts in env['deploys']:
-            history.append(f'<tr><td>{stamp(parts[0])}</td><td><code>{e(parts[2])}</code></td><td>{e(parts[3])}</td></tr>')
+            moved = parts[2].split(' ')[-1]
+            history.append(f'<tr><td>{stamp(parts[0])}</td><td>{e(parts[2].split(" ")[0])} {e(moved.split("->")[0])} → {rev(moved.split("->")[-1])}</td><td>{e(parts[3])}</td></tr>')
         if not env['deploys']:
             history.append('<tr><td colspan="3"><small>no deploy recorded yet</small></td></tr>')
         history.append('</table><h4>Commits on the branch</h4><table><tr><th>Revision</th><th>Date</th><th>Author</th><th>Message</th></tr>')
         for sha, date, author, subject in env['commits']:
-            history.append(f'<tr><td><code>{e(sha)}</code></td><td>{e(date[:16])}</td><td>{e(author)}</td><td>{e(subject)}</td></tr>')
+            history.append(f'<tr><td>{rev(sha)}</td><td>{e(date[:16])}</td><td>{e(author)}</td><td>{e(subject)}</td></tr>')
         history.append('</table>')
         panels.append(f'''
         <section class="panel" id="{env["name"]}">
@@ -295,8 +318,8 @@ def render(envs, branches, runs, bk, mon, lg):
         panels.append(f'''
         <section class="panel" id="branch:{e(name)}">
           <div class="head"><h2>{e(name)}</h2><span class="st">{light(colour, title)} tests: {e(title)}</span>
-          <a class="open" href="https://github.com/{REPO}/tree/{e(name)}">github</a></div>
-          <div class="facts"><span>revision <code>{e(sha)}</code></span><span>last test run {stamp(run.get("when"), True) if run else "—"}</span>
+          <span class="acts">{button('deploy-dev', "Deploy to dev", '', name)}{button('promote-staging', "Promote → staging", 'danger', name)}<a class="btn connect" href="https://github.com/{REPO}/tree/{e(name)}">GitHub</a></span></div>
+          <div class="facts"><span>revision {rev(sha)}</span><span>last test run {stamp(run.get("when"), True) if run else "—"}</span>
           {see_run}</div>
           <p><small>A development branch is built and tested on GitHub; it is deployed to the dev environment with <code>deploy.sh dev &lt;branch&gt;</code>, then fast-forwarded to staging when green.</small></p>
         </section>''')
@@ -321,7 +344,10 @@ aside .bn {{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap
 main {{ flex:1; min-width:0 }}
 .panel {{ display:none }} .panel.on {{ display:block }}
 .head {{ background:var(--side2); color:var(--ink); padding:14px 24px; display:flex; align-items:center; gap:18px; flex-wrap:wrap }}
-.head h2 {{ margin:0; font-size:20px; font-weight:600 }} .head .st {{ color:#c9ccd6 }} .head .open {{ margin-left:auto; color:var(--accent); text-decoration:none }}
+.head h2 {{ margin:0; font-size:20px; font-weight:600 }} .head .st {{ color:#c9ccd6 }}
+.head .acts {{ margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap }} .act {{ margin:0 }}
+.btn {{ display:inline-block; padding:7px 14px; border-radius:4px; border:1px solid #4a5060; background:#363b48; color:#e8eaf0; font-size:13px; cursor:pointer; text-decoration:none; font-family:inherit }}
+.btn:hover {{ background:#434958 }} .btn.connect {{ background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600 }} .btn.danger {{ border-color:#c0392b; color:#ffb4ad }}
 .facts {{ background:#f0f1f5; border-bottom:1px solid var(--line); padding:8px 24px; display:flex; gap:22px; flex-wrap:wrap; color:var(--muted); font-size:13px }}
 .tabs {{ background:#fff; border-bottom:1px solid var(--line); padding:0 24px; display:flex; gap:28px }}
 .tabs a {{ display:block; padding:14px 0; text-transform:uppercase; font-size:12.5px; letter-spacing:.06em; color:var(--muted); cursor:pointer; border-bottom:3px solid transparent }}
@@ -364,8 +390,8 @@ pre {{ background:#1e2129; color:#d6d9e0; padding:12px; border-radius:6px; font-
 
 def main():
     envs = [environment(*spec) for spec in ENVS]
-    branches, runs = github()
-    page = render(envs, branches, runs, backup_rows(), monitor(), logs())
+    branches, runs, by_sha = github()
+    page = render(envs, branches, runs, by_sha, backup_rows(), monitor(), logs())
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     tmp = OUT + '.tmp'
     with open(tmp, 'w', encoding='utf-8') as handle:

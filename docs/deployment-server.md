@@ -43,6 +43,20 @@ the server (uptime, load, memory, disk, containers). Rendered by
 `bin/status-page.py` every five minutes and after each deploy, into
 `/opt/elimelec/status/index.html`, which Caddy serves as files.
 
+### The buttons on the overview page
+
+Connect opens the environment. Rebuild, Deploy to dev, Promote and
+Backup now post to `/actions/*` of the status site, which the gate
+protects and a small service on the host answers
+(`bin/actions-server.py`, systemd unit `elimelec-actions`, port 8070 open
+to the containers only). Each button runs one of the scripts below and
+streams its output; one action at a time. Promotion pushes from a
+control clone at `/opt/elimelec/control/repo` with the server's deploy
+key (`/root/.ssh/elimelec_deploy`, added to the repository's deploy keys
+with write access) and is refused unless the source branch's last test
+run is green and the push is a fast-forward; production is promoted from
+staging only.
+
 ## Deploying
 
 ```
