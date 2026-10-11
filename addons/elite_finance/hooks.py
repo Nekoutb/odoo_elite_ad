@@ -13,28 +13,40 @@ LABELS = {
         'en_US': "Reports", 'fr_FR': "Rapports"},
     'mis_builder.mis_report_finance_menu': {
         'en_US': "Financial Statements", 'fr_FR': "États financiers"},
-    # this module's own records
-    'elite_finance.action_customer_ledger': {
+    # this module's own records: the viewer actions and their menus
+    'elite_finance.action_view_general_ledger': {
+        'en_US': "General Ledger", 'fr_FR': "Grand livre"},
+    'elite_finance.action_view_journal_ledger': {
+        'en_US': "Journal Ledger", 'fr_FR': "Livre-journal"},
+    'elite_finance.action_view_trial_balance': {
+        'en_US': "Trial Balance", 'fr_FR': "Balance générale"},
+    'elite_finance.action_view_open_items': {
+        'en_US': "Open Items", 'fr_FR': "Écritures non lettrées"},
+    'elite_finance.action_view_aged_partner_balance': {
+        'en_US': "Aged Partner Balance", 'fr_FR': "Balance âgée des tiers"},
+    'elite_finance.action_view_vat_report': {
+        'en_US': "VAT Report", 'fr_FR': "Rapport de TVA"},
+    'elite_finance.client_customer_ledger': {
         'en_US': "Customer Ledger", 'fr_FR': "Grand livre clients"},
     'elite_finance.menu_customer_ledger': {
         'en_US': "Customer Ledger", 'fr_FR': "Grand livre clients"},
-    'elite_finance.action_customer_open_items': {
+    'elite_finance.client_customer_open_items': {
         'en_US': "Customer Open Items", 'fr_FR': "Écritures ouvertes clients"},
     'elite_finance.menu_customer_open_items': {
         'en_US': "Customer Open Items", 'fr_FR': "Écritures ouvertes clients"},
-    'elite_finance.action_aged_receivables': {
+    'elite_finance.client_aged_receivables': {
         'en_US': "Aged Receivables", 'fr_FR': "Balance âgée clients"},
     'elite_finance.menu_aged_receivables': {
         'en_US': "Aged Receivables", 'fr_FR': "Balance âgée clients"},
-    'elite_finance.action_vendor_ledger': {
+    'elite_finance.client_vendor_ledger': {
         'en_US': "Vendor Ledger", 'fr_FR': "Grand livre fournisseurs"},
     'elite_finance.menu_vendor_ledger': {
         'en_US': "Vendor Ledger", 'fr_FR': "Grand livre fournisseurs"},
-    'elite_finance.action_vendor_open_items': {
+    'elite_finance.client_vendor_open_items': {
         'en_US': "Vendor Open Items", 'fr_FR': "Écritures ouvertes fournisseurs"},
     'elite_finance.menu_vendor_open_items': {
         'en_US': "Vendor Open Items", 'fr_FR': "Écritures ouvertes fournisseurs"},
-    'elite_finance.action_aged_payables': {
+    'elite_finance.client_aged_payables': {
         'en_US': "Aged Payables", 'fr_FR': "Balance âgée fournisseurs"},
     'elite_finance.menu_aged_payables': {
         'en_US': "Aged Payables", 'fr_FR': "Balance âgée fournisseurs"},

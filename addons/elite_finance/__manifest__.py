@@ -27,13 +27,24 @@ before it is exported.
     'author': "Elite Advisors",
     'website': "https://eliteadvisors.cm-ea.com",
     'category': 'Accounting/Accounting',
-    'version': '19.0.1.0.0',
+    'version': '19.0.2.0.0',
     'license': 'LGPL-3',
     'depends': ['account', 'account_financial_report', 'mis_builder'],
     'data': [
+        'views/report_wizard_views.xml',
         'views/finance_menus.xml',
         'data/mis_syscohada.xml',
     ],
+    'assets': {
+        # the report viewer: a report shown at once, filters on the page
+        'web.assets_backend': [
+            'elite_finance/static/src/report_viewer/**/*',
+        ],
+        # browser tests, loaded only when the server runs with --test-enable
+        'web.assets_tests': [
+            'elite_finance/static/tests/tours/**/*',
+        ],
+    },
     'post_init_hook': 'apply_finance_labels',
     'application': False,
     'installable': True,

@@ -167,8 +167,11 @@ journal ledger, trial balance, open items, aged partner balance and VAT
 report, the *Financial Statements* (the SYSCOHADA *Compte de résultat* and
 *Bilan*, laid out by account class) and Odoo's own analyses; and, under
 *Customers* and *Vendors*, their ledger, open items and aged balance,
-opened on their own accounts. Every report previews on screen (*View*)
-with its filters before it is exported to PDF or Excel.
+opened on their own accounts. Every report opens **at once** on the
+current fiscal year and posted entries, with its filters on the page
+(dates, posted or all entries, and *More filters* for partners, accounts
+and journals) and PDF and Excel buttons beside them; the two statements
+open straight on their figures.
 
 **Recharge review, line by line.** Any disbursement charged at other than
 what it cost sends the bill for review — even when an overcharge on one line

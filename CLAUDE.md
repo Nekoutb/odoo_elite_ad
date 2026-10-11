@@ -715,9 +715,33 @@ Customs clearance job files for a logistics/clearance services provider.
   Every label it sets or renames is in `hooks.LABELS`, written into
   EVERY active language by the post-init hook: a data record writes
   en_US only and OCA's French file had already put "Rapports comptables
-  OCA" on the menu. The OCA wizards preview on screen with their View
-  button; nothing had to be built for that. Tests:
-  `elite_finance/tests/test_finance_menus.py`.
+  OCA" on the menu. Tests: `elite_finance/tests/test_finance_menus.py`.
+  **(4) Every report opens AT ONCE, Enterprise-style (19.0.2, owner's
+  second message of 11/10/2026).** The OCA wizards ask their questions
+  in a dialog first; the owner wants the figures first and the filters
+  on the page. `static/src/report_viewer/` is a client action
+  (`elite_finance_report_viewer`, context `wizard_model` and optional
+  `elite_finance_partner_type`): it CREATES the wizard with its own
+  defaults (fiscal year to date, posted), calls
+  `elite_finance_viewer_state()` (the mixin on all six wizards: the
+  qweb-html action's `report_name` + `data`, and the quick filters the
+  wizard has among date_from/date_to/date_at/target_move) and shows the
+  report in an iframe at `/report/html/<report_name>?options=<data>&
+  context=<ctx>` - the URL the web client itself builds for a qweb-html
+  action (`webclient/actions/reports/utils.js`); the OCA reports read
+  the wizard values from `options`, not from the record. Apply writes
+  the wizard and renders again; "More filters" is a `FormViewDialog` on
+  the wizard with context `elite_finance_viewer`, under which the
+  inherited wizard forms (`views/report_wizard_views.xml`) show an
+  `special="save"` Apply and hide View/Export; PDF/Excel call
+  `button_export_pdf/xlsx` and `doAction` the result. The state method
+  passes `discard_logo_check`, or an administrator gets Odoo's
+  document-layout dialog instead of the report the first time. The six
+  OCA menus are re-pointed to the client actions by writing their
+  `action` Reference (`eval="'ir.actions.client,%d' % ref(...)"`); the
+  two statements open on their MIS result page through `ir.actions.server`
+  records calling `mis.report.instance.preview()`. Tour:
+  `test_report_viewer_tour.py` (admin, general ledger).
 - **After uninstalling Enterprise, run `-u all` (11/10/2026).**
   `account_accountant` re-parents account's section menus (Dashboard,
   Customers, Vendors, Accounting, Review, Reporting, Configuration) under
@@ -985,7 +1009,7 @@ Customs clearance job files for a logistics/clearance services provider.
 - Apply code changes: `docker compose restart odoo` then Apps → module → Upgrade
   (XML/schema need the Upgrade; Python needs the restart).
 - Logs: `docker compose logs odoo`
-- Tests (throwaway db, currently 309 tests across the three modules, must stay green):
+- Tests (throwaway db, currently 314 tests across the three modules, must stay green):
   `docker compose run --rm odoo odoo -d clr_test -i elite_clearance,elite_clearance_teese --with-demo --test-enable --test-tags /elite_clearance,/elite_clearance_teese --stop-after-init`
 - Static repo checks CI also runs:
   `python tools/check_manifest.py addons/elite_clearance addons/elite_clearance_teese addons/elite_finance`

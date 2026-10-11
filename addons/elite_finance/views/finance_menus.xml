@@ -31,71 +31,143 @@
     </record>
 
     <!-- =============================================================
-         Customers and Vendors carry their reports. Each opens the OCA
-         wizard on receivable or payable accounts only (the context key
-         is read by models/report_wizards.py), previews on screen with
-         View, and exports to PDF or Excel from the same dialog.
+         Every report opens at once, in the viewer (owner, 11/10/2026):
+         the client action creates the OCA wizard with its defaults -
+         fiscal year to date, posted entries - and shows the report
+         under a filter bar. The six OCA menu entries are re-pointed
+         from the wizard dialog to the viewer.
          ============================================================= -->
-    <record id="action_customer_ledger" model="ir.actions.act_window">
+    <record id="action_view_general_ledger" model="ir.actions.client">
+        <field name="name">General Ledger</field>
+        <field name="tag">elite_finance_report_viewer</field>
+        <field name="context">{'wizard_model': 'general.ledger.report.wizard'}</field>
+    </record>
+    <record id="action_view_journal_ledger" model="ir.actions.client">
+        <field name="name">Journal Ledger</field>
+        <field name="tag">elite_finance_report_viewer</field>
+        <field name="context">{'wizard_model': 'journal.ledger.report.wizard'}</field>
+    </record>
+    <record id="action_view_trial_balance" model="ir.actions.client">
+        <field name="name">Trial Balance</field>
+        <field name="tag">elite_finance_report_viewer</field>
+        <field name="context">{'wizard_model': 'trial.balance.report.wizard'}</field>
+    </record>
+    <record id="action_view_open_items" model="ir.actions.client">
+        <field name="name">Open Items</field>
+        <field name="tag">elite_finance_report_viewer</field>
+        <field name="context">{'wizard_model': 'open.items.report.wizard'}</field>
+    </record>
+    <record id="action_view_aged_partner_balance" model="ir.actions.client">
+        <field name="name">Aged Partner Balance</field>
+        <field name="tag">elite_finance_report_viewer</field>
+        <field name="context">{'wizard_model': 'aged.partner.balance.report.wizard'}</field>
+    </record>
+    <record id="action_view_vat_report" model="ir.actions.client">
+        <field name="name">VAT Report</field>
+        <field name="tag">elite_finance_report_viewer</field>
+        <field name="context">{'wizard_model': 'vat.report.wizard'}</field>
+    </record>
+
+    <record id="account_financial_report.menu_general_ledger_wizard" model="ir.ui.menu">
+        <field name="action" eval="'ir.actions.client,%d' % ref('action_view_general_ledger')"/>
+    </record>
+    <record id="account_financial_report.menu_journal_ledger_wizard" model="ir.ui.menu">
+        <field name="action" eval="'ir.actions.client,%d' % ref('action_view_journal_ledger')"/>
+    </record>
+    <record id="account_financial_report.menu_trial_balance_wizard" model="ir.ui.menu">
+        <field name="action" eval="'ir.actions.client,%d' % ref('action_view_trial_balance')"/>
+    </record>
+    <record id="account_financial_report.menu_open_items_wizard" model="ir.ui.menu">
+        <field name="action" eval="'ir.actions.client,%d' % ref('action_view_open_items')"/>
+    </record>
+    <record id="account_financial_report.menu_aged_partner_balance_wizard" model="ir.ui.menu">
+        <field name="action" eval="'ir.actions.client,%d' % ref('action_view_aged_partner_balance')"/>
+    </record>
+    <record id="account_financial_report.menu_vat_report_wizard" model="ir.ui.menu">
+        <field name="action" eval="'ir.actions.client,%d' % ref('action_view_vat_report')"/>
+    </record>
+
+    <!-- The two statements open directly on their result page -->
+    <record id="server_open_compte_de_resultat" model="ir.actions.server">
+        <field name="name">Compte de résultat</field>
+        <field name="model_id" ref="mis_builder.model_mis_report_instance"/>
+        <field name="state">code</field>
+        <field name="code">action = env.ref('elite_finance.mis_instance_compte_de_resultat').preview()</field>
+    </record>
+    <record id="server_open_bilan" model="ir.actions.server">
+        <field name="name">Bilan</field>
+        <field name="model_id" ref="mis_builder.model_mis_report_instance"/>
+        <field name="state">code</field>
+        <field name="code">action = env.ref('elite_finance.mis_instance_bilan').preview()</field>
+    </record>
+    <menuitem id="menu_compte_de_resultat" name="Compte de résultat"
+              parent="mis_builder.mis_report_finance_menu" action="server_open_compte_de_resultat"
+              sequence="1"/>
+    <menuitem id="menu_bilan" name="Bilan"
+              parent="mis_builder.mis_report_finance_menu" action="server_open_bilan"
+              sequence="2"/>
+
+    <!-- =============================================================
+         Customers and Vendors carry their reports: the same viewer, the
+         wizard opened on receivable or payable accounts only (the
+         context key is read by models/report_wizards.py).
+         ============================================================= -->
+    <record id="client_customer_ledger" model="ir.actions.client">
         <field name="name">Customer Ledger</field>
-        <field name="res_model">general.ledger.report.wizard</field>
-        <field name="view_mode">form</field>
-        <field name="target">new</field>
-        <field name="context">{'elite_finance_partner_type': 'receivable'}</field>
+        <field name="tag">elite_finance_report_viewer</field>
+        <field name="context">{'wizard_model': 'general.ledger.report.wizard', 'elite_finance_partner_type': 'receivable'}</field>
     </record>
-    <record id="action_customer_open_items" model="ir.actions.act_window">
+    <record id="client_customer_open_items" model="ir.actions.client">
         <field name="name">Customer Open Items</field>
-        <field name="res_model">open.items.report.wizard</field>
-        <field name="view_mode">form</field>
-        <field name="target">new</field>
-        <field name="context">{'elite_finance_partner_type': 'receivable'}</field>
+        <field name="tag">elite_finance_report_viewer</field>
+        <field name="context">{'wizard_model': 'open.items.report.wizard', 'elite_finance_partner_type': 'receivable'}</field>
     </record>
-    <record id="action_aged_receivables" model="ir.actions.act_window">
+    <record id="client_aged_receivables" model="ir.actions.client">
         <field name="name">Aged Receivables</field>
-        <field name="res_model">aged.partner.balance.report.wizard</field>
-        <field name="view_mode">form</field>
-        <field name="target">new</field>
-        <field name="context">{'elite_finance_partner_type': 'receivable'}</field>
+        <field name="tag">elite_finance_report_viewer</field>
+        <field name="context">{'wizard_model': 'aged.partner.balance.report.wizard', 'elite_finance_partner_type': 'receivable'}</field>
     </record>
     <menuitem id="menu_customer_ledger" name="Customer Ledger"
-              parent="account.menu_finance_receivables" action="action_customer_ledger"
+              parent="account.menu_finance_receivables" action="client_customer_ledger"
               sequence="50" groups="account.group_account_readonly"/>
     <menuitem id="menu_customer_open_items" name="Customer Open Items"
-              parent="account.menu_finance_receivables" action="action_customer_open_items"
+              parent="account.menu_finance_receivables" action="client_customer_open_items"
               sequence="51" groups="account.group_account_readonly"/>
     <menuitem id="menu_aged_receivables" name="Aged Receivables"
-              parent="account.menu_finance_receivables" action="action_aged_receivables"
+              parent="account.menu_finance_receivables" action="client_aged_receivables"
               sequence="52" groups="account.group_account_readonly"/>
 
-    <record id="action_vendor_ledger" model="ir.actions.act_window">
+    <record id="client_vendor_ledger" model="ir.actions.client">
         <field name="name">Vendor Ledger</field>
-        <field name="res_model">general.ledger.report.wizard</field>
-        <field name="view_mode">form</field>
-        <field name="target">new</field>
-        <field name="context">{'elite_finance_partner_type': 'payable'}</field>
+        <field name="tag">elite_finance_report_viewer</field>
+        <field name="context">{'wizard_model': 'general.ledger.report.wizard', 'elite_finance_partner_type': 'payable'}</field>
     </record>
-    <record id="action_vendor_open_items" model="ir.actions.act_window">
+    <record id="client_vendor_open_items" model="ir.actions.client">
         <field name="name">Vendor Open Items</field>
-        <field name="res_model">open.items.report.wizard</field>
-        <field name="view_mode">form</field>
-        <field name="target">new</field>
-        <field name="context">{'elite_finance_partner_type': 'payable'}</field>
+        <field name="tag">elite_finance_report_viewer</field>
+        <field name="context">{'wizard_model': 'open.items.report.wizard', 'elite_finance_partner_type': 'payable'}</field>
     </record>
-    <record id="action_aged_payables" model="ir.actions.act_window">
+    <record id="client_aged_payables" model="ir.actions.client">
         <field name="name">Aged Payables</field>
-        <field name="res_model">aged.partner.balance.report.wizard</field>
-        <field name="view_mode">form</field>
-        <field name="target">new</field>
-        <field name="context">{'elite_finance_partner_type': 'payable'}</field>
+        <field name="tag">elite_finance_report_viewer</field>
+        <field name="context">{'wizard_model': 'aged.partner.balance.report.wizard', 'elite_finance_partner_type': 'payable'}</field>
     </record>
     <menuitem id="menu_vendor_ledger" name="Vendor Ledger"
-              parent="account.menu_finance_payables" action="action_vendor_ledger"
+              parent="account.menu_finance_payables" action="client_vendor_ledger"
               sequence="50" groups="account.group_account_readonly"/>
     <menuitem id="menu_vendor_open_items" name="Vendor Open Items"
-              parent="account.menu_finance_payables" action="action_vendor_open_items"
+              parent="account.menu_finance_payables" action="client_vendor_open_items"
               sequence="51" groups="account.group_account_readonly"/>
     <menuitem id="menu_aged_payables" name="Aged Payables"
-              parent="account.menu_finance_payables" action="action_aged_payables"
+              parent="account.menu_finance_payables" action="client_aged_payables"
               sequence="52" groups="account.group_account_readonly"/>
+
+    <!-- the 19.0.1 window actions these replaced -->
+    <delete model="ir.actions.act_window" id="action_customer_ledger"/>
+    <delete model="ir.actions.act_window" id="action_customer_open_items"/>
+    <delete model="ir.actions.act_window" id="action_aged_receivables"/>
+    <delete model="ir.actions.act_window" id="action_vendor_ledger"/>
+    <delete model="ir.actions.act_window" id="action_vendor_open_items"/>
+    <delete model="ir.actions.act_window" id="action_aged_payables"/>
 
 </odoo>
