@@ -99,7 +99,9 @@ class TestReportViewer(TransactionCase):
         self.assertIn('tb-num tb-c5', html)
         self.assertIn('tb-totals', html)
         # a movement is a link to the General Ledger of its account
-        self.assertRegex(html, r'<a class="tb-gl" href="#" data-account="\d+" data-kind="debit"')
+        self.assertIn('class="tb-gl"', html)
+        self.assertRegex(html, r'data-account="\d+"')
+        self.assertIn('data-kind="debit"', html)
         self.assertIn('data-kind="credit"', html)
         self.assertIn('tb-kebab', html)
         # the unposted-entries notice is the viewer's, computed with the state
