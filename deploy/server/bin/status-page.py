@@ -225,7 +225,7 @@ def render(envs, branches, runs, by_sha, bk, mon, lg):
             return '—'
         run = by_sha.get(sha[:7])
         colour, title = ci_light(run)
-        link = f'<a href="{e(run["url"])}" title="tests: {e(title)}">' if run else ''
+        link = f'<a href="{e(run["url"])}" title="tests: {e(title)}" target="_blank" rel="noopener">' if run else ''
         return f'<code>{e(sha[:7])}</code> {link}{light(colour, "tests: " + title)}{"</a>" if run else ""}'
 
     def button(action, label, kind='', branch=''):
@@ -286,7 +286,7 @@ def render(envs, branches, runs, by_sha, bk, mon, lg):
         }[env['name']]
         head = (f'<div class="head"><h2>{e(env["branch"])}</h2>'
                 f'<span class="st">{light(env["light"], env["status"])} {e(env["status"])}</span>'
-                f'<span class="acts">{actions}<a class="btn connect" href="{env["url"]}/odoo">Connect</a></span></div>'
+                f'<span class="acts">{actions}<a class="btn connect" href="{env["url"]}/odoo" target="_blank" rel="noopener">Connect</a></span></div>'
                 f'<div class="facts"><span>Odoo {ODOO_SERIES} Community</span><span>{e(mods)}</span>'
                 f'<span>database <code>{e(env["db"])}</code> {e(env["size"])}</span>'
                 f'<span>revision {rev(env["commits"][0][0] if env["commits"] else "")}</span>'
@@ -318,7 +318,7 @@ def render(envs, branches, runs, by_sha, bk, mon, lg):
         panels.append(f'''
         <section class="panel" id="branch:{e(name)}">
           <div class="head"><h2>{e(name)}</h2><span class="st">{light(colour, title)} tests: {e(title)}</span>
-          <span class="acts">{button('deploy-dev', "Deploy to dev", '', name)}{button('promote-staging', "Promote → staging", 'danger', name)}<a class="btn connect" href="https://github.com/{REPO}/tree/{e(name)}">GitHub</a></span></div>
+          <span class="acts">{button('deploy-dev', "Deploy to dev", '', name)}{button('promote-staging', "Promote → staging", 'danger', name)}<a class="btn connect" href="https://github.com/{REPO}/tree/{e(name)}" target="_blank" rel="noopener">GitHub</a></span></div>
           <div class="facts"><span>revision {rev(sha)}</span><span>last test run {stamp(run.get("when"), True) if run else "—"}</span>
           {see_run}</div>
           <p><small>A development branch is built and tested on GitHub; it is deployed to the dev environment with <code>deploy.sh dev &lt;branch&gt;</code>, then fast-forwarded to staging when green.</small></p>
