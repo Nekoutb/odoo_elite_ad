@@ -177,3 +177,40 @@ body.container .o_account_financial_reports_page a.tb-gl:hover {
 body.container .o_account_financial_reports_page .tb-line .tb-c1 b {
     margin-right: 4px;
 }
+
+/* ---- every report: a faint grid, no wrapping, totals on the same columns ----
+   A div-table lays its columns out from its first row when table-layout is
+   fixed, so the totals tables, which carry the same widths, line up with
+   the figures; and a cell never grows past its column: long text is cut
+   with an ellipsis and shown in full on hover. */
+.o_account_financial_reports_page .act_as_table {
+    table-layout: fixed;
+    width: 100% !important;
+}
+.o_account_financial_reports_page .act_as_cell {
+    white-space: nowrap !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border: 1px solid #eceef3 !important;
+}
+.o_account_financial_reports_page .act_as_row.labels .act_as_cell {
+    background: #f7f8fa;
+    border-color: #e3e6ec !important;
+}
+.o_account_financial_reports_page .tb-line .tb-c1 {
+    white-space: nowrap !important;
+}
+.o_account_financial_reports_page .tb-group-row .tb-group {
+    border-color: #e3e6ec;
+}
+.o_account_financial_reports_page .tb-head .act_as_cell {
+    border-color: #e3e6ec !important;
+}
+.o_account_financial_reports_page .act_as_row.tb-totals .act_as_cell {
+    border-top: 2px solid #c7ccd6 !important;
+    font-weight: bold;
+    background: #fff;
+}
+.o_account_financial_reports_page .list_table .act_as_cell.left {
+    white-space: nowrap !important;
+}

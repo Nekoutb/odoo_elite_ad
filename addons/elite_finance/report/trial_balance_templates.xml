@@ -41,7 +41,7 @@
         <!-- a grand total under the plain layout, which the OCA report
              leaves without one; the second re-pointed header call is the
              plain table's, its parent div the table -->
-        <xpath expr="(//t[@t-call='elite_finance.tb_lines_header'])[2]/.." position="after">
+        <xpath expr="(//t[@t-call='elite_finance.tb_lines_header'])[2]/.." position="inside">
             <t t-call="elite_finance.tb_grand_total"/>
         </xpath>
         <!-- totals: three occurrences -->
@@ -94,7 +94,7 @@
             <t t-set="acc_id" t-value="balance['id']"/>
             <div t-attf-class="act_as_row lines tb-line {{ 'tb-group-line' if is_group else '' }} tb-lvl-{{ balance.get('level', 0) }}">
                 <div class="act_as_cell left tb-c1">
-                    <span class="tb-name" t-att-res-id="acc_id" t-att-res-model="'account.group' if is_group else 'account.account'" view-type="form">
+                    <span class="tb-name" t-att-title="balance['code'] + ' ' + (balance['name'] or '')" t-att-res-id="acc_id" t-att-res-model="'account.group' if is_group else 'account.account'" view-type="form">
                         <b t-out="balance['code']"/> <t t-out="balance['name']"/><span class="tb-kebab" title="Open the account">&#8942;</span>
                     </span>
                 </div>
@@ -139,6 +139,7 @@
         <t t-if="not (show_partner_details or foreign_currency)">
             <t t-set="tb_rows" t-value="[b for b in trial_balance if b['type'] == 'account_type']"/>
             <t t-set="balance" t-value="{'name': 'Total', 'initial_balance': sum(b['initial_balance'] for b in tb_rows), 'debit': sum(b['debit'] for b in tb_rows), 'credit': sum(b['credit'] for b in tb_rows), 'ending_balance': sum(b['ending_balance'] for b in tb_rows)}"/>
+            <t t-set="tb_inline" t-value="True"/>
             <t t-call="elite_finance.tb_account_footer"/>
         </t>
     </template>
@@ -148,8 +149,8 @@
         <t t-if="show_partner_details or foreign_currency or not balance or 'initial_balance' not in balance"
            t-call="account_financial_report.report_trial_balance_account_footer"/>
         <t t-else="">
-            <div class="act_as_table list_table tb-totals" style="width: 100%;">
-                <div class="act_as_row labels tb-line">
+            <t t-set="tb_row">
+                <div class="act_as_row labels tb-line tb-totals">
                     <div class="act_as_cell left tb-c1"><b t-out="balance.get('name') or 'Total'"/></div>
                     <div t-attf-class="act_as_cell amount tb-num tb-c2 {{ 'neg' if balance['initial_balance'] &lt; 0 else ('zero' if not balance['initial_balance'] else '') }}">
                         <t t-out="balance['initial_balance']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
@@ -164,7 +165,9 @@
                         <t t-out="balance['ending_balance']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
                     </div>
                 </div>
-            </div>
+            </t>
+            <t t-if="tb_inline" t-out="tb_row"/>
+            <div t-else="" class="act_as_table list_table" style="width: 100%;"><t t-out="tb_row"/></div>
         </t>
     </template>
 

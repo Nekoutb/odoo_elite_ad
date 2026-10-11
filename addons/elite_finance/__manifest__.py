@@ -27,7 +27,7 @@ before it is exported.
     'author': "Elite Advisors",
     'website': "https://eliteadvisors.cm-ea.com",
     'category': 'Accounting/Accounting',
-    'version': '19.0.5.0.0',
+    'version': '19.0.6.0.0',
     'license': 'LGPL-3',
     'depends': ['account', 'account_financial_report', 'mis_builder'],
     'data': [
