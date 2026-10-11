@@ -42,6 +42,9 @@ class TestFinanceMenus(TransactionCase):
             self.assertTrue(ref(xmlid).action, xmlid)
 
     def test_03_a_customer_report_opens_on_receivable_accounts_and_previews(self):
+        # Odoo shows an administrator the document-layout dialog once,
+        # before the first report, when the company has no layout yet
+        self.env.company.external_report_layout_id = self.env.ref('web.external_layout_standard')
         Account = self.env['account.account']
         receivable = Account.search([('account_type', '=', 'asset_receivable')])
         payable = Account.search([('account_type', '=', 'liability_payable')])
