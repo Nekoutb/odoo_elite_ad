@@ -1026,6 +1026,12 @@ Customs clearance job files for a logistics/clearance services provider.
 - Static repo checks CI also runs:
   `python tools/check_manifest.py addons/elite_clearance addons/elite_clearance_teese addons/elite_finance`
   `python tools/check_view_pitfalls.py addons/elite_clearance addons/elite_clearance_teese addons/elite_finance`
+- **The server's scripts are versioned under `deploy/server/`** (bin/,
+  cron/, backup.env.example) and installed at `/opt/elimelec/bin/` -
+  change them in the repository, then scp. `docs/backup-policy.md` is the
+  backup and storage policy (hourly/daily/weekly/monthly/yearly to Wasabi
+  with a 30-day object lock, weekly restore test); `docs/deployment-server.md`
+  the server and the cutover.
 - `elite_finance` needs the OCA 19.0 repositories account-financial-reporting,
   mis-builder, server-ux and reporting-engine on the addons path (see
   `.github/workflows/tests.yml` for the exact checkouts).

@@ -1,0 +1,10 @@
+# /etc/cron.d/elimelec-backups  - times are the server's (Africa/Douala)
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+MAILTO=""
+# the daily set at 02:00, then off-site and retention
+0 2 * * *       root /opt/elimelec/bin/backup.sh daily  >> /opt/elimelec/backups/log/cron.log 2>&1
+# a database dump every hour of the working day, Monday to Saturday
+0 7-20 * * 1-6  root /opt/elimelec/bin/backup.sh hourly >> /opt/elimelec/backups/log/cron.log 2>&1
+# every Sunday, prove the latest off-site set restores
+30 3 * * 0      root /opt/elimelec/bin/restore-test.sh --remote >> /opt/elimelec/backups/log/cron.log 2>&1
