@@ -45,6 +45,12 @@
         <xpath expr="//t[@t-call='account_financial_report.report_trial_balance_line']" position="attributes">
             <attribute name="t-call">elite_finance.tb_line</attribute>
         </xpath>
+        <!-- a grand total under the plain layout, which the OCA report
+             leaves without one; the second re-pointed header call is the
+             plain table's, its parent div the table -->
+        <xpath expr="(//t[@t-call='elite_finance.tb_lines_header'])[2]/.." position="after">
+            <t t-call="elite_finance.tb_grand_total"/>
+        </xpath>
         <!-- totals: three occurrences -->
         <xpath expr="//t[@t-call='account_financial_report.report_trial_balance_account_footer']" position="attributes">
             <attribute name="t-call">elite_finance.tb_account_footer</attribute>
@@ -132,6 +138,15 @@
                     </span>
                 </div>
             </div>
+        </t>
+    </template>
+
+    <!-- The grand total of the plain layout: every account row summed -->
+    <template id="tb_grand_total">
+        <t t-if="not (show_partner_details or foreign_currency)">
+            <t t-set="tb_rows" t-value="[b for b in trial_balance if b['type'] == 'account_type']"/>
+            <t t-set="balance" t-value="{'name': 'Total', 'initial_balance': sum(b['initial_balance'] for b in tb_rows), 'debit': sum(b['debit'] for b in tb_rows), 'credit': sum(b['credit'] for b in tb_rows), 'ending_balance': sum(b['ending_balance'] for b in tb_rows)}"/>
+            <t t-call="elite_finance.tb_account_footer"/>
         </t>
     </template>
 
