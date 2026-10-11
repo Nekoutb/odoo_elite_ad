@@ -25,9 +25,16 @@ class PartnerTypeDefaults(models.AbstractModel):
         if kind in ('receivable', 'payable'):
             res['receivable_accounts_only'] = kind == 'receivable'
             res['payable_accounts_only'] = kind == 'payable'
-            draft = self.new(res)
-            draft.onchange_type_accounts_only()
-            res['account_ids'] = [(6, 0, draft.account_ids.ids)]
+            # the same search the wizard's onchange_type_accounts_only
+            # runs - done here directly, because a draft record built
+            # inside default_get recursed on the way to writing it
+            company_id = res.get('company_id') or self.env.company.id
+            accounts = self.env['account.account'].search([
+                ('company_ids', 'in', [company_id]),
+                ('account_type', '=',
+                 'asset_receivable' if kind == 'receivable' else 'liability_payable'),
+            ])
+            res['account_ids'] = [(6, 0, accounts.ids)]
         return res
 
 
