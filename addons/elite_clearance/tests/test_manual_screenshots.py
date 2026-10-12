@@ -389,7 +389,10 @@ class TestManualScreenshots(HttpCase):
             sent.action_submit()
             sent.action_approve()
             sent.action_submit_settlement()
-            return {'exp_pay': to_pay, 'exp_paid': paid, 'exp_sent': sent}
+            return {'exp_pay': to_pay, 'exp_paid': paid, 'exp_sent': sent,
+                    # the entry the payment made, every line labelled
+                    # `<category> / <file>` (owner, 10/10/2026)
+                    'move_paid': paid.settlement_move_id}
 
         def advance():
             file = cls._new_file("SEGU5518870")
@@ -482,12 +485,50 @@ class TestManualScreenshots(HttpCase):
             payment.action_post()
             return {'payment': payment}
 
+        # --- Saturday 10/10/2026 (19.0.45 - 19.0.47) ---------------------
+        def review():
+            """A recharge above cost, each line saying why; the Head of
+            Service Operations reads it on the billing screen itself."""
+            file = cls._ready_to_bill("TRHU3391120")
+            wizard = self.env['logistics.billing.wizard'].with_context(
+                active_id=file.id).create({})
+            line = wizard.debours_line_ids.filtered(
+                lambda l: l.name == "Surestaries")[:1] or wizard.debours_line_ids[:1]
+            line.write({
+                'amount_recharged': line.amount_engaged + 75000,
+                'comment': "Surestaries majorees : 3 jours d'attente "
+                           "imputables au client."})
+            wizard.action_submit_for_review()
+            return {'file_review': file}
+
+        def voucher():
+            """Two disbursements paid from the till: the voucher the system
+            printed at Disburse / Pay, and the signed copy the cashier
+            brought back for the second one."""
+            printed = cls._disbursement(cls.file_work, "Timbres fiscaux", 12500)
+            cls._settle(printed)
+            signed = cls._disbursement(
+                cls.file_work, "Frais de passage en douane", 37000)
+            cls._settle(signed)
+            self.env['ir.attachment'].create({
+                'name': "avance_frais_signee.pdf",
+                'res_model': 'logistics.expense', 'res_id': signed.id,
+                'datas': RECEIPT, 'clearance_kind': 'signed'})
+            return {'exp_voucher': printed, 'exp_signed': signed}
+
+        def numbering():
+            """The last Teese reference, so numbering continues from it.
+            Built LAST: every file opened after it takes the next number."""
+            cls.service.write({'legacy_last_file_ref': "2026IM0214"})
+            return {'numbering': cls.service}
+
         for name, build in (("opening", opening), ("waiver", waiver),
                             ("payment", payment), ("advance", advance),
                             ("recharge", recharge), ("posted", posted),
                             ("closed", closed), ("partial", partial),
                             ("void", void), ("credit", credit),
-                            ("receipt", receipt)):
+                            ("receipt", receipt), ("review", review),
+                            ("voucher", voucher), ("numbering", numbering)):
             scene(name, build)
         return scenes, skipped
 
@@ -705,6 +746,40 @@ class TestManualScreenshots(HttpCase):
                  wait=".o_form_view")
             shot("46_invoices", "/odoo/action-%d"
                  % action('action_clearance_invoices'))
+
+            # 15  Saturday 10/10/2026: numbering, a refusal's reason, the
+            #     review on the billing screen, the till voucher, the
+            #     ledger labels, the VAT-exempt customer
+            if scenes.get('numbering'):
+                shot("48_file_numbering", "/odoo/action-%d"
+                     % action('action_logistics_service_type_numbering'))
+            scene_shot('file_requested', "49_refuse_reason", form,
+                       wait=".o_form_view",
+                       clicks=["button[name='action_open_rejection']"],
+                       then=modal)
+            scene_shot('file_review', "50_billing_review", form,
+                       wait=".o_form_view",
+                       clicks=["button[name='action_open_billing_review']"],
+                       then=modal)
+            scene_shot('file_review', "51_line_comments", form,
+                       wait=".o_form_view",
+                       clicks=["button[name='action_open_billing_review']"],
+                       scroll="%s .o_field_widget[name='debours_line_ids']" % modal)
+            scene_shot('exp_voucher', "52_cash_voucher", expense_form,
+                       wait=".o_form_view",
+                       scroll=".o_field_widget[name='cash_voucher_ids']")
+            scene_shot('exp_voucher', "53_voucher_document",
+                       "/report/html/elite_clearance.report_cash_voucher/%d",
+                       wait=".o_clearance_voucher")
+            scene_shot('exp_signed', "54_signed_voucher", expense_form,
+                       wait=".o_form_view",
+                       scroll=".o_field_widget[name='signed_voucher_ids']")
+            scene_shot('move_paid', "55_ledger_labels", "/odoo/account.move/%d",
+                       wait=".o_form_view",
+                       scroll=".o_field_widget[name='line_ids']")
+            shot("56_customer_vat", "/odoo/res.partner/%d" % self.client.id,
+                 wait=".o_form_view",
+                 scroll=".o_field_widget[name='clearance_vat_exempt']")
 
             time.sleep(2.0)
 
