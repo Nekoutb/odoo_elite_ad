@@ -20,7 +20,21 @@
 }
 
 elimelecodoo.com {
-	import odoo prod-odoo
+	# the client's UAT page and its tick-offs (owner, 12/10/2026):
+	# static files under /opt/elimelec/uat, results kept by
+	# bin/uat-server.py on :8071 (systemd elimelec-uat)
+	redir /uat /uat/ 308
+	handle /uat/api/* {
+		reverse_proxy host.docker.internal:8071
+	}
+	handle_path /uat/* {
+		root * /srv/uat
+		file_server
+		header Cache-Control "no-store"
+	}
+	handle {
+		import odoo prod-odoo
+	}
 }
 
 www.elimelecodoo.com {

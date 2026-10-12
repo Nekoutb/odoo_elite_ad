@@ -114,3 +114,17 @@ no scheduled jobs. Dev is an empty database with demo data. Both are
 reached with Odoo's own login and nothing else (owner, 11/10/2026); the
 front door's basic-auth gate (`caddy/.gate` on the server) protects only
 the overview page's action buttons.
+
+
+## The client's UAT page: elimelecodoo.com/uat
+
+The UAT script (UAT-CL-01, French at `/uat/`, English at `/uat/en.html`,
+both as PDF) is served by Caddy from `/opt/elimelec/uat` on the
+production site, with the team's setup section left out. A tester types
+their name once; every Pass / Fail / N/A and note is sent to
+`bin/uat-server.py` (`/uat/api/*`, port 8071, systemd `elimelec-uat`),
+which keeps `/opt/elimelec/uat/results.json` and a line per change in
+`results.log`. `/uat/progress.html` shows every tester's progress and
+the failed cases with their notes. To publish a new version of the
+script: build the pages, copy them and `uat_img/` over, nothing to
+restart. The results file is included in the server config backup.

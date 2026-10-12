@@ -1,0 +1,13 @@
+[Unit]
+Description=Elimelec UAT tick-offs (elimelecodoo.com/uat)
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/elimelec/bin/uat-server.py
+Restart=always
+RestartSec=3
+User=root
+WorkingDirectory=/opt/elimelec/uat
+
+[Install]
+WantedBy=multi-user.target

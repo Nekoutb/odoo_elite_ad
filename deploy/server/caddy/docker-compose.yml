@@ -10,6 +10,7 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - /opt/elimelec/status:/srv/status:ro
+      - /opt/elimelec/uat:/srv/uat:ro
       - caddy_data:/data
       - caddy_config:/config
     networks:
