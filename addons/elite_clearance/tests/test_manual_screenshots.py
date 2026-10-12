@@ -191,6 +191,15 @@ class TestManualScreenshots(HttpCase):
             'customs_declaration_ref': "2026IM0540",
             'goods_description': "CARREAUX CERAMIQUE",
             'cargo_value': 41250000.0,
+            # every Cargo & Routing field the form requires in draft: a
+            # draft left short of one cannot be saved, and a header button
+            # saves before it acts - the click then does nothing, with no
+            # server call and no error (49_refuse_reason, 12/10/2026)
+            'cargo_value_currency_id': cls.env.company.currency_id.id,
+            'shipment_type': 'container',
+            'importer_name': "SONICAM",
+            'incoterm_id': cls.env['account.incoterms'].search(
+                [('code', '=', 'CIF')], limit=1).id or False,
             'port_id': cls.port.id,
             'employee_id': cls.employee.id,
             'container_count': 2, 'container_type': "40",
