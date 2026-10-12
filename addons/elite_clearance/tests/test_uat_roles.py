@@ -265,13 +265,15 @@ class TestUatRoles(TransactionCase):
             user or self.bill).with_context(**ctx).create(vals)
 
     def _bill(self, file, post=True, **vals):
+        """Bill through the screen; returns the document(s) THIS billing
+        issued (two for a split bill), posted unless asked otherwise."""
+        before = file.sudo()._client_invoices()
         self._wizard(file, **vals).action_create_invoice()
-        invoices = file.sudo()._client_invoices()
+        invoices = file.sudo()._client_invoices() - before
         if post:
-            for inv in invoices.filtered(lambda i: i.state == 'draft'):
+            for inv in invoices:
                 inv.with_user(self.bill).action_post()
-        return invoices.filtered(lambda i: i.create_date == max(invoices.mapped('create_date'))) \
-            if len(invoices) > 2 else invoices
+        return invoices
 
     def _queue(self, user, kind):
         return self.env['clearance.task'].with_user(user).search([('kind', '=', kind)])
