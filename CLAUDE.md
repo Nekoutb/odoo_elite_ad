@@ -915,6 +915,13 @@ Customs clearance job files for a logistics/clearance services provider.
   triggers are hoot selectors (`:contains`, `:visible`, `:has`,
   `:not`); `queryFirst` takes the first match. The drag is simulated with
   one `DataTransfer` shared by the `dragenter` and `drop` events.
+- **A header button on an INVALID form does nothing - no request, no
+  error.** `beforeExecuteActionButton` saves the record before the
+  action; a required field left empty makes `save()` return false with
+  only a notification, so `el.click()` in a browser test "succeeds" and
+  the dialog never opens. The camera's draft files were short of the
+  Cargo & Routing fields required in draft (12/10/2026): fill every
+  required field in a fixture whose form a test will click.
 - **The file form must open for an agent with NO accounting rights.**
   Ops / Customer Service / Transit agents are not in any `account.*`
   group. A compute on `logistics.file` that reads `invoice_id` /
