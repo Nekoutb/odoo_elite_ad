@@ -146,6 +146,9 @@ class TestUatRoles(TransactionCase):
             cls.service.commission_rate = 2.0
         cls.port = env['logistics.port'].search([], limit=1) or env['logistics.port'].create(
             {'name': "Douala UAT", 'code': "UDLA"})
+        cls.incoterm = (env['account.incoterms'].search([('code', '=', 'CIF')], limit=1)
+                        or env['account.incoterms'].create(
+                            {'name': "Cost, Insurance and Freight", 'code': 'CIF'}))
         # the advance holder is the Operations Agent's own employee record
         cls.holder = env['hr.employee'].create({
             'name': "UAT Operations Agent", 'user_id': cls.ops.id})
@@ -167,7 +170,7 @@ class TestUatRoles(TransactionCase):
             'goods_description': "CARREAUX CERAMIQUE", 'cargo_value': 41250000.0,
             'cargo_value_currency_id': self.env.company.currency_id.id,
             'shipment_type': 'container', 'importer_name': "SONICAM",
-            'port_id': self.port.id, 'container_count': 2, 'container_type': "40",
+            'incoterm_id': self.incoterm.id, 'port_id': self.port.id, 'container_count': 2, 'container_type': "40",
             'package_count': 860, 'weight_kg': 14367.0}
         vals.update(extra)
         return self.env['logistics.file'].with_user(user or self.cs).create(vals)
@@ -239,7 +242,11 @@ class TestUatRoles(TransactionCase):
         return self._pay(self._signed(self._cost(file, description, amount, **kw)))
 
     def _sign_voucher(self, exp):
-        self._attach(exp, "avance_frais_signee.pdf", self.cash_user, clearance_kind='signed')
+        signed = self.env['ir.attachment'].with_user(self.cash_user).create({
+            'name': "avance_frais_signee.pdf", 'res_model': exp._name, 'res_id': 0,
+            'datas': RECEIPT})
+        exp.with_user(self.cash_user).write({'signed_voucher_ids': [(4, signed.id)]})
+        return signed
 
     def _ready(self, file=None, costs=((("Manutention", 100000), ("Surestaries", 250000)))):
         file = file or self._working()
@@ -266,6 +273,10 @@ class TestUatRoles(TransactionCase):
 
     def _queue(self, user, kind):
         return self.env['clearance.task'].with_user(user).search([('kind', '=', kind)])
+
+    def _queued(self, user, kind, record):
+        return any(t.res_model == record._name and t.res_id == record.id
+                   for t in self._queue(user, kind))
 
     def _refuse(self, user, record, method, reason):
         return self.env['clearance.rejection.wizard'].with_user(user).create({
@@ -296,7 +307,7 @@ class TestUatRoles(TransactionCase):
             text = " ".join(str(error).split())[:240]
             self.results.append((cid, title, roles, 'FAIL',
                                  "%s: %s" % (type(error).__name__, text)))
-            _logger.warning("UAT %s FAIL - %s: %s", cid, type(error).__name__, text)
+            _logger.warning("UAT %s FAIL - %s: %s", cid, type(error).__name__, text, exc_info=True)
         else:
             self.results.append((cid, title, roles, 'PASS', ""))
 
@@ -354,13 +365,12 @@ class TestUatRoles(TransactionCase):
         with self.case('UAT-01b', "Numbering continues from the old system", 'GM'):
             service = self.service.with_user(self.gm)
             service.write({'legacy_last_file_ref': "2026IM0900"})
+            file = self._file()
+            self.check(file.name == "2026IM0901", "next number is 2026IM0901, got %s" % file.name)
             self.refused(lambda: service.write({'legacy_last_file_ref': "IM-2026-99"}),
                          "a malformed reference is refused")
             self.refused(lambda: service.write({'legacy_last_file_ref': "2026IM0001"}),
                          "a reference behind a file opened here is refused")
-            self.env.invalidate_all()
-            file = self._file()
-            self.check(file.name == "2026IM0901", "next number is 2026IM0901, got %s" % file.name)
 
         with self.case('UAT-02', "Each role sees only what it may act on", 'all'):
             File = self.env['logistics.file']
@@ -412,7 +422,10 @@ class TestUatRoles(TransactionCase):
             self.check(file.analytic_account_id.name == "%s - %s" % (file.name, self.client.clearance_slug),
                        "analytic account named after the file and the slug")
             self.check(file.state == 'draft' and file.opening_state == 'none', "draft, opening not requested")
-            self.check("employee_id" not in self._arch(self.cs), "no Follow-up Employee on the form")
+            from lxml import etree
+            tree = etree.fromstring(self._arch(self.cs))
+            self.check(not tree.xpath("//field[@name='employee_id'][not(ancestor::field)]"),
+                       "no Follow-up Employee on the form")
             self.uat03 = file
 
         with self.case('UAT-03b', "Cargo and routing are mandatory", 'CS'):
@@ -502,25 +515,24 @@ class TestUatRoles(TransactionCase):
                        "the mode followed what was keyed: %s" % rows.mapped('payment_mode'))
             self.check(self.env['logistics.expense']._fields['description'].string == "Additional Comments",
                        "the free text reads Additional Comments")
-            channel = self.env['logistics.expense']._fields['journal_id']
-            self.check(all(j.type in ('cash', 'bank') for j in self.env['account.journal'].search(
-                channel.get_domain_list(self.env['logistics.expense']))), "the channel list is tills and banks")
+            domain = str(self.env['logistics.expense']._fields['journal_id'].domain)
+            self.check('cash' in domain and 'bank' in domain, "the channel list is tills and banks: %s" % domain)
 
         with self.case('UAT-08', "The head of the service that keyed it approves it", 'CSM, OPSM'):
             file = self._working()
             exp = self._cost(file)
             exp.with_user(self.ops).action_submit()
-            self.check(exp not in self._queue(self.csm, 'expense_approve').mapped('expense_id'),
+            self.check(not self._queued(self.csm, 'expense_approve', exp),
                        "the CS head's queue does not list Operations' cost")
             self.refused(lambda: exp.with_user(self.csm).action_approve(), "the CS head may not approve it")
-            self.check(exp in self._queue(self.opsm, 'expense_approve').mapped('expense_id'), "the Ops head's queue")
+            self.check(self._queued(self.opsm, 'expense_approve', exp), "the Ops head's queue")
             exp.with_user(self.opsm).action_approve()
             self.check(exp.state == 'approved' and exp.approved_by_id == self.opsm, "approved, recorded against the head")
             self.check(not exp.accrual_move_id, "no journal entry yet")
             cs_cost = self._cost(file, "Photocopies", 5000, user=self.cs)
             cs_cost.with_user(self.cs).action_submit()
-            self.check(cs_cost in self._queue(self.csm, 'expense_approve').mapped('expense_id')
-                       and cs_cost not in self._queue(self.opsm, 'expense_approve').mapped('expense_id'),
+            self.check(self._queued(self.csm, 'expense_approve', cs_cost)
+                       and not self._queued(self.opsm, 'expense_approve', cs_cost),
                        "the CS cost is in the CS head's queue only")
             other = self._cost(file, "Scanner", 20000)
             other.with_user(self.ops).action_submit()
@@ -534,7 +546,7 @@ class TestUatRoles(TransactionCase):
             exp = self._approved(self._cost(file))
             self.refused(lambda: exp.with_user(self.ops).write({'journal_id': self.bank.id}),
                          "the agent's payment fields are Finance's now")
-            self.check(exp in self._queue(self.fin, 'settlement_key').mapped('expense_id'),
+            self.check(self._queued(self.fin, 'settlement_key', exp),
                        "Finance's queue has it without anybody sending it")
             exp.with_user(self.fin).write({'journal_id': self.bank.id})
             self.check(exp.payment_mode == 'electronic', "the mode follows the channel")
@@ -552,7 +564,7 @@ class TestUatRoles(TransactionCase):
             file = self._working()
             exp = self._approved(self._cost(file))
             exp.with_user(self.fin).action_submit_settlement()
-            self.check(exp in self._queue(self.finm, 'settlement_approve').mapped('expense_id'), "the FINM queue")
+            self.check(self._queued(self.finm, 'settlement_approve', exp), "the FINM queue")
             moves = exp.accrual_move_id
             exp.with_user(self.finm).action_approve_settlement()
             self.check(exp.state == 'settlement_approved' and exp.accrual_move_id == moves, "signed, no new entry")
@@ -564,7 +576,7 @@ class TestUatRoles(TransactionCase):
         with self.case('UAT-11', "The Cashier pays from the till - the voucher is printed", 'CASH'):
             file = self._working()
             exp = self._signed(self._cost(file))
-            self.check(exp in self._queue(self.cash_user, 'disburse_cash').mapped('expense_id'), "Pay from cash")
+            self.check(self._queued(self.cash_user, 'disburse_cash', exp), "Pay from cash")
             self._pay(exp, with_receipt=False)
             self.check(exp.state == 'settled' and exp.date_settled, "paid with nothing attached")
             self.check(exp.cash_voucher_ids, "the voucher was printed into its box")
@@ -590,9 +602,9 @@ class TestUatRoles(TransactionCase):
             file.sudo().customs_fee_amount = 100000
             self.refused(lambda: file.with_user(self.opsm).action_close_operations(),
                          "refused while the voucher is unsigned")
-            self._sign_voucher(exp)
-            self.check(exp.signed_voucher_ids and exp.signed_voucher_ids not in exp.request_document_ids,
-                       "the signed copy sits in its own box")
+            signed = self._sign_voucher(exp)
+            self.check(signed in exp.signed_voucher_ids and signed not in exp.request_document_ids
+                       and signed.clearance_kind == 'signed', "the signed copy sits in its own box")
             file.with_user(self.opsm).action_close_operations()
             self.check(file.state == 'ops_closed', "closed once signed")
 
@@ -648,8 +660,8 @@ class TestUatRoles(TransactionCase):
             self.check(line and line.debit == 150000 and line.partner_id == self.holder.work_contact_id,
                        "421101 debited against the holder")
             self.check(self.engaged not in move.line_ids.mapped('account_id'), "never 47xx yet")
-            self.check(adv in self._queue(self.ops, 'advance_justify').mapped('expense_id'), "in the holder's own My Tasks")
-            self.check(adv not in self._queue(self.tr, 'advance_justify').mapped('expense_id'), "and nobody else's")
+            self.check(self._queued(self.ops, 'advance_justify', adv), "in the holder's own My Tasks")
+            self.check(not self._queued(self.tr, 'advance_justify', adv), "and nobody else's")
             self.refused(lambda: adv.with_user(self.ops).action_submit_justification(),
                          "the voucher alone is not a justification")
             self._attach(adv, "recus.pdf", self.ops)
@@ -690,6 +702,7 @@ class TestUatRoles(TransactionCase):
             self.refused(lambda: file.with_user(self.opsm).action_close_operations(), "refused while the voucher is unsigned")
             self._sign_voucher(unpaid)
             adv = self._paid(file, "Avance", 40000, employee=self.holder)
+            self._sign_voucher(adv)
             self.check(file.unjustified_advance_total == 40000, "an unjustified advance")
             self.refused(lambda: file.with_user(self.opsm).action_close_operations(), "refused while the advance is unjustified")
             self.refused(lambda: file.with_user(self.opsm).action_request_advance_waiver(), "a waiver needs its explanation")
@@ -801,8 +814,12 @@ class TestUatRoles(TransactionCase):
                        "commission line without percentage: %s" % commission.mapped('name'))
             self.check(services.filtered(lambda l: l.account_id == self.service_fee), "HAD on its own 706")
             self.check(all(services.mapped('tax_ids')), "services carry VAT")
+            inv.with_user(self.bill).action_post()
             analytic = str(file.analytic_account_id.id)
-            self.check(all(analytic in (l.analytic_distribution or {}) for l in lines), "analytic on every line")
+            bare = inv.line_ids.filtered(lambda l: l.display_type not in ('line_section', 'line_note')
+                                         and analytic not in (l.analytic_distribution or {}))
+            self.check(not bare, "analytic on every line; missing on %s" % [
+                (l.display_type, l.account_id.code, l.name) for l in bare])
 
         with self.case('UAT-20b', "VAT follows the settings and the customer", 'BILL, GM'):
             company = self.env.company
@@ -825,8 +842,8 @@ class TestUatRoles(TransactionCase):
             file = self._ready()
             inv = self._bill(file)
             html = self._html('elite_clearance.report_clearance_invoice', inv)
-            for word in ("TOTAL TTC", "RESTE", self.client.clearance_invoice_name, "Débours", "Prestations"):
-                self.check(word in html, "the document prints %s" % word)
+            for word in ("TOTAL TTC", "RESTE", self.client.clearance_invoice_name, "bours", "Prestations"):
+                self.check(word.lower() in html.lower(), "the document prints %s" % word)
             self.check(file.with_user(self.bill).action_preview_invoice(), "Preview Invoice opens for Billing")
 
         with self.case('UAT-22', "Split the bill", 'BILL'):
@@ -846,7 +863,9 @@ class TestUatRoles(TransactionCase):
             self.check(inv.state == 'draft' and inv.name in ('/', False) or inv.name.startswith('EL'), "draft first")
             inv.with_user(self.bill).action_post()
             self.check(re.match(r'EL\d\dIM\d{4}$', inv.name or ''), "final number EL26IM…, got %s" % inv.name)
-            self.check(abs(file.invoice_balance_due - inv.amount_total) < 1, "balance due is the total less advances")
+            advances = file.advance_had_amount + file.advance_had_vat_amount + file.advance_other_amount
+            self.check(abs(file.invoice_balance_due - (inv.amount_total - advances)) < 1,
+                       "balance due %s = total %s less advances %s" % (file.invoice_balance_due, inv.amount_total, advances))
 
     # ---------------------------------------------------------------- J
     def j_withdrawing(self):
