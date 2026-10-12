@@ -192,7 +192,7 @@ class TestUatRoles(TransactionCase):
         return self._open(file)
 
     def _cost(self, file, description="Manutention", amount=100000, user=None,
-              journal=None, vendor=True, employee=None, category=None):
+              journal=None, vendor=True, employee=None, category=None, quote=True):
         vals = {'file_id': file.id, 'category_id': (category or self.category).id,
                 'description': description, 'amount': amount,
                 'journal_id': (journal or self.cash).id}
@@ -201,7 +201,8 @@ class TestUatRoles(TransactionCase):
         elif vendor:
             vals['vendor_id'] = (vendor if vendor is not True else self.vendor).id
         exp = self.env['logistics.expense'].with_user(user or self.ops).create(vals)
-        self._attach(exp, "devis.pdf", exp.create_uid)
+        if quote:
+            self._attach(exp, "devis.pdf", exp.create_uid)
         return exp
 
     def _attach(self, record, name, user, **extra):
@@ -267,9 +268,10 @@ class TestUatRoles(TransactionCase):
         self._wizard(file, **vals).action_create_invoice()
         invoices = file.sudo()._client_invoices()
         if post:
-            for inv in invoices:
+            for inv in invoices.filtered(lambda i: i.state == 'draft'):
                 inv.with_user(self.bill).action_post()
-        return invoices
+        return invoices.filtered(lambda i: i.create_date == max(invoices.mapped('create_date'))) \
+            if len(invoices) > 2 else invoices
 
     def _queue(self, user, kind):
         return self.env['clearance.task'].with_user(user).search([('kind', '=', kind)])
@@ -652,7 +654,7 @@ class TestUatRoles(TransactionCase):
 
         with self.case('UAT-13', "A cash advance to a member of staff", 'OPS, FIN, FINM, CASH, holder, OPSM, FINM'):
             file = self._working()
-            adv = self._cost(file, "Transit portuaire", 150000, employee=self.holder)
+            adv = self._cost(file, "Transit portuaire", 150000, employee=self.holder, quote=False)
             self.check(adv.payment_mode == 'advance', "Via employee cash advance")
             self._pay(self._signed(adv), with_receipt=False)
             move = adv.settlement_move_id
