@@ -43,6 +43,10 @@ SETTLEMENT_FIELDS = ('payment_mode', 'journal_id', 'employee_id',
                      'vendor_id')
 # the states in which the originating team may still key them
 REQUESTER_STATES = ('draft', 'submitted')
+# ... and in which Finance may still say who collects the cash: up to the
+# moment it is paid out, when the voucher names them for good
+COLLECTOR_FINANCE_STATES = ('approved', 'settlement_submitted',
+                            'settlement_approved')
 
 # An advance is the holder's debt until the reclassification is POSTED.
 # Submitting the receipts is not being believed, and the Operations
@@ -158,10 +162,28 @@ class LogisticsExpense(models.Model):
         help="Where the money leaves from: a till, a bank, Mobile Money "
              "or Maviance - each configured as a cash/bank journal. Keyed "
              "by the requester; Finance may change it.")
+    # Owner 13/10/2026: the holder of an advance IS the requester. Who
+    # physically collects the cash from the till is a separate,
+    # administrative question - the collector below, printed on the
+    # voucher for the cashier - and the entries are raised against the
+    # requester whoever collected it.
     employee_id = fields.Many2one(
-        'hr.employee', string="Staff Collecting the Funds", tracking=True,
-        help="The member of staff who collects the money as an advance "
-             "and must justify it. Named by the requester, or by Finance.")
+        'hr.employee', string="Advance Holder (accountable)", tracking=True,
+        help="The member of staff the advance stands against on 421101 and "
+             "who must justify it: the requester, set when the advance is "
+             "keyed. Finance may correct it.")
+    collector_id = fields.Many2one(
+        'hr.employee', string="Cash Collected By", tracking=True,
+        default=lambda self: self.env.user.employee_id.id,
+        help="Who comes to the till for the money - the requester, unless "
+             "they name somebody else. Administrative only: the requester "
+             "stays accountable and the entries are raised in their name, "
+             "whoever collected the cash.")
+    can_edit_collector = fields.Boolean(
+        compute='_compute_can_edit_collector',
+        help="Whether the current user may still change who collects the "
+             "cash: the requester while the expense is theirs, Finance "
+             "until it is paid out.")
     can_edit_payment = fields.Boolean(
         compute='_compute_can_edit_payment',
         help="Whether the current user may key or change the payment "
@@ -462,9 +484,9 @@ class LogisticsExpense(models.Model):
         for exp in self:
             if exp.payment_mode == 'advance' and not exp.employee_id:
                 raise ValidationError(self.env._(
-                    "An advance must be held by a registered staff member "
-                    "(%s). Create the employee first, then hand over the "
-                    "money.", exp.name))
+                    "An advance stands against the requester, who must be "
+                    "a registered staff member (%s). Create their employee "
+                    "record first, then hand over the money.", exp.name))
 
     @api.depends('state')
     @api.depends_context('uid')
@@ -474,6 +496,22 @@ class LogisticsExpense(models.Model):
             exp.can_edit_payment = (
                 exp.state in REQUESTER_STATES
                 or (finance and exp.state == 'approved'))
+
+    @api.depends('state')
+    @api.depends_context('uid')
+    def _compute_can_edit_collector(self):
+        finance = self.env.su or self.env.user.has_group(FINANCE_GROUP)
+        for exp in self:
+            exp.can_edit_collector = (
+                exp.state in REQUESTER_STATES
+                or (finance and exp.state in COLLECTOR_FINANCE_STATES))
+
+    def _requester_employee(self):
+        """The requester's employee record: the holder of any advance
+        (owner, 13/10/2026). For a record not yet created, the user
+        keying it."""
+        user = self.create_uid if (self and self._origin.id) else self.env.user
+        return (user or self.env.user).employee_id
 
     @api.model
     def _derived_payment_mode(self, journal, employee):
@@ -507,15 +545,18 @@ class LogisticsExpense(models.Model):
         Switching mode drops the other counterparty - visibly, with a
         warning, never silently.
         """
+        if self.payment_mode == 'advance' and not self.employee_id:
+            # the holder is the requester (owner, 13/10/2026)
+            self.employee_id = self._requester_employee()
         if self.payment_mode == 'advance' and self.vendor_id:
             dropped = self.vendor_id.display_name
             self.vendor_id = False
             return {'warning': {
                 'title': self.env._("Vendor cleared"),
                 'message': self.env._(
-                    "%s was named as the vendor. A staff advance has a "
-                    "holder instead, so the vendor has been cleared - pick "
-                    "the employee who receives the money.", dropped)}}
+                    "%s was named as the vendor. A staff advance stands "
+                    "against the requester instead, so the vendor has been "
+                    "cleared.", dropped)}}
         if self.payment_mode in ('cash', 'electronic') and self.employee_id:
             dropped = self.employee_id.display_name
             self.employee_id = False
@@ -588,6 +629,26 @@ class LogisticsExpense(models.Model):
                 exp=", ".join(locked.mapped('name')),
                 fields=", ".join(self._fields[f].string for f in touched)))
 
+    def _check_collector_change(self, vals):
+        """Who collects the cash is the requester's to say while the
+        expense is theirs, Finance's until it is paid out, and nobody's
+        afterwards: the voucher has been printed with that name on it
+        (owner, 13/10/2026)."""
+        if self.env.su or 'collector_id' not in vals:
+            return
+        if not self._settlement_value_changes('collector_id', vals['collector_id']):
+            return
+        allowed = REQUESTER_STATES
+        if self.env.user.has_group(FINANCE_GROUP):
+            allowed += COLLECTOR_FINANCE_STATES
+        locked = self.filtered(lambda exp: exp.state not in allowed)
+        if locked:
+            raise UserError(self.env._(
+                "Who collects the cash for %s can no longer be changed: the "
+                "requester names them while the disbursement is theirs, "
+                "Finance until it is paid out.",
+                ", ".join(locked.mapped('name'))))
+
     @api.model
     def _fill_payment_mode(self, vals, current=None):
         """Derive the mode from what was keyed, unless it was keyed too."""
@@ -614,7 +675,12 @@ class LogisticsExpense(models.Model):
         self._check_originating_team()
         for vals in vals_list:
             self._check_settlement_fields(vals)
+            self._check_collector_change(vals)
             self._fill_payment_mode(vals)
+            if (vals.get('payment_mode') == 'advance'
+                    and not vals.get('employee_id')):
+                # the holder is the requester (owner, 13/10/2026)
+                vals['employee_id'] = self.env.user.employee_id.id
             if vals.get('name', "New") == "New":
                 vals['name'] = self.env['ir.sequence'].next_by_code(
                     'logistics.expense') or "New"
@@ -642,8 +708,13 @@ class LogisticsExpense(models.Model):
 
     def write(self, vals):
         self._check_settlement_fields(vals)
+        self._check_collector_change(vals)
         if len(self) == 1:
             vals = self._fill_payment_mode(dict(vals), current=self)
+            if (vals.get('payment_mode') == 'advance'
+                    and not vals.get('employee_id') and not self.employee_id):
+                # the holder is the requester (owner, 13/10/2026)
+                vals['employee_id'] = self._requester_employee().id
         res = super().write(vals)
         if 'state' in vals:
             for expense in self:

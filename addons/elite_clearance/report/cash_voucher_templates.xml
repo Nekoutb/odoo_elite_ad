@@ -100,6 +100,12 @@
             <span t-else="" t-field="o.vendor_id.name"/>
           </td>
         </tr>
+        <!-- who the cashier hands the cash to (owner 13/10/2026): the
+             requester unless they named somebody else -->
+        <tr t-if="o.collector_id">
+          <th class="lbl">REMIS À</th>
+          <td><span t-field="o.collector_id.name"/></td>
+        </tr>
       </table>
 
       <!-- the figures -->
@@ -158,7 +164,10 @@
               <b><span t-field="o.amount"
                        t-options="{'widget': 'monetary', 'display_currency': cur}"/></b>
             </div>
-            <div class="line">Le demandeur - nom, date et signature</div>
+            <div class="line">
+              <t t-if="o.collector_id">Remis à <span t-field="o.collector_id.name"/> - date et signature</t>
+              <t t-else="">Le demandeur - nom, date et signature</t>
+            </div>
           </td>
           <td>
             <div>Remis par le caissier</div>

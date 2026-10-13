@@ -97,9 +97,16 @@
                             <field name="employee_id" force_save="1"
                                    required="payment_mode == 'advance'"
                                    readonly="not can_edit_payment or vendor_id"
-                                   placeholder="who collects the money"
+                                   placeholder="the requester - who must justify it"
                                    options="{'no_create': True}"/>
                             <field name="payment_mode" widget="radio" readonly="not can_edit_payment"/>
+                            <!-- who walks to the till (owner 13/10/2026): the
+                                 requester's to say while the expense is theirs,
+                                 Finance's until it is paid out, nobody's after -->
+                            <field name="can_edit_collector" invisible="1"/>
+                            <field name="collector_id" readonly="not can_edit_collector"
+                                   placeholder="the requester, unless somebody else collects it"
+                                   options="{'no_create': True}"/>
                             <field name="settlement_move_id" invisible="not settlement_move_id"
                                    groups="elite_clearance.group_clearance_finance"/>
                             <field name="justification_move_id" invisible="not justification_move_id"
@@ -193,8 +200,12 @@
               <field name="vendor_id" force_save="1" placeholder="who is paid"
                      readonly="not can_edit_payment or employee_id"
                      options="{'no_create': True}"/>
-              <field name="employee_id" force_save="1" placeholder="who collects the money"
-                     readonly="not can_edit_payment or vendor_id"
+              <!-- the holder is the requester (owner 13/10/2026), so it
+                   is shown, not chosen; who collects the cash is -->
+              <field name="employee_id" invisible="not employee_id" readonly="1"/>
+              <field name="can_edit_collector" invisible="1"/>
+              <field name="collector_id" readonly="not can_edit_collector"
+                     placeholder="the requester, unless somebody else collects it"
                      options="{'no_create': True}"/>
             </group>
           </group>
@@ -226,6 +237,7 @@
                 <field name="vendor_id" optional="show"/>
                 <field name="payment_mode" optional="show"/>
                 <field name="employee_id" optional="hide"/>
+                <field name="collector_id" optional="hide"/>
                 <field name="journal_id" optional="hide"/>
                 <field name="amount" sum="Total"/>
                 <field name="currency_id" column_invisible="1"/>
@@ -268,6 +280,7 @@
                     <filter name="group_category" string="Category" context="{'group_by': 'category_id'}"/>
                     <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
                     <filter name="group_employee" string="Advance Holder" context="{'group_by': 'employee_id'}"/>
+                    <filter name="group_collector" string="Cash Collected By" context="{'group_by': 'collector_id'}"/>
                 </group>
             </search>
         </field>
