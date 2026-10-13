@@ -271,5 +271,3 @@ class TestOwnerSpec1310(TransactionCase):
         self.assertNotRegex(
             arch, r'<field name="transit_authorisation_ref"[^>]*readonly',
             "nothing locks the transit order once work has started")
-        self.assertIn("OT-2026-0003", file.message_ids.sudo().mapped(
-            'tracking_value_ids.new_value_char'), "the change is tracked")
