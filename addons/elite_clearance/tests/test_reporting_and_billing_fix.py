@@ -195,16 +195,18 @@ class TestReportingAndBillingFix(TransactionCase):
              ('company_id', '=', self.env.company.id)], limit=1)
         self.assertTrue(target, "a target is seeded for every step")
         # the file started on 01/09 and closed today, so a half-hour
-        # allowance must read as late and a thousand-hour one must not.
+        # allowance must read as late and a very long one must not.
         # Half an hour is 0.5: targets are hours, and fractional (owner
-        # spec, 08/09/2026).
+        # spec, 08/09/2026). The long allowance is ten years, not a
+        # thousand hours: a thousand hours is 41 days, and the test
+        # broke by itself on 13/10/2026, the 42nd day after 01/09.
         target.target_hours = 0.5
         late = self.env['clearance.turnaround'].search(
             [('file_id', '=', file.id), ('step', '=', 'file_ops_close')])
         self.assertTrue(late.is_late)
         self.assertEqual(late.target_hours, 0.5,
                          "a target may be half an hour")
-        target.target_hours = 1000
+        target.target_hours = 24 * 365 * 10
         ontime = self.env['clearance.turnaround'].search(
             [('file_id', '=', file.id), ('step', '=', 'file_ops_close')])
         self.assertFalse(ontime.is_late)
