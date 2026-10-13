@@ -23,11 +23,17 @@
                     <field name="company_id" invisible="1"/>
                     <field name="journal_id" widget="selection"
                            placeholder="till, bank, Mobile Money, Maviance"/>
-                    <!-- a supplier OR a member of staff: each greys the other -->
+                    <!-- a supplier OR an advance to the requester: each greys
+                         the other (owner 13/10/2026: the holder is not chosen,
+                         it is whoever keys the advance) -->
                     <field name="vendor_id" options="{'no_create': True}"
-                           readonly="employee_id" placeholder="who is paid"/>
-                    <field name="employee_id" options="{'no_create': True}"
-                           readonly="vendor_id" placeholder="who collects the money"/>
+                           readonly="is_advance" placeholder="who is paid"/>
+                    <field name="is_advance" readonly="vendor_id"/>
+                    <field name="employee_id" invisible="not is_advance"/>
+                    <!-- who walks to the till: the requester unless they say
+                         otherwise - administrative, printed on the voucher -->
+                    <field name="collector_id" options="{'no_create': True}"
+                           placeholder="you, unless somebody else collects it"/>
                 </group>
                 <separator string="Documents"/>
                 <!-- The widget makes the whole dialog a drop target: a receipt

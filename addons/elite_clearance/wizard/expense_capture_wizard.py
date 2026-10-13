@@ -49,10 +49,26 @@ class LogisticsExpenseCaptureWizard(models.TransientModel):
         help="Who is paid - customs, a terminal, a shipping line, a "
              "transporter. Leave empty if a member of staff collects the "
              "money instead.")
+    # Owner 13/10/2026: an advance stands against the REQUESTER - the
+    # holder is not chosen, it is whoever keys it. Who walks to the till
+    # for the cash is a separate, administrative question, asked of every
+    # disbursement and answered "me" unless the requester says otherwise.
+    is_advance = fields.Boolean(
+        string="Staff Advance to Me",
+        help="No supplier: the money is advanced to you against 421101 "
+             "and you justify it with the receipts. Leave unticked when a "
+             "supplier is paid.")
     employee_id = fields.Many2one(
-        'hr.employee', string="Staff Collecting the Funds",
-        help="The member of staff who collects the money as an advance "
-             "and must justify it. Leave empty if a supplier is paid.")
+        'hr.employee', string="Advance Holder (accountable)", readonly=True,
+        default=lambda self: self.env.user.employee_id.id,
+        help="The requester: the advance stands against them whoever "
+             "collects the cash.")
+    collector_id = fields.Many2one(
+        'hr.employee', string="Cash Collected By",
+        default=lambda self: self.env.user.employee_id.id,
+        help="Who comes to the till for the money - you, unless you name "
+             "somebody else. Administrative only: the requester stays "
+             "accountable.")
     company_id = fields.Many2one(related='file_id.company_id')
 
     @api.model
@@ -72,10 +88,18 @@ class LogisticsExpenseCaptureWizard(models.TransientModel):
             raise UserError(self.env._(
                 "A disbursement of nothing is not a disbursement. Key "
                 "what was actually paid."))
-        if self.vendor_id and self.employee_id:
+        if self.vendor_id and self.is_advance:
             raise UserError(self.env._(
-                "A supplier OR a member of staff collects the money, not "
+                "A supplier is paid OR the money is advanced to you, not "
                 "both. Clear one of them."))
+        holder = self.env['hr.employee']
+        if self.is_advance:
+            holder = self.employee_id or self.env.user.employee_id
+            if not holder:
+                raise UserError(self.env._(
+                    "An advance stands against the requester, and you have "
+                    "no employee record for it to stand against. Ask the "
+                    "administrator to create one, then key the advance."))
         expense = self.env['logistics.expense'].create({
             'file_id': self.file_id.id,
             'category_id': self.category_id.id,
@@ -84,7 +108,8 @@ class LogisticsExpenseCaptureWizard(models.TransientModel):
             'date_requested': self.date_requested,
             'journal_id': self.journal_id.id,
             'vendor_id': self.vendor_id.id,
-            'employee_id': self.employee_id.id,
+            'employee_id': holder.id,
+            'collector_id': self.collector_id.id,
         })
         # The receipts were dropped on the wizard, so they are pointing at
         # a transient record that is about to be swept away. Re-point them

@@ -27,6 +27,7 @@ class LogisticsExpenseSettleWizard(models.TransientModel):
     journal_type = fields.Selection(related='expense_id.journal_id.type')
     vendor_id = fields.Many2one(related='expense_id.vendor_id')
     employee_id = fields.Many2one(related='expense_id.employee_id')
+    collector_id = fields.Many2one(related='expense_id.collector_id')
     payment_mode = fields.Selection(related='expense_id.payment_mode')
 
     @api.model

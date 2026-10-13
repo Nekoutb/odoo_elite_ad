@@ -692,6 +692,34 @@ Customs clearance job files for a logistics/clearance services provider.
      cost that are not approved whichever way it is called; and a
      refusal resets `recharge_amount` to 0 on the file AND the lines, or
      the screen would propose the refused figures again for ever.
+- **Owner spec 13/10/2026, two instructions** (tests: `test_owner_spec_1310.py`).
+  1. **Who collects the cash is administrative; the requester is
+     accountable.** `logistics.expense.collector_id` ("Cash Collected
+     By", `hr.employee`, default the keying user's employee) is who
+     walks to the till; the requester may change it while the expense is
+     theirs (draft, submitted), Finance until it is paid out
+     (`COLLECTOR_FINANCE_STATES`), nobody after - the voucher has been
+     printed with that name (`_check_collector_change`,
+     `can_edit_collector`). The voucher prints it as REMIS À and the
+     signature line names them; the Disburse / Pay dialog shows it as
+     "Hand the Cash To". **The holder of an advance is the REQUESTER**
+     (`employee_id`, relabelled "Advance Holder (accountable)"): the
+     capture wizard no longer offers a holder but a tick, `is_advance`
+     ("Staff Advance to Me"), and sets `employee_id` to the keying
+     user's employee - refused when they have none; `create()`/`write()`
+     and the mode onchange do the same when the mode becomes `advance`
+     with no holder. So 421101's auxiliary, the justification queue and
+     the ledger all read the requester whoever collected the cash.
+     Finance may still correct the holder on the expense form. The
+     19.0.51.0.0 migration (built as 19.0.48, renumbered when the branch
+     was rebased behind the 14/10 and 16/10 work) names the requester on
+     unpaid rows only.
+  2. **The transit order stays Customer Service's to change after work
+     starts.** `transit_authorisation_ref` never was readonly, and the
+     CS agent has write on the file in every state; the test proves it
+     as that user through `Form()` and the arch. Nothing was changed in
+     the code for it - if the owner saw it locked, look at the user's
+     groups or at the file's state (ops_closed / done), not at the view.
 - **Owner spec 14/10/2026, three instructions** (tests: `test_owner_spec_1410.py`;
   branch `dev/owner-spec-1410`, version 19.0.49 because 19.0.48 is the
   13/10 collector branch - whichever lands second renumbers its

@@ -26,4 +26,5 @@ from . import test_clearance_admin
 from . import test_bank_holding_accounts
 from . import test_owner_spec_1010
 from . import test_owner_spec_1010b
+from . import test_owner_spec_1310
 from . import test_owner_spec_1410

@@ -18,6 +18,9 @@
                         <field name="journal_id"/>
                         <field name="vendor_id" invisible="not vendor_id"/>
                         <field name="employee_id" invisible="not employee_id"/>
+                        <!-- who the cashier hands the cash to (owner 13/10/2026) -->
+                        <field name="collector_id" invisible="not collector_id"
+                               string="Hand the Cash To"/>
                     </group>
                 </group>
                 <field name="journal_type" invisible="1"/>
@@ -38,8 +41,9 @@
                 <div class="alert alert-info" role="alert" invisible="journal_type != 'cash'">
                     <b>Cash from the till.</b> Press <b>Disburse / Pay</b>: the journal
                     entry is posted and the <b>cash voucher</b> is printed and kept on the
-                    disbursement. Download it, have it signed by the person taking the
-                    cash, and upload the signed copy under <i>Cash Voucher (signed)</i> -
+                    disbursement. Download it, have it signed by the person collecting the
+                    cash - named above under <i>Hand the Cash To</i> - and upload the signed
+                    copy under <i>Cash Voucher (signed)</i> -
                     the file cannot be closed for operations until it is there. Any
                     receipt attached here is kept as payment evidence as well.
                 </div>
