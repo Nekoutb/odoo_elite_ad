@@ -102,22 +102,21 @@ class LogisticsBillingWizard(models.TransientModel):
         help="True while the recharge differs from what was disbursed and "
              "that difference has not been approved. No invoice can be "
              "raised until it is.")
-    # The client's own details, editable here and written straight to the
-    # customer record. Teese carried only a name for its 190 customers, so
-    # for most files this is the first moment anybody needs the address and
-    # the Tax ID - and the billing agent is the person who can get them.
+    # The client's own details, read off the customer record and shown
+    # so the biller sees what the invoice will print. They are Customer
+    # Service's to maintain (owner 14/10/2026), not Billing's: a file is
+    # no longer opened until the record is complete, so these are filled
+    # before the first cost is keyed, and the billing screen only reads.
     client_name = fields.Char(
-        related='partner_id.clearance_invoice_name', readonly=False,
-        string="Full name")
+        related='partner_id.clearance_invoice_name', string="Full Name")
     client_street = fields.Char(
-        related='partner_id.street', readonly=False, string="Address")
+        related='partner_id.street', string="Address")
     client_email = fields.Char(
-        related='partner_id.email', readonly=False, string="E-mail")
+        related='partner_id.email', string="E-mail")
     client_vat = fields.Char(
-        related='partner_id.vat', readonly=False, string="Tax ID (NIU)")
+        related='partner_id.vat', string="Tax ID (NIU)")
     client_registry = fields.Char(
-        related='partner_id.company_registry', readonly=False,
-        string="Company ID (RC)")
+        related='partner_id.company_registry', string="Company ID (RC)")
     client_details_missing = fields.Boolean(
         compute='_compute_client_details_missing',
         help="True while the invoice would print a blank client block.")
@@ -225,6 +224,7 @@ class LogisticsBillingWizard(models.TransientModel):
             fields.Command.create({
                 'expense_id': expense.id,
                 'name': "%s — %s" % (expense.category_id.name, expense.description),
+                'print_name': expense._billing_print_name(),
                 'unit_label': expense.unit_label or "Par dossier",
                 'amount_recharged': (
                     expense.recharge_amount or expense.amount),
@@ -458,6 +458,7 @@ class LogisticsBillingWizard(models.TransientModel):
                     line.expense_id.write({
                         'recharge_amount': line.amount_recharged,
                         'recharge_comment': (line.comment or "").strip() or False,
+                        'billing_label': (line.print_name or "").strip() or False,
                     })
         recharged = self.debours_recharged_total
         # At cost means EVERY line at cost: a total that happens to equal
@@ -565,7 +566,8 @@ class LogisticsBillingWizard(models.TransientModel):
                                        self.file_id.name))
         self._persist()
         invoices = self.file_id._create_client_invoice(
-            [{'name': line.name, 'amount': line.amount_engaged,
+            [{'name': line.name, 'print_name': line.print_name,
+              'amount': line.amount_engaged,
               'charged': line.amount_recharged,   # the difference is derived
               'unit': line.unit_label or "Par dossier",
               'expense_id': line.expense_id.id}
@@ -593,6 +595,14 @@ class LogisticsBillingWizardDebours(models.TransientModel):
     expense_id = fields.Many2one(
         'logistics.expense', required=True, ondelete='cascade')
     name = fields.Char(string="Description", required=True)
+    # What the client reads. Proposed from the category's billing name
+    # (owner 14/10/2026) and the biller's to change; the ledger keeps
+    # `name`.
+    print_name = fields.Char(
+        string="Printed As", required=True,
+        help="The wording printed on the client's invoice for this line. "
+             "Proposed from the category's billing name, or the category "
+             "itself when it has none. The ledger keeps the description.")
     unit_label = fields.Char(string="Unit", default="Par dossier")
     amount_engaged = fields.Monetary(
         string="Disbursed", related='expense_id.amount', readonly=True,

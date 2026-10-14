@@ -61,6 +61,16 @@ class LogisticsExpenseCategory(models.Model):
     code = fields.Char(required=True)
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
+    # Some clients refuse the wording of the categories on their invoice
+    # (owner, 14/10/2026). The category keeps its name for everybody who
+    # keys and approves a cost and for the ledger; this is what the
+    # client's invoice prints instead, when it is set. Empty means the
+    # category name prints as it is.
+    billing_name = fields.Char(
+        string="Billing Name",
+        help="How this category is worded on the client's invoice. Leave "
+             "empty and the category name is printed. The ledger and the "
+             "analytic lines keep the category name either way.")
     # Some costs come back with a receipt and some never will - a tip at
     # the gate, an extra-legal fee, a phone call. Advancing cash for one
     # of those and then waiting for paperwork that cannot exist is how a
@@ -311,6 +321,27 @@ class LogisticsExpense(models.Model):
         help="The biller's reason for charging this disbursement at other "
              "than cost, keyed on its own line of the billing screen "
              "(owner 10/10/2026).")
+    billing_label = fields.Char(
+        string="Printed on the Invoice As", copy=False,
+        help="The wording the billing agent chose for this disbursement "
+             "on the client's invoice (owner 14/10/2026). Proposed from "
+             "the category's billing name; kept so the approver reviews "
+             "the same wording the biller keyed.")
+
+    def _billing_print_name(self):
+        """What the client's invoice prints for this disbursement.
+
+        The category's billing name when it has one, else the category
+        name - followed by the description, as the label has always
+        been. The biller may still change it on the billing screen, and
+        what they chose is kept in `billing_label` for the review.
+        """
+        self.ensure_one()
+        if self.billing_label:
+            return self.billing_label
+        category = self.category_id
+        return "%s — %s" % (category.billing_name or category.name,
+                            self.description)
 
     # --- billed, or still to bill (owner spec 13/09/2026) ---------------
     # A file is billed as costs are incurred, not once at the end, so the

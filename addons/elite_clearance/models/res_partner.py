@@ -36,7 +36,7 @@ class ResPartner(models.Model):
     # makes "mandatory before an invoice is issued" enforceable at all:
     # `name` is never empty, so demanding it would demand nothing.
     clearance_invoice_name = fields.Char(
-        string="Full Name (printed on invoices)",
+        string="Full Name",
         help="The client's full legal name, exactly as it must appear at "
              "the top of their invoice. The short name above stays as it "
              "is for searching and for the file references.")

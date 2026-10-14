@@ -291,6 +291,7 @@
                 <field name="sequence" widget="handle"/>
                 <field name="code"/>
                 <field name="name"/>
+                <field name="billing_name" placeholder="as the client's invoice words it"/>
                 <field name="justification"/>
             </list>
         </field>

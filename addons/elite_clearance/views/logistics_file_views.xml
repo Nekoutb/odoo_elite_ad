@@ -158,6 +158,15 @@
                         <field name="missing_mandatory_count" class="fw-bold" nolabel="1" readonly="1"/>
                         mandatory document(s) still missing. Work cannot start until they are received or a manager approves a waiver.
                     </div>
+                    <!-- Customer Service owns the customer record (owner
+                         14/10/2026): the file is not opened until it is
+                         complete, and the draft says what is missing. -->
+                    <div class="alert alert-warning" role="alert"
+                         invisible="state != 'draft' or not client_missing_details">
+                        The customer record is missing what the invoice prints:
+                        <field name="client_missing_details" class="fw-bold" nolabel="1" readonly="1"/>.
+                        Customer Service completes it under Configuration → Customers before the opening is requested.
+                    </div>
                     <div class="alert alert-info" role="alert" invisible="waiver_state != 'approved'">
                         Working under an approved documentation waiver.
                     </div>

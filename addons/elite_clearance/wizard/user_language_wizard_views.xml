@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="clearance_user_language_wizard_view_form" model="ir.ui.view">
+        <field name="name">clearance.user.language.wizard.form</field>
+        <field name="model">clearance.user.language.wizard</field>
+        <field name="arch" type="xml">
+            <form string="User Languages">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>User Languages</h1>
+                    </div>
+                    <p class="text-muted">
+                        Each clearance user works in the language chosen here.
+                        A language used for the first time is activated for the
+                        whole database, which takes a moment. A user who is
+                        signed in sees the change after reloading their screen.
+                    </p>
+                    <field name="line_ids">
+                        <list editable="bottom" create="0" delete="0">
+                            <field name="user_id" readonly="1" force_save="1"/>
+                            <field name="login" optional="show"/>
+                            <field name="lang"/>
+                        </list>
+                    </field>
+                </sheet>
+                <footer>
+                    <button name="action_apply" type="object" string="Apply"
+                            class="btn-primary" data-hotkey="q"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"
+                            data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_clearance_user_language_wizard" model="ir.actions.act_window">
+        <field name="name">User Languages</field>
+        <field name="res_model">clearance.user.language.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

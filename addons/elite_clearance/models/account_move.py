@@ -325,7 +325,10 @@ class AccountMove(models.Model):
         not make one.
         """
         self.ensure_one()
-        name = line.name or ""
+        # The client reads the wording Billing chose for them; the journal
+        # item keeps the category and the description, which is what the
+        # ledger and the analytic lines show (owner 14/10/2026).
+        name = line.clearance_print_name or line.name or ""
         if self._clearance_is_credit_note():
             return self.env._("Avoir — %s", name)
         return name
@@ -410,6 +413,7 @@ class AccountMove(models.Model):
             'clearance_category': line.clearance_category,
             'clearance_unit': line.clearance_unit,
             'clearance_service_kind': line.clearance_service_kind,
+            'clearance_print_name': line.clearance_print_name,
             # The share of the recharge adjustment is a posting of its own,
             # added beside this line, so the copy carries none of it.
             'clearance_adjustment': 0.0,
@@ -543,6 +547,13 @@ class AccountMoveLine(models.Model):
     clearance_unit = fields.Char(
         string="Billing Unit", copy=False,
         help="Printed as Unité, e.g. Par dossier or Par Conteneur.")
+    # What the Désignation column prints when it is not the label. The
+    # label stays "category — description" so the ledger reads the same
+    # whatever the client is shown (owner 14/10/2026).
+    clearance_print_name = fields.Char(
+        string="Printed As", copy=False,
+        help="The wording printed on the client's invoice for this line, "
+             "when it differs from the label the ledger shows.")
     # A line that has been credit-noted is spent: the disbursement behind
     # it is billable again, and the service on it may be charged again.
     # The credit note is the record of the reversal; this is what the rest

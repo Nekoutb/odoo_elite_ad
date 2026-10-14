@@ -48,8 +48,9 @@
                 <div class="alert alert-warning" role="alert"
                      invisible="not client_details_missing">
                     This client's record is missing details the invoice
-                    prints. Fill them in below - they are saved to the
-                    customer, not just to this invoice.
+                    prints. Customer Service completes the customer record
+                    (Clearance → Configuration → Customers); the invoice
+                    cannot be issued before.
                 </div>
                 <div class="alert alert-warning" role="alert"
                      invisible="not shipment_details_missing">
@@ -62,12 +63,11 @@
                         <!-- First, and first on the printed page: the short
                              name beside it is the handle everyone searches
                              by, not what a client should read on their bill. -->
-                        <field name="client_name" required="1" readonly="review_mode"
-                               placeholder="e.g. CAPITAL TRADING PRIVATE LTD"/>
-                        <field name="client_street" readonly="review_mode"/>
-                        <field name="client_email" readonly="review_mode"/>
-                        <field name="client_vat" readonly="review_mode"/>
-                        <field name="client_registry" readonly="review_mode"/>
+                        <field name="client_name"/>
+                        <field name="client_street"/>
+                        <field name="client_email"/>
+                        <field name="client_vat"/>
+                        <field name="client_registry"/>
                     </group>
                     <group string="Shipment">
                         <field name="shipment_bl_awb_ref" readonly="review_mode"/>
@@ -109,6 +109,7 @@
                     <list editable="bottom" create="0" delete="0">
                         <field name="expense_id" column_invisible="1" force_save="1"/>
                         <field name="name" readonly="1" force_save="1"/>
+                        <field name="print_name" placeholder="wording on the invoice"/>
                         <field name="unit_label" column_invisible="1" force_save="1"/>
                         <field name="amount_engaged" sum="Disbursed" readonly="1"/>
                         <field name="amount_recharged" sum="Recharged"/>

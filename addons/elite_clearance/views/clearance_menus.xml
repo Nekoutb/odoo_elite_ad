@@ -68,6 +68,14 @@
               parent="menu_clearance_config"
               action="action_clearance_customers" sequence="5"/>
 
+    <!-- The Clearance Administrator sets each user's language (owner
+         14/10/2026). The action lives in the wizard file, which loads
+         before this one; the menu lives here because its parent does. -->
+    <menuitem id="menu_clearance_user_languages" name="User Languages"
+              parent="menu_clearance_config"
+              action="action_clearance_user_language_wizard" sequence="7"
+              groups="group_clearance_admin"/>
+
     <menuitem id="menu_clearance_turnaround_targets" name="Turnaround Targets"
               parent="menu_clearance_config"
               action="action_clearance_turnaround_target" sequence="50"/>

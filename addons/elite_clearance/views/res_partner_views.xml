@@ -52,7 +52,7 @@
         <field name="arch" type="xml">
             <field name="email" position="after">
                 <field name="clearance_invoice_name"
-                       string="Full Name (invoices)" optional="show"/>
+                       string="Full Name" optional="show"/>
                 <field name="street" optional="show"/>
                 <field name="vat" string="Tax ID (NIU)" optional="show"/>
                 <field name="company_registry" string="Company ID (RC)"

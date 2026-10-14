@@ -15,7 +15,7 @@ working memory that is *not* obvious from the code.
   <in the Odoo.sh project settings — never in this repository, it is public>, Custom plan). The old Odoo Online db (elite-advisors,
   saas~19.3) holds no data and will lapse. Never build against 19.3 minor APIs.
 
-## The module: addons/elite_clearance (v19.0.47.0.0)
+## The module: addons/elite_clearance (v19.0.49.0.0)
 Customs clearance job files for a logistics/clearance services provider.
 - `logistics.file` — one file = one clearance job. States:
   draft → in_progress → ops_closed → done (+cancel, +imported). `imported`
@@ -692,6 +692,56 @@ Customs clearance job files for a logistics/clearance services provider.
      cost that are not approved whichever way it is called; and a
      refusal resets `recharge_amount` to 0 on the file AND the lines, or
      the screen would propose the refused figures again for ever.
+- **Owner spec 14/10/2026, three instructions** (tests: `test_owner_spec_1410.py`;
+  branch `dev/owner-spec-1410`, version 19.0.49 because 19.0.48 is the
+  13/10 collector branch - whichever lands second renumbers its
+  migration folder).
+  1. **Bilingual.** English source, French in `i18n/fr.po` (screens only:
+     fields, help, selections, views, menus, groups, code messages; the
+     printed documents and the master data are NOT translated, and
+     strings already French stay as they are). Odoo loads the file for
+     every active language at install AND upgrade
+     (`loading.py: module._update_translations`), so a French user sees
+     it on the next build. The file is BUILT, never edited by hand: the
+     template is exported through `odoo shell` (`trans_export('',
+     ['elite_clearance'], buf, 'po', env)` - `--i18n-export` is gone in
+     19), the translations live in dictionaries keyed by the collapsed
+     msgid, and `tools/check_po.py` (static CI job) refuses a fuzzy
+     entry, a duplicate, or a translation whose `%(name)s` placeholders
+     or inline tags differ from the source - a mismatch raises in the
+     user's face at the moment the message is shown. A NEW translatable
+     string goes untranslated (English shows) until the dictionary and
+     the file are rebuilt. The Clearance Administrator sets each user's
+     language under Configuration -> User Languages
+     (`clearance.user.language.wizard`: lists the clearance users,
+     writes `res.users.lang` under sudo after `has_group(admin)`, and
+     activates a language through `base.language.install` - that loads
+     EVERY module's French and takes a minute, once). Test
+     `_activate_french()` loads only this module's terms.
+  2. **Customer Service owns the customer record; a file is not opened
+     until it is complete.** REVERSES 06/09/2026 (the client details
+     were demanded at billing). `_check_client_complete()` runs inside
+     `_check_ready_to_work()` - request for opening and waiver - and
+     lists what is missing (`CLIENT_ESSENTIALS`: full name, address,
+     e-mail, NIU, RC); the draft shows the same list in a banner
+     (`client_missing_details`, compute_sudo); Teese history exempt.
+     `group_clearance_customer_service` now implies
+     `base.group_partner_manager` and `group_clearance_billing` no
+     longer does: the billing screen's client block is READ-ONLY
+     (plain related fields, the write-back is gone) and
+     `_check_client_billable` stays as a safety net that now points at
+     Customer Service. `clearance_invoice_name` reads "Full Name"
+     everywhere; the Customers list is the export/import screen.
+  3. **Each expense category carries a Billing Name** (`billing_name`,
+     Billing may maintain it: ACL write, create=0). The billing screen
+     proposes `billing_name or name — description` in a "Printed As"
+     column (`print_name`, editable), persists the biller's wording on
+     `logistics.expense.billing_label` so the review proposes it again,
+     and the invoice line carries it in `account.move.line.
+     clearance_print_name` - `_clearance_designation()` prints that
+     when set, while the line's `name` stays `category — description`
+     so the LEDGER and the analytic lines never show the client's
+     wording (owner's rule). A credit note copies it.
 - **Payment evidence (owner, 01/10/2026).** `ir.attachment.clearance_kind`
   ('request' / 'payment', NULL = request) tells a disbursement's documents
   apart: `logistics.expense.request_document_ids` and

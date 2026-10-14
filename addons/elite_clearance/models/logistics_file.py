@@ -391,6 +391,13 @@ class LogisticsFile(models.Model):
     # anybody opening it up: the state says "In Progress" while what is
     # really happening is that Finance has not keyed a settlement since
     # Tuesday, and the state cannot say so.
+    # Customer Service sees on the draft what the opening will refuse,
+    # before they click (owner 14/10/2026).
+    client_missing_details = fields.Char(
+        compute='_compute_client_missing_details', compute_sudo=True,
+        string="Customer Record Missing",
+        help="The client details the invoice prints and the customer "
+             "record does not yet carry. Empty when the record is complete.")
     stage_owner = fields.Char(
         compute='_compute_stage', compute_sudo=True, string="Sitting With")
     stage_detail = fields.Char(
@@ -717,6 +724,14 @@ class LogisticsFile(models.Model):
                  'expense_ids.payment_mode', 'expense_ids.is_legacy',
                  'expense_ids.employee_id', 'expense_ids.journal_id',
                  'has_billable', 'invoices_posted')
+    @api.depends('partner_id', 'partner_id.clearance_invoice_name',
+                 'partner_id.street', 'partner_id.email', 'partner_id.vat',
+                 'partner_id.company_registry', 'legacy_id')
+    def _compute_client_missing_details(self):
+        for file in self:
+            missing = [] if file.legacy_id else file._client_missing_details()
+            file.client_missing_details = ", ".join(missing) or False
+
     def _compute_stage(self):
         for file in self:
             owner, detail = file._stage()
@@ -1070,6 +1085,38 @@ class LogisticsFile(models.Model):
                 "Work cannot start on %s until its customs regime is "
                 "chosen.", self.name))
         self._check_cargo_described()
+        self._check_client_complete()
+
+    def _client_missing_details(self):
+        """The client details the invoice prints and the record lacks."""
+        self.ensure_one()
+        partner = self.partner_id.sudo()
+        return [label for name, label in self.CLIENT_ESSENTIALS
+                if not partner[name]]
+
+    def _check_client_complete(self):
+        """A file is not opened for a client whose record is incomplete.
+
+        Owner's instruction of 14/10/2026, reversing 06/09/2026: Customer
+        Service owns the customer record and is the team that opens the
+        file, so the moment they ask for the opening is the moment the
+        record is completed - not months later at billing, by somebody
+        who cannot change it. Teese history is exempt, as everywhere.
+        """
+        self.ensure_one()
+        if self.legacy_id or self.env.context.get('legacy_import'):
+            return
+        missing = self._client_missing_details()
+        if missing:
+            raise UserError(self.env._(
+                "%(name)s cannot be opened until the customer record of "
+                "%(client)s is complete - the invoice prints every one of "
+                "these:%(gap)s  - %(missing)s%(gap)sCustomer Service "
+                "completes the customer record (Clearance -> Configuration "
+                "-> Customers), then asks for the opening again.",
+                name=self.name, client=self.partner_id.display_name,
+                gap=chr(10) * 2,
+                missing=(chr(10) + "  - ").join(missing)))
 
     def action_request_opening(self):
         """The agent asks the Head of Customer Service to approve the file.
@@ -1613,6 +1660,7 @@ class LogisticsFile(models.Model):
         self.ensure_one()
         return [
             {'name': "%s — %s" % (expense.category_id.name, expense.description),
+             'print_name': expense._billing_print_name(),
              'amount': expense.amount,
              'charged': expense.recharge_amount or expense.amount,
              'unit': expense.unit_label or "Par dossier",
@@ -1711,13 +1759,13 @@ class LogisticsFile(models.Model):
         """
         self.ensure_one()
         partner = self.partner_id
-        missing = [label for name, label in self.CLIENT_ESSENTIALS
-                   if not partner[name]]
+        missing = self._client_missing_details()
         if missing:
             raise UserError(self.env._(
                 "%(client)s cannot be invoiced until these are on record - "
                 "the invoice prints every one of them:%(gap)s  - %(missing)s"
-                "%(gap)sYou can fill them in on the billing screen.",
+                "%(gap)sCustomer Service completes the customer record "
+                "(Clearance -> Configuration -> Customers).",
                 client=partner.display_name,
                 gap=chr(10) * 2,
                 missing=(chr(10) + "  - ").join(missing)))
@@ -1841,6 +1889,7 @@ class LogisticsFile(models.Model):
                 'clearance_adjustment': (line.get('charged', line['amount'])
                                          - line['amount']),
                 'clearance_unit': line.get('unit') or "Par dossier",
+                'clearance_print_name': line.get('print_name') or False,
                 'analytic_distribution': analytic,
             }))
 
