@@ -718,12 +718,6 @@ class LogisticsFile(models.Model):
     # =====================================================================
     # Where it sits, and with whom
     # =====================================================================
-    @api.depends('state', 'user_id', 'create_uid', 'waiver_state',
-                 'advance_waiver_state', 'reopen_request_state',
-                 'recharge_state', 'expense_ids.state',
-                 'expense_ids.payment_mode', 'expense_ids.is_legacy',
-                 'expense_ids.employee_id', 'expense_ids.journal_id',
-                 'has_billable', 'invoices_posted')
     @api.depends('partner_id', 'partner_id.clearance_invoice_name',
                  'partner_id.street', 'partner_id.email', 'partner_id.vat',
                  'partner_id.company_registry', 'legacy_id')
@@ -732,6 +726,12 @@ class LogisticsFile(models.Model):
             missing = [] if file.legacy_id else file._client_missing_details()
             file.client_missing_details = ", ".join(missing) or False
 
+    @api.depends('state', 'user_id', 'create_uid', 'waiver_state',
+                 'advance_waiver_state', 'reopen_request_state',
+                 'recharge_state', 'expense_ids.state',
+                 'expense_ids.payment_mode', 'expense_ids.is_legacy',
+                 'expense_ids.employee_id', 'expense_ids.journal_id',
+                 'has_billable', 'invoices_posted')
     def _compute_stage(self):
         for file in self:
             owner, detail = file._stage()

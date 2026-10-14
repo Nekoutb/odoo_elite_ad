@@ -1,3 +1,4 @@
+from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -377,8 +378,11 @@ class TestClearanceInvoicePrint(TransactionCase):
         for expected in ("postal address", "e-mail", "Tax ID", "Company ID"):
             self.assertIn(expected, str(caught.exception), expected)
 
-    def test_23_the_billing_screen_writes_back_to_the_customer(self):
-        """The agent fixes the customer record, not just this invoice."""
+    def test_23_the_billing_screen_reads_the_customer(self):
+        """The screen shows the customer record and nothing else: it is
+        Customer Service's to complete (owner 14/10/2026, reversing the
+        write-through of 06/09/2026). Completed on the record, the screen
+        sees it at once."""
         bare = self.env['res.partner'].create({
             'name': "Bare Client Q", 'is_company': True})
         file = self.env['logistics.file'].create({
@@ -392,14 +396,18 @@ class TestClearanceInvoicePrint(TransactionCase):
         wizard = self.env['logistics.billing.wizard'].with_context(
             active_id=file.id).create({})
         self.assertTrue(wizard.client_details_missing)
-        wizard.client_name = "BARE CLIENT TRADING LTD"
-        wizard.client_street = "BP 999 Douala"
-        wizard.client_email = "q@test.cm"
-        wizard.client_vat = "M000000000777A"
-        wizard.client_registry = "RC/DLA/2026/B/0777"
+        with self.assertRaises(UserError, msg="read-only client block"):
+            wizard.action_create_invoice()
+        bare.write({
+            'clearance_invoice_name': "BARE CLIENT TRADING LTD",
+            'street': "BP 999 Douala", 'email': "q@test.cm",
+            'vat': "M000000000777A",
+            'company_registry': "RC/DLA/2026/B/0777"})
+        wizard = self.env['logistics.billing.wizard'].with_context(
+            active_id=file.id).create({})
         wizard.customs_fee_amount = 100000        # something to bill
         self.assertFalse(wizard.client_details_missing)
-        # written to the CUSTOMER, not held on the wizard
+        self.assertEqual(wizard.client_street, "BP 999 Douala")
         self.assertEqual(bare.street, "BP 999 Douala")
         self.assertEqual(bare.vat, "M000000000777A")
         self.assertEqual(bare.company_registry, "RC/DLA/2026/B/0777")

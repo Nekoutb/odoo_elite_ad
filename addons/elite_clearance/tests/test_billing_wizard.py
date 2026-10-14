@@ -245,16 +245,17 @@ class TestBillingWizard(TransactionCase):
                       "Close waits for every invoice of the bill")
         action = self.file.with_user(biller).action_open_billing()
         self.assertEqual(action['res_model'], 'logistics.billing.wizard')
-        # and the screen works end to end AS THAT USER: the write-through
-        # to the customer record and the invoice itself both need rights
-        # the group must carry
+        # and the screen works end to end AS THAT USER. The client block
+        # is read off the customer record and is Customer Service's to
+        # change (owner 14/10/2026): the biller sees it, never edits it.
         wizard = self.env['logistics.billing.wizard'].with_user(biller) \
-            .with_context(active_id=self.file.id).create({
-                'client_email': "billing@wizard-client.cm"})
+            .with_context(active_id=self.file.id).create({})
+        self.assertEqual(wizard.client_email, self.client.email)
         wizard.action_create_invoice()
         self.assertTrue(self.file.invoice_id)
         self.assertEqual(self.file.invoice_id.create_uid, biller)
-        self.assertEqual(self.client.email, "billing@wizard-client.cm")
+        with self.assertRaises(AccessError, msg="Billing does not write the customer"):
+            self.client.with_user(biller).write({'email': "billing@wizard-client.cm"})
 
     def test_21_a_finance_agent_is_not_offered_what_would_be_refused(self):
         finance = self._user("Fin Agent W", 'finance')
@@ -325,11 +326,13 @@ class TestBillingWizard(TransactionCase):
         with self.assertRaises(UserError) as caught:
             wizard.action_create_invoice()
         self.assertIn("full name", str(caught.exception))
+        self.assertIn("Customer Service", str(caught.exception))
         self.assertFalse(self.file.invoice_id)
-        # filled on the screen, it lands on the CUSTOMER, not the invoice
-        wizard.client_name = "WIZARD CLIENT TRADING LTD"
-        self.assertEqual(self.client.clearance_invoice_name,
-                         "WIZARD CLIENT TRADING LTD")
+        # completed on the CUSTOMER record (Customer Service's, owner
+        # 14/10/2026), the screen reads it and the invoice goes through
+        self.client.clearance_invoice_name = "WIZARD CLIENT TRADING LTD"
+        wizard = self._wizard()
+        self.assertEqual(wizard.client_name, "WIZARD CLIENT TRADING LTD")
         self.assertFalse(wizard.client_details_missing)
         wizard.action_create_invoice()
         self.assertTrue(self.file.invoice_id)
