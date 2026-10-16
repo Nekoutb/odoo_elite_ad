@@ -143,6 +143,18 @@ class LogisticsFile(models.Model):
              "or loose cargo. The container count and type are then not "
              "asked for, and are cleared.")
     container_count = fields.Integer(string="Containers")
+    # Owner 16/10/2026: a non-containerised file still counts as a number
+    # of containers - its weight over the company's tonnes per container,
+    # to the nearest whole number and never below one; 40 tonnes at 35
+    # tonnes per container is ONE (the owner's example). A containerised
+    # file counts its real containers, so the two kinds add up.
+    equivalent_container_count = fields.Integer(
+        compute='_compute_equivalent_container_count', store=True,
+        string="Equivalent Containers",
+        help="A containerised file counts its containers. A file ticked "
+             "Not Containerised counts its weight divided by the tonnes "
+             "per equivalent container set under Settings, rounded to "
+             "the nearest whole number and never below 1.")
     package_count = fields.Integer(string="Packages")
     weight_kg = fields.Float(string="Weight (kg)", digits=(16, 3))
     cargo_value = fields.Monetary(
@@ -797,6 +809,22 @@ class LogisticsFile(models.Model):
             file.delivery_date = (
                 max(delivered.mapped('delivery_date')) if delivered else False)
             file.transit_start, file.transit_end = file._transit_window()
+
+    @api.depends('not_containerised', 'container_count', 'weight_kg',
+                 'company_id.clearance_tonnes_per_container')
+    def _compute_equivalent_container_count(self):
+        for file in self:
+            if not file.not_containerised:
+                file.equivalent_container_count = file.container_count
+                continue
+            tonnes = file.company_id.clearance_tonnes_per_container
+            if tonnes <= 0 or file.weight_kg <= 0:
+                file.equivalent_container_count = 1
+                continue
+            # nearest whole number, halves up - not Python's round(),
+            # which sends 2.5 to 2
+            count = int((file.weight_kg / 1000.0) / tonnes + 0.5)
+            file.equivalent_container_count = max(count, 1)
 
     def _transit_window(self):
         """(start, end) per the service type's rule; False where the

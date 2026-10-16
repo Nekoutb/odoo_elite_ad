@@ -197,6 +197,16 @@ class ResCompany(models.Model):
         string="Payment Conditions", default="As per agreement with customer",
         help="Printed in the bank block when the invoice carries no payment "
              "term of its own.")
+    # Equivalent containers (owner 16/10/2026): cargo that is not
+    # containerised still counts as a number of containers, the weight
+    # divided by this, so a file is sized the same way whatever it carries.
+    clearance_tonnes_per_container = fields.Float(
+        string="Tonnes per Equivalent Container", digits=(8, 2),
+        help="For a file ticked Not Containerised: the cargo weight is "
+             "divided by this and rounded to the nearest whole number, "
+             "never below 1. At 35 tonnes, 40 tonnes of cargo count as "
+             "1 equivalent container and 60 tonnes as 2. Empty: every "
+             "non-containerised file counts as 1.")
     clearance_invoice_complaint_days = fields.Integer(
         string="Complaints Window (days)", default=15,
         help="Printed as 'Max period for complaints regarding invoices'.")

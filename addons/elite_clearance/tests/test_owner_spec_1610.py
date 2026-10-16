@@ -228,6 +228,35 @@ class TestOwnerSpec1610(TransactionCase):
         self.assertEqual(exp.state, 'justification_submitted')
         self.assertFalse(file.delivery_date)
 
+    def test_06_equivalent_containers_for_cargo_that_is_not_containerised(self):
+        company = self.env.company
+        company.clearance_tonnes_per_container = 35.0
+        file = self._file(not_containerised=True, weight_kg=40000.0)
+        self.assertEqual(file.equivalent_container_count, 1,
+                         "40 tonnes at 35 per container: the owner's example")
+        file.weight_kg = 20000.0
+        self.assertEqual(file.equivalent_container_count, 1,
+                         "below the threshold counts as one")
+        file.weight_kg = 60000.0
+        self.assertEqual(file.equivalent_container_count, 2,
+                         "60 / 35 = 1.7, nearest is 2")
+        file.weight_kg = 87500.0
+        self.assertEqual(file.equivalent_container_count, 3,
+                         "exactly 2.5 rounds up")
+        file.weight_kg = 140000.0
+        self.assertEqual(file.equivalent_container_count, 4)
+        # a containerised file counts its real containers
+        boxed = self._file(not_containerised=False, container_count=3,
+                           container_type="40HC", weight_kg=140000.0)
+        self.assertEqual(boxed.equivalent_container_count, 3)
+        # no threshold set: every non-containerised file is one
+        company.clearance_tonnes_per_container = 0.0
+        self.assertEqual(file.equivalent_container_count, 1)
+        # the setting is on the General Manager's page too
+        Wizard = self.env['clearance.settings.wizard']
+        self.assertIn('clearance_tonnes_per_container', Wizard.SETTINGS)
+        self.assertIn('clearance_tonnes_per_container', Wizard.get_view()['arch'])
+
     def test_05_the_rules_are_per_service_and_import_maritime_is_seeded(self):
         im = self.env['logistics.service.type'].with_context(
             active_test=False).search([('code', '=', 'IM')], limit=1)

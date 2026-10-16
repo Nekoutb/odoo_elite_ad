@@ -129,6 +129,12 @@
                         <setting string="Complaints window (days)">
                             <field name="clearance_invoice_complaint_days"/>
                         </setting>
+                        <setting string="Tonnes per equivalent container"
+                                 help="A file ticked Not Containerised counts as its weight
+                                       divided by this, rounded to the nearest whole number
+                                       and never below 1.">
+                            <field name="clearance_tonnes_per_container"/>
+                        </setting>
                         <setting string="Bank accounts on the invoice"
                                  help="Which accounts print, and in what order.
                                        Empty prints the first two the company has.

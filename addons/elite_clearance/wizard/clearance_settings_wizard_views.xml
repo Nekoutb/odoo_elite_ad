@@ -59,6 +59,7 @@
                             <field name="clearance_invoice_vat_label" string="VAT line label" help="The rate is appended automatically from the tax actually charged, e.g. (19,25%)."/>
                             <field name="clearance_invoice_payment_terms" string="Payment conditions" help="Used when the invoice carries no payment term of its own."/>
                             <field name="clearance_invoice_complaint_days" string="Complaints window (days)"/>
+                            <field name="clearance_tonnes_per_container" string="Tonnes per equivalent container" help="A file ticked Not Containerised counts as its weight divided by this, rounded to the nearest whole number and never below 1. At 35 tonnes, 40 tonnes of cargo count as 1 and 60 tonnes as 2."/>
                             <field name="clearance_invoice_bank_ids" string="Bank accounts on the invoice" help="Which accounts print, and in what order. Empty prints the first two the company has. Maintain the accounts themselves under Invoicing &gt; Bank Accounts." widget="many2many_tags"/>
                             </group>
                         </page>

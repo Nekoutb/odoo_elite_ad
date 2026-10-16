@@ -15,7 +15,7 @@ working memory that is *not* obvious from the code.
   <in the Odoo.sh project settings — never in this repository, it is public>, Custom plan). The old Odoo Online db (elite-advisors,
   saas~19.3) holds no data and will lapse. Never build against 19.3 minor APIs.
 
-## The module: addons/elite_clearance (v19.0.52.0.0)
+## The module: addons/elite_clearance (v19.0.53.0.0)
 Customs clearance job files for a logistics/clearance services provider.
 - `logistics.file` — one file = one clearance job. States:
   draft → in_progress → ops_closed → done (+cancel, +imported). `imported`
@@ -835,6 +835,16 @@ Customs clearance job files for a logistics/clearance services provider.
      `data/turnaround_targets.xml` (21 and 10 days) - the owner's
      "section under Turnaround Targets". Shown in a Turnaround group on
      the file form with the day counts.
+  5. **Equivalent containers** (owner 16/10/2026, third message; version
+     19.0.53): `logistics.file.equivalent_container_count` (stored
+     compute) = the real `container_count` for a containerised file; for
+     one ticked Not Containerised, `weight_kg / 1000 /
+     res.company.clearance_tonnes_per_container` to the NEAREST whole
+     number (halves up, by hand - Python's round() is banker's), never
+     below 1, and 1 when the setting is empty. The owner's example: 35 t
+     per container, 40 t of cargo = 1. The setting is in the three
+     settings places. Shown on the file form beside the weight when Not
+     Containerised, and as a hidden list column.
 - **Payment evidence (owner, 01/10/2026).** `ir.attachment.clearance_kind`
   ('request' / 'payment', NULL = request) tells a disbursement's documents
   apart: `logistics.expense.request_document_ids` and

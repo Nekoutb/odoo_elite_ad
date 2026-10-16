@@ -243,6 +243,8 @@
                                    required="not not_containerised and state == 'draft'"/>
                             <field name="package_count" required="state == 'draft'"/>
                             <field name="weight_kg" required="state == 'draft'"/>
+                            <field name="equivalent_container_count"
+                                   invisible="not not_containerised"/>
                             <field name="cargo_value" required="state in ('draft', 'in_progress')"/>
                             <field name="cargo_value_currency_id" required="state == 'draft'"/>
                             <field name="importer_name" required="state == 'draft'"/>
@@ -514,6 +516,7 @@
                 <field name="port_id" optional="show"/>
                 <field name="customs_declaration_ref" optional="show"/>
                 <field name="date_opened"/>
+                <field name="equivalent_container_count" optional="hide"/>
                 <field name="create_date" string="Created On" optional="show"/>
                 <field name="date_target" optional="show"/>
                 <field name="user_id" widget="many2one_avatar_user"/>

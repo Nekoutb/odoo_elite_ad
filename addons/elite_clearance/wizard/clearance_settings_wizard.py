@@ -53,6 +53,8 @@ class ClearanceSettingsWizard(models.TransientModel):
         related='company_id.clearance_invoice_payment_terms', readonly=False)
     clearance_invoice_complaint_days = fields.Integer(
         related='company_id.clearance_invoice_complaint_days', readonly=False)
+    clearance_tonnes_per_container = fields.Float(
+        related='company_id.clearance_tonnes_per_container', readonly=False)
     clearance_invoice_bank_ids = fields.Many2many(
         related='company_id.clearance_invoice_bank_ids', readonly=False)
     clearance_waiver_approver_ids = fields.Many2many(
@@ -127,6 +129,7 @@ class ClearanceSettingsWizard(models.TransientModel):
         'clearance_invoice_vat_label',
         'clearance_invoice_payment_terms',
         'clearance_invoice_complaint_days',
+        'clearance_tonnes_per_container',
         'clearance_invoice_bank_ids',
         'clearance_waiver_approver_ids',
         'clearance_expense_approver_ids',
