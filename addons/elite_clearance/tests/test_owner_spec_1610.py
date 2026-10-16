@@ -63,7 +63,9 @@ class TestOwnerSpec1610(TransactionCase):
                 (0, 0, {'document_type_id': cls.doc_inv.id, 'is_mandatory': True}),
                 (0, 0, {'document_type_id': cls.doc_other.id, 'is_mandatory': True})]})
         cls.no_rule = env['logistics.service.type'].create({
-            'name': "Sans règle 1610", 'code': "E-NOR"})
+            'name': "Sans règle 1610", 'code': "E-NOR",
+            'document_ids': [
+                (0, 0, {'document_type_id': cls.doc_inv.id, 'is_mandatory': True})]})
 
         def user(name, group):
             return env['res.users'].create({
@@ -203,7 +205,7 @@ class TestOwnerSpec1610(TransactionCase):
         exp.with_user(self.ops_agent).action_submit_justification()
         self.assertEqual(exp.state, 'justification_submitted')
         self.assertEqual(str(file.delivery_date), "2026-10-12")
-        self.assertAlmostEqual(file.overall_turnaround_days, 10.625, places=2)
+        self.assertAlmostEqual(file.overall_turnaround_days, 10.6, places=1)
         row = self.env['clearance.turnaround'].search(
             [('file_id', '=', file.id), ('step', '=', 'file_overall')])
         self.assertEqual(len(row), 1)

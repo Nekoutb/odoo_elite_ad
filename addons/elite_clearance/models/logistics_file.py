@@ -764,20 +764,6 @@ class LogisticsFile(models.Model):
     # =====================================================================
     # Where it sits, and with whom
     # =====================================================================
-    @api.depends('partner_id', 'partner_id.clearance_invoice_name',
-                 'partner_id.street', 'partner_id.email', 'partner_id.vat',
-                 'partner_id.company_registry', 'legacy_id')
-    def _compute_client_missing_details(self):
-        for file in self:
-            missing = [] if file.legacy_id else file._client_missing_details()
-            file.client_missing_details = ", ".join(missing) or False
-
-    @api.depends('state', 'user_id', 'create_uid', 'waiver_state',
-                 'advance_waiver_state', 'reopen_request_state',
-                 'recharge_state', 'expense_ids.state',
-                 'expense_ids.payment_mode', 'expense_ids.is_legacy',
-                 'expense_ids.employee_id', 'expense_ids.journal_id',
-                 'has_billable', 'invoices_posted')
     @api.depends('document_ids.received', 'document_ids.date_received',
                  'document_ids.is_mandatory', 'document_ids.document_type_id',
                  'expense_ids.manifesting_date', 'expense_ids.date_settled',
@@ -847,6 +833,20 @@ class LogisticsFile(models.Model):
                 (file.transit_end - file.transit_start).total_seconds()
                 / 86400.0) if file.transit_start and file.transit_end else 0.0
 
+    @api.depends('partner_id', 'partner_id.clearance_invoice_name',
+                 'partner_id.street', 'partner_id.email', 'partner_id.vat',
+                 'partner_id.company_registry', 'legacy_id')
+    def _compute_client_missing_details(self):
+        for file in self:
+            missing = [] if file.legacy_id else file._client_missing_details()
+            file.client_missing_details = ", ".join(missing) or False
+
+    @api.depends('state', 'user_id', 'create_uid', 'waiver_state',
+                 'advance_waiver_state', 'reopen_request_state',
+                 'recharge_state', 'expense_ids.state',
+                 'expense_ids.payment_mode', 'expense_ids.is_legacy',
+                 'expense_ids.employee_id', 'expense_ids.journal_id',
+                 'has_billable', 'invoices_posted')
     def _compute_stage(self):
         for file in self:
             owner, detail = file._stage()
