@@ -798,6 +798,13 @@ msgid "A clearance file with this reference already exists."
 msgstr "Un dossier de dédouanement porte déjà cette référence."
 
 #. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_file__equivalent_container_count
+msgid ""
+"A containerised file counts its containers. A file ticked Not Containerised counts its weight divided by the tonnes per equivalent container set under Settings, rounded to the nearest whole number and never below 1."
+msgstr ""
+"Un dossier conteneurisé compte ses conteneurs. Un dossier coché Non conteneurisé compte son poids divisé par les tonnes par conteneur équivalent définies dans les Paramètres, arrondi à l'entier le plus proche et jamais en dessous de 1."
+
+#. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_account_payment__clearance_needs_attribution
 msgid ""
 "A customer receipt that has not been put against a clearance file yet."
@@ -837,6 +844,20 @@ msgid ""
 "A file cannot start work while a mandatory document is missing, unless a manager approves a waiver."
 msgstr ""
 "Le travail sur un dossier ne peut démarrer tant qu'un document obligatoire manque, sauf dérogation approuvée par un responsable."
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
+msgid ""
+"A file ticked Not Containerised counts as its weight                                        divided by this, rounded to the nearest whole number                                        and never below 1."
+msgstr ""
+"Un dossier coché Non conteneurisé compte pour son poids divisé par cette valeur, arrondi à l'entier le plus proche et jamais en dessous de 1."
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
+msgid ""
+"A file ticked Not Containerised counts as its weight divided by this, rounded to the nearest whole number and never below 1. At 35 tonnes, 40 tonnes of cargo count as 1 and 60 tonnes as 2."
+msgstr ""
+"Un dossier coché Non conteneurisé compte pour son poids divisé par cette valeur, arrondi à l'entier le plus proche et jamais en dessous de 1. À 35 tonnes, 40 tonnes de marchandise comptent pour 1 et 60 tonnes pour 2."
 
 #. module: elite_clearance
 #. odoo-python
@@ -3324,6 +3345,11 @@ msgid "English"
 msgstr "Anglais"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__equivalent_container_count
+msgid "Equivalent Containers"
+msgstr "Conteneurs équivalents"
+
+#. module: elite_clearance
 #: model_terms:ir.actions.act_window,help:elite_clearance.action_clearance_customers
 msgid "Every customer is complete"
 msgstr "Tous les clients sont complets"
@@ -3803,6 +3829,15 @@ msgstr ""
 #: model:ir.model.fields,help:elite_clearance.field_logistics_file__activity_type_icon
 msgid "Font awesome icon e.g. fa-tasks"
 msgstr "Icône Font Awesome, ex. fa-tasks"
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_clearance_settings_wizard__clearance_tonnes_per_container
+#: model:ir.model.fields,help:elite_clearance.field_res_company__clearance_tonnes_per_container
+#: model:ir.model.fields,help:elite_clearance.field_res_config_settings__clearance_tonnes_per_container
+msgid ""
+"For a file ticked Not Containerised: the cargo weight is divided by this and rounded to the nearest whole number, never below 1. At 35 tonnes, 40 tonnes of cargo count as 1 equivalent container and 60 tonnes as 2. Empty: every non-containerised file counts as 1."
+msgstr ""
+"Pour un dossier coché Non conteneurisé : le poids de la marchandise est divisé par cette valeur et arrondi à l'entier le plus proche, jamais en dessous de 1. À 35 tonnes, 40 tonnes de marchandise comptent pour 1 conteneur équivalent et 60 tonnes pour 2. Vide : chaque dossier non conteneurisé compte pour 1."
 
 #. module: elite_clearance
 #: model_terms:ir.actions.act_window,help:elite_clearance.action_logistics_service_type_transit
@@ -7675,6 +7710,19 @@ msgstr "À refacturer"
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_search
 msgid "To Settle"
 msgstr "À régler"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_settings_wizard__clearance_tonnes_per_container
+#: model:ir.model.fields,field_description:elite_clearance.field_res_company__clearance_tonnes_per_container
+#: model:ir.model.fields,field_description:elite_clearance.field_res_config_settings__clearance_tonnes_per_container
+msgid "Tonnes per Equivalent Container"
+msgstr "Tonnes par conteneur équivalent"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
+msgid "Tonnes per equivalent container"
+msgstr "Tonnes par conteneur équivalent"
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.hr_employee_view_form_clearance
