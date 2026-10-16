@@ -764,8 +764,13 @@ class TestUatRoles(TransactionCase):
             missing.partner_id.sudo().write({'email': False})
             w2 = self._wizard(missing)
             self.check(w2.client_details_missing, "missing client details are flagged")
-            w2.write({'client_email': "imports@sonicam.example"})
-            self.check(self.client.email == "imports@sonicam.example", "and saved to the customer")
+            # the client block is read-only (owner 14/10/2026): Customer
+            # Service completes the record, and the screen then reads it
+            self.refused(lambda: w2.action_create_invoice(), "no invoice while the record is incomplete")
+            missing.partner_id.with_user(self.cs).write({'email': "imports@sonicam.example"})
+            w3 = self._wizard(missing)
+            self.check(not w3.client_details_missing and w3.client_email == "imports@sonicam.example",
+                       "completed by Customer Service, read by the screen")
 
         with self.case('UAT-19', "Recharging at other than cost needs approval", 'BILL, OPSM, GM'):
             file = self._ready()
