@@ -1165,6 +1165,18 @@ msgid "Already credited"
 msgstr "Déjà créditée"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_category_name__name
+msgid "Alternative Name"
+msgstr "Libellé alternatif"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_category__alternative_name_ids
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_category_view_form
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_category_view_list
+msgid "Alternative Names"
+msgstr "Libellés alternatifs"
+
+#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_task__amount
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_wizard_service__amount
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__amount
@@ -1187,6 +1199,13 @@ msgid ""
 "An advance must be held by a registered staff member (%s). Create the employee first, then hand over the money."
 msgstr ""
 "Une avance doit être détenue par un membre du personnel enregistré (%s). Créez d'abord l'employé, puis remettez l'argent."
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_billing_wizard_debours__alternative_name_id
+msgid ""
+"An alternative wording of the category for the client's invoice, set up under Configuration -> Expense Categories. Empty prints the category name. The ledger keeps the description."
+msgstr ""
+"Un libellé alternatif de la catégorie pour la facture du client, défini sous Configuration -> Catégories de débours. Vide imprime le nom de la catégorie. Le grand livre garde la description."
 
 #. module: elite_clearance
 #: model:ir.model.constraint,message:elite_clearance.constraint_logistics_expense_category_code_company_uniq
@@ -1643,6 +1662,11 @@ msgid "Bill a Clearance File"
 msgstr "Facturer un dossier de dédouanement"
 
 #. module: elite_clearance
+#: model:logistics.document.type,name:elite_clearance.doc_type_bl
+msgid "Bill of Lading / Air Waybill"
+msgstr ""
+
+#. module: elite_clearance
 #: model_terms:ir.actions.act_window,help:elite_clearance.action_logistics_document_type
 msgid ""
 "Bill of lading, commercial invoice, packing list, certificate of origin, transit authorisation. Each service type then picks the ones it needs."
@@ -1752,11 +1776,6 @@ msgstr "Approbateurs de la facturation"
 #: model:res.groups,name:elite_clearance.group_clearance_billing_manager
 msgid "Billing Manager"
 msgstr "Responsable Facturation"
-
-#. module: elite_clearance
-#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_category__billing_name
-msgid "Billing Name"
-msgstr "Libellé de facturation"
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form
@@ -2009,6 +2028,7 @@ msgid "Cashiers"
 msgstr "Caissiers"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_wizard_debours__category_id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__category_id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_capture_wizard__category_id
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_search
@@ -2018,6 +2038,11 @@ msgstr "Catégorie"
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.report_clearance_invoice_document
 msgid "Catégorie"
+msgstr ""
+
+#. module: elite_clearance
+#: model:logistics.document.type,name:elite_clearance.doc_type_origin
+msgid "Certificate of Origin"
 msgstr ""
 
 #. module: elite_clearance
@@ -2359,6 +2384,11 @@ msgid "Code"
 msgstr "Code"
 
 #. module: elite_clearance
+#: model:logistics.document.type,name:elite_clearance.doc_type_invoice
+msgid "Commercial Invoice"
+msgstr ""
+
+#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__commission_amount
 msgid "Commission (on OOP)"
 msgstr "Commission (sur débours)"
@@ -2383,6 +2413,11 @@ msgstr "Taux de commission (%)"
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_wizard__commission_billed
 msgid "Commission already billed"
 msgstr "Commission déjà facturée"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__billing_commission_skipped
+msgid "Commission not billed"
+msgstr "Commission non facturée"
 
 #. module: elite_clearance
 #: model:ir.model.fields.selection,name:elite_clearance.selection__account_move_line__clearance_service_kind__commission
@@ -2561,6 +2596,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__create_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_capture_wizard__create_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_category__create_uid
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_category_name__create_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_settle_wizard__create_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__create_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_document__create_uid
@@ -2591,6 +2627,7 @@ msgstr "Créé par"
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__create_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_capture_wizard__create_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_category__create_date
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_category_name__create_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_settle_wizard__create_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__create_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_document__create_date
@@ -2946,6 +2983,7 @@ msgstr "Divulgué"
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__display_name
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_capture_wizard__display_name
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_category__display_name
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_category_name__display_name
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_settle_wizard__display_name
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__display_name
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_document__display_name
@@ -2963,6 +3001,11 @@ msgstr "Divulgué"
 #: model:ir.model.fields,field_description:elite_clearance.field_res_partner__display_name
 msgid "Display Name"
 msgstr "Nom affiché"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_wizard__skip_commission
+msgid "Do not bill the commission"
+msgstr "Ne pas facturer la commission"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__document_ids
@@ -3167,6 +3210,12 @@ msgid "Employee Advances Account"
 msgstr "Compte des avances au personnel"
 
 #. module: elite_clearance
+#: model:logistics.service.type,description:elite_clearance.service_type_import_sea
+msgid ""
+"End-to-end customs clearance for sea imports, including the customs return, settlement of clearance fees and release of the goods."
+msgstr ""
+
+#. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form
 msgid "Engaged (billable)"
 msgstr "Engagé (facturable)"
@@ -3332,6 +3381,17 @@ msgstr "Approbateurs des débours"
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_category_view_list
 msgid "Expense Categories"
 msgstr "Catégories de débours"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_category_name__category_id
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_category_view_form
+msgid "Expense Category"
+msgstr "Catégorie de débours"
+
+#. module: elite_clearance
+#: model:ir.model,name:elite_clearance.model_logistics_expense_category_name
+msgid "Expense Category — Alternative Name"
+msgstr "Catégorie de débours — Libellé alternatif"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__expense_count
@@ -3840,13 +3900,6 @@ msgstr ""
 "Comment l'argent sort. Suit le canal de paiement et le membre du personnel saisis à la demande - une caisse est espèces, un canal banque ou mobile money est électronique, un membre du personnel est une avance - et Finance peut le modifier une fois le débours approuvé."
 
 #. module: elite_clearance
-#: model:ir.model.fields,help:elite_clearance.field_logistics_expense_category__billing_name
-msgid ""
-"How this category is worded on the client's invoice. Leave empty and the category name is printed. The ledger and the analytic lines keep the category name either way."
-msgstr ""
-"Comment cette catégorie est libellée sur la facture du client. Laissez vide et le nom de la catégorie est imprimé. Le grand livre et les lignes analytiques gardent le nom de la catégorie dans tous les cas."
-
-#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_account_analytic_account__id
 #: model:ir.model.fields,field_description:elite_clearance.field_account_move__id
 #: model:ir.model.fields,field_description:elite_clearance.field_account_move_line__id
@@ -3872,6 +3925,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_capture_wizard__id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_category__id
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_category_name__id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_settle_wizard__id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_document__id
@@ -3953,6 +4007,11 @@ msgstr "Si coché, de nouveaux messages requièrent votre attention."
 #: model:ir.model.fields,help:elite_clearance.field_logistics_file__message_has_sms_error
 msgid "If checked, some messages have a delivery error."
 msgstr "Si coché, certains messages ont une erreur d'envoi."
+
+#. module: elite_clearance
+#: model:logistics.service.type,name:elite_clearance.service_type_import_sea
+msgid "Import clearance — sea freight"
+msgstr ""
 
 #. module: elite_clearance
 #: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file__state__imported
@@ -4071,6 +4130,11 @@ msgstr ""
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__incoterm_id
 msgid "Incoterm"
 msgstr "Incoterm"
+
+#. module: elite_clearance
+#: model:logistics.document.type,name:elite_clearance.doc_type_insurance
+msgid "Insurance Certificate"
+msgstr ""
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__note
@@ -4441,6 +4505,7 @@ msgstr "Dernier numéro de dossier de l'ancien système"
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__write_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_capture_wizard__write_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_category__write_uid
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_category_name__write_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_settle_wizard__write_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__write_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_document__write_uid
@@ -4471,6 +4536,7 @@ msgstr "Dernière mise à jour par"
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__write_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_capture_wizard__write_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_category__write_date
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_category_name__write_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_settle_wizard__write_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__write_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_document__write_date
@@ -4984,6 +5050,11 @@ msgid "OK for billing. The invoice has not been raised yet."
 msgstr "Bon à facturer. La facture n'a pas encore été émise."
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_wizard_debours__print_name
+msgid "On the Invoice"
+msgstr "Sur la facture"
+
+#. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_account_bank_statement_line__clearance_credit_reason
 #: model:ir.model.fields,help:elite_clearance.field_account_move__clearance_credit_reason
 msgid ""
@@ -5218,6 +5289,23 @@ msgid "Other billable service"
 msgstr "Autre prestation facturable"
 
 #. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_category_view_form
+msgid ""
+"Other wordings the client's invoice may print for this\n"
+"                        category. The billing agent picks one per disbursement\n"
+"                        on the billing screen; nothing picked prints the\n"
+"                        category name. The ledger always keeps the category name."
+msgstr ""
+"Autres libellés que la facture du client peut imprimer pour cette catégorie. L'agent de facturation en choisit un par débours sur l'écran de facturation ; sans choix, le nom de la catégorie est imprimé. Le grand livre garde toujours le nom de la catégorie."
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_expense_category__alternative_name_ids
+msgid ""
+"Other wordings the client's invoice may print for this category. The billing agent picks one per disbursement on the billing screen; nothing picked prints the category name. The ledger and the analytic lines keep the category name either way."
+msgstr ""
+"Autres libellés que la facture du client peut imprimer pour cette catégorie. L'agent de facturation en choisit un par débours sur l'écran de facturation ; sans choix, le nom de la catégorie est imprimé. Le grand livre et les lignes analytiques gardent le nom de la catégorie dans tous les cas."
+
+#. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_capture_form
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_form
 msgid "Out-of-Pocket Expense"
@@ -5310,6 +5398,11 @@ msgstr ""
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__package_count
 msgid "Packages"
 msgstr "Colis"
+
+#. module: elite_clearance
+#: model:logistics.document.type,name:elite_clearance.doc_type_packing
+msgid "Packing List"
+msgstr ""
 
 #. module: elite_clearance
 #: model:ir.model.fields.selection,name:elite_clearance.selection__account_move__legacy_payment_state__paid
@@ -5481,7 +5574,7 @@ msgstr "Imprimer le bon de caisse"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_account_move_line__clearance_print_name
-#: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_wizard_debours__print_name
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_wizard_debours__alternative_name_id
 msgid "Printed As"
 msgstr "Imprimé comme"
 
@@ -5534,7 +5627,7 @@ msgstr ""
 "Imprimé dans le bloc bancaire lorsque la facture ne porte pas de condition de paiement propre."
 
 #. module: elite_clearance
-#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__billing_label
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__billing_name_id
 msgid "Printed on the Invoice As"
 msgstr "Imprimé sur la facture comme"
 
@@ -6232,6 +6325,7 @@ msgstr "Envoyé au Chef de Service Finance le"
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_service__sequence
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_document_type__sequence
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_category__sequence
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_category_name__sequence
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_document__sequence
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_port__sequence
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_service_type__sequence
@@ -6762,6 +6856,13 @@ msgid "The advance holder"
 msgstr "Le détenteur de l'avance"
 
 #. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_expense__billing_name_id
+msgid ""
+"The alternative name the billing agent chose for this disbursement on the client's invoice (owner 16/10/2026). Empty prints the category name. Kept so the approver reviews the same wording the biller chose."
+msgstr ""
+"Le libellé alternatif choisi par l'agent de facturation pour ce débours sur la facture du client. Vide imprime le nom de la catégorie. Conservé pour que l'approbateur examine le même libellé que celui choisi par le facturier."
+
+#. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_logistics_expense__recharge_comment
 msgid ""
 "The biller's reason for charging this disbursement at other than cost, keyed on its own line of the billing screen (owner 10/10/2026)."
@@ -7124,20 +7225,6 @@ msgstr ""
 "Le libellé imprimé sur la facture du client pour cette ligne, lorsqu'il diffère du libellé affiché au grand livre."
 
 #. module: elite_clearance
-#: model:ir.model.fields,help:elite_clearance.field_logistics_billing_wizard_debours__print_name
-msgid ""
-"The wording printed on the client's invoice for this line. Proposed from the category's billing name, or the category itself when it has none. The ledger keeps the description."
-msgstr ""
-"Le libellé imprimé sur la facture du client pour cette ligne. Proposé d'après le libellé de facturation de la catégorie, ou la catégorie elle-même si elle n'en a pas. Le grand livre garde la description."
-
-#. module: elite_clearance
-#: model:ir.model.fields,help:elite_clearance.field_logistics_expense__billing_label
-msgid ""
-"The wording the billing agent chose for this disbursement on the client's invoice (owner 14/10/2026). Proposed from the category's billing name; kept so the approver reviews the same wording the biller keyed."
-msgstr ""
-"Le libellé choisi par l'agent de facturation pour ce débours sur la facture du client. Proposé d'après le libellé de facturation de la catégorie ; conservé pour que l'approbateur examine le même libellé que celui saisi par le facturier."
-
-#. module: elite_clearance
 #. odoo-python
 #: code:addons/elite_clearance/wizard/billing_wizard.py:0
 msgid "There is nothing to bill on %s."
@@ -7161,6 +7248,11 @@ msgstr "Ces lignes ont déjà été créditées : %s."
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_settle_wizard__vendor_id
 msgid "Third Party"
 msgstr "Tiers"
+
+#. module: elite_clearance
+#: model:ir.model.constraint,message:elite_clearance.constraint_logistics_expense_category_name_name_category_uniq
+msgid "This category already carries that alternative name."
+msgstr "Cette catégorie porte déjà ce libellé alternatif."
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.billing_wizard_view_form
@@ -7289,6 +7381,20 @@ msgstr ""
 "Trois lettres représentant ce client dans les comptes analytiques de dédouanement, pour que chaque dossier se lise à la même largeur : 2026AI0072 - CTC. Générées à l'ouverture du premier dossier du client et conservées — les changer ne réécrit rien de déjà comptabilisé."
 
 #. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_file__billing_commission_skipped
+msgid ""
+"Ticked on the billing screen: the commission is left off the invoice and nothing is booked for it (owner 16/10/2026). Kept across a recharge review."
+msgstr ""
+"Coché sur l'écran de facturation : la commission est laissée hors de la facture et rien n'est comptabilisé pour elle. Conservé pendant une revue de refacturation."
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_billing_wizard__skip_commission
+msgid ""
+"Ticked: no 'Commission sur débours' line on this invoice, and nothing is booked for it. Kept with the file across a recharge review."
+msgstr ""
+"Coché : aucune ligne « Commission sur débours » sur cette facture, et rien n'est comptabilisé pour elle. Conservé avec le dossier pendant une revue de refacturation."
+
+#. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_res_partner__clearance_vat_exempt
 #: model:ir.model.fields,help:elite_clearance.field_res_users__clearance_vat_exempt
 msgid ""
@@ -7327,12 +7433,18 @@ msgid "Total"
 msgstr "Total"
 
 #. module: elite_clearance
+#: model:logistics.service.type,name:elite_clearance.service_type_transit
+msgid "Transit"
+msgstr ""
+
+#. module: elite_clearance
 #: model:res.groups,name:elite_clearance.group_clearance_transit
 msgid "Transit Agent"
 msgstr "Agent Transit"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__transit_authorisation_ref
+#: model:logistics.document.type,name:elite_clearance.doc_type_authorisation
 msgid "Transit Order / Authorisation"
 msgstr "Ordre de transit / Autorisation"
 
@@ -7797,6 +7909,11 @@ msgid ""
 "What the client is charged for this disbursement. Any difference from what was disbursed needs approving."
 msgstr ""
 "Ce qui est facturé au client pour ce débours. Tout écart avec ce qui a été décaissé doit être approuvé."
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_billing_wizard_debours__print_name
+msgid "What the client's invoice will print for this line."
+msgstr "Ce que la facture du client imprimera pour cette ligne."
 
 #. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_account_bank_statement_line__legacy_amount_residual
@@ -8536,9 +8653,9 @@ msgid "against a cost of"
 msgstr "pour un coût de"
 
 #. module: elite_clearance
-#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_category_view_list
-msgid "as the client's invoice words it"
-msgstr "tel que la facture du client le libelle"
+#: model_terms:ir.ui.view,arch_db:elite_clearance.billing_wizard_view_form
+msgid "category name"
+msgstr "nom de la catégorie"
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.report_clearance_invoice_document
@@ -8570,6 +8687,11 @@ msgstr "ex. 20, 40, 40HC."
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_service_type_view_list_numbering
 msgid "e.g. 2026IM0019"
 msgstr "ex. 2026IM0019"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_category_view_form
+msgid "e.g. Frais Bordereaux de livraison"
+msgstr "ex. Frais Bordereaux de livraison"
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.billing_wizard_view_form
@@ -8702,8 +8824,3 @@ msgstr "qui est payé - sans objet pour une avance au personnel"
 #: model_terms:ir.ui.view,arch_db:elite_clearance.billing_wizard_view_form
 msgid "why it differs from cost"
 msgstr "pourquoi il diffère du coût"
-
-#. module: elite_clearance
-#: model_terms:ir.ui.view,arch_db:elite_clearance.billing_wizard_view_form
-msgid "wording on the invoice"
-msgstr "libellé sur la facture"
