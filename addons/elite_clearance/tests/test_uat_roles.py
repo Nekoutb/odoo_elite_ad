@@ -512,7 +512,9 @@ class TestUatRoles(TransactionCase):
             Wizard.with_context(active_id=file.id).create({
                 'category_id': self.category.id, 'description': "Frais de transit",
                 'amount': 50000, 'journal_id': self.cash.id,
-                'employee_id': self.holder.id}).action_submit_close()
+                # the dialog no longer names a holder: the advance stands
+                # against the requester (owner 13/10/2026)
+                'is_advance': True}).action_submit_close()
             rows = file.expense_ids.sorted('id')
             self.check(len(rows) == 2 and set(rows.mapped('state')) == {'submitted'}, "both rows submitted")
             self.check(rows[0].payment_mode == 'cash' and rows[1].payment_mode == 'advance',
