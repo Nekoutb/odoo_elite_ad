@@ -172,7 +172,7 @@ class TestFileStageAndClose(TransactionCase):
             'group_ids': [(6, 0, [self.env.ref(
                 'elite_clearance.group_clearance_billing').id])]})
         wizard = self.env['logistics.file.reopen.wizard'].create({
-            'file_id': self.file.id, 'target_state': 'ops_closed',
+            'reason_id': self.env.ref('elite_clearance.reopen_reason_other').id, 'file_id': self.file.id, 'target_state': 'ops_closed',
             'reason': "The client wants a second invoice."})
         with self.assertRaises(UserError,
                                msg="closing it was the biller's call; "
@@ -190,7 +190,7 @@ class TestFileStageAndClose(TransactionCase):
     def test_06_a_reopened_file_can_go_back_for_more_cost(self):
         self._billed_and_closed()
         self.env['logistics.file.reopen.wizard'].create({
-            'file_id': self.file.id, 'target_state': 'in_progress',
+            'reason_id': self.env.ref('elite_clearance.reopen_reason_other').id, 'file_id': self.file.id, 'target_state': 'in_progress',
             'reason': "The demurrage invoice arrived late."}).action_reopen()
         self.assertEqual(self.file.state, 'in_progress',
                          "back to operations, where a new cost can be keyed")
@@ -199,7 +199,7 @@ class TestFileStageAndClose(TransactionCase):
     def test_07_what_was_billed_is_never_billed_again(self):
         expense = self._billed_and_closed()
         self.env['logistics.file.reopen.wizard'].create({
-            'file_id': self.file.id, 'target_state': 'ops_closed',
+            'reason_id': self.env.ref('elite_clearance.reopen_reason_other').id, 'file_id': self.file.id, 'target_state': 'ops_closed',
             'reason': "Have another look at it."}).action_reopen()
         self.assertTrue(expense.is_billed)
         self.assertFalse(self.file._billable_expenses())

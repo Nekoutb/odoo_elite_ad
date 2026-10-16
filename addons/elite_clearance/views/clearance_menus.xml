@@ -47,6 +47,10 @@
               parent="menu_clearance_reporting"
               action="action_clearance_turnaround_late" sequence="30"/>
 
+    <menuitem id="menu_clearance_reopenings" name="Reopenings"
+              parent="menu_clearance_reporting"
+              action="action_logistics_file_reopening" sequence="40"/>
+
     <!-- Configuration -->
     <menuitem id="menu_clearance_config" name="Configuration"
               parent="menu_clearance_root" sequence="90"
@@ -75,6 +79,10 @@
               parent="menu_clearance_config"
               action="action_clearance_user_language_wizard" sequence="7"
               groups="group_clearance_admin"/>
+
+    <menuitem id="menu_clearance_reopen_reasons" name="Reopening Reasons"
+              parent="menu_clearance_config"
+              action="action_logistics_reopen_reason" sequence="47"/>
 
     <menuitem id="menu_clearance_transit_settings" name="Transit Time Settings"
               parent="menu_clearance_config"

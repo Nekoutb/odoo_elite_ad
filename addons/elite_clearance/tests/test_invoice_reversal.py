@@ -195,7 +195,7 @@ class TestInvoiceReversal(TransactionCase):
                 'invoice_id': invoice.id,
                 'reason': "Too late."}).action_cancel_invoice()
         self.env['logistics.file.reopen.wizard'].create({
-            'file_id': self.file.id, 'target_state': 'ops_closed',
+            'reason_id': self.env.ref('elite_clearance.reopen_reason_other').id, 'file_id': self.file.id, 'target_state': 'ops_closed',
             'reason': "The client disputed the terminal charge."
         }).action_reopen()
         self.assertEqual(self.file.state, 'ops_closed')
@@ -299,7 +299,7 @@ class TestInvoiceReversal(TransactionCase):
         first.action_post()
         # more cost lands: the file goes back to operations, and back again
         self.env['logistics.file.reopen.wizard'].create({
-            'file_id': self.file.id, 'target_state': 'in_progress',
+            'reason_id': self.env.ref('elite_clearance.reopen_reason_other').id, 'file_id': self.file.id, 'target_state': 'in_progress',
             'reason': "The demurrage invoice arrived late."}).action_reopen()
         self.assertEqual(self.file.state, 'in_progress')
         late = self._disburse(25000, label="Demurrage")
@@ -343,7 +343,7 @@ class TestInvoiceReversal(TransactionCase):
         first = self._bill()
         first.action_post()
         self.env['logistics.file.reopen.wizard'].create({
-            'file_id': self.file.id, 'target_state': 'in_progress',
+            'reason_id': self.env.ref('elite_clearance.reopen_reason_other').id, 'file_id': self.file.id, 'target_state': 'in_progress',
             'reason': "One more cost."}).action_reopen()
         self._disburse(25000, label="Demurrage")
         self.file.action_close_operations()

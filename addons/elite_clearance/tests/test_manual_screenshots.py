@@ -455,7 +455,7 @@ class TestManualScreenshots(HttpCase):
             file = cls._ready_to_bill("TGHU6604472", DEBOURS[:2])
             cls._bill(file, post=True)
             self.env['logistics.file.reopen.wizard'].create({
-                'file_id': file.id, 'target_state': 'in_progress',
+                'reason_id': self.env.ref('elite_clearance.reopen_reason_other').id, 'file_id': file.id, 'target_state': 'in_progress',
                 'reason': "Facture de surestaries recue apres facturation."
             }).action_reopen()
             cls._settle(cls._disbursement(file, *DEBOURS[2]))

@@ -12,6 +12,7 @@ from . import clearance_rejection
 from . import logistics_port
 from . import logistics_document_type
 from . import logistics_service_type
+from . import logistics_reopen_reason
 from . import logistics_billing_service
 from . import logistics_file
 from . import logistics_expense

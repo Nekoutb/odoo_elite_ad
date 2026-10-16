@@ -167,7 +167,7 @@ class TestExpensesAndBilling(TransactionCase):
     def test_05_reopen_requires_manager_and_reason(self):
         self.file.action_close_operations()
         wiz = self.env['logistics.file.reopen.wizard'].create({
-            'file_id': self.file.id, 'reason': "Late port invoice received."})
+            'reason_id': self.env.ref('elite_clearance.reopen_reason_other').id, 'file_id': self.file.id, 'reason': "Late port invoice received."})
         user = self.env['res.users'].create({
             'name': "Plain Ops", 'login': "plain.ops@test.example",
             'group_ids': [(6, 0, [self.env.ref(

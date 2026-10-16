@@ -56,7 +56,11 @@ class LogisticsFile(models.Model):
         [('im4', "IM4 - Mise à la consommation"),
          ('im5', "IM5 - Admission temporaire"),
          ('im7', "IM7 - Entrepôt"),
-         ('im8', "IM8 - Transit")],
+         ('im8', "IM8 - Transit"),
+         # owner 16/10/2026: a regime of its own, no special rule - these
+         # files are routinely billed, reopened for more cost, and billed
+         # again, which partial billing already allows
+         ('im9', "IM9 - Autres régimes d'importation")],
         string="Customs Regime", tracking=True, index=True,
         help="The regime declared to Customs. It decides what the file is "
              "for, so it is chosen when the file is opened and cannot be "
@@ -228,6 +232,11 @@ class LogisticsFile(models.Model):
         ],
         default='none', required=True, tracking=True, copy=False,
         string="Reopening Request")
+    reopen_request_reason_id = fields.Many2one(
+        'logistics.reopen.reason', string="Reopening Reason", copy=False,
+        help="From the list under Configuration -> Reopening Reasons "
+             "(owner 16/10/2026). Required to request the reopening of "
+             "an imported file.")
     reopen_request_reason = fields.Text(
         string="Why reopen this imported file", copy=False,
         help="What remains to be done or billed on a file the legacy system "
@@ -443,6 +452,14 @@ class LogisticsFile(models.Model):
         help="Undisclosed clients' files and invoices are numbered from "
              "their own series.")
     reopen_count = fields.Integer(readonly=True, copy=False)
+    # Every reopening is a row (owner 16/10/2026): the reason chosen from
+    # the list, who approved it, where the file went. The LAST reason is
+    # kept on the file for the list, its filter and its group-by.
+    reopening_ids = fields.One2many(
+        'logistics.file.reopening', 'file_id', string="Reopenings")
+    last_reopen_reason_id = fields.Many2one(
+        'logistics.reopen.reason', compute='_compute_last_reopen_reason',
+        store=True, string="Last Reopening Reason")
 
     # Where the file actually sits, and with whom (owner spec 14/09/2026).
     # Shown at the top of the file so that it can be chased without
@@ -860,6 +877,27 @@ class LogisticsFile(models.Model):
             file.transit_days = (
                 (file.transit_end - file.transit_start).total_seconds()
                 / 86400.0) if file.transit_start and file.transit_end else 0.0
+
+    @api.depends('reopening_ids.reason_id', 'reopening_ids.date')
+    def _compute_last_reopen_reason(self):
+        for file in self:
+            last = file.reopening_ids.sorted(
+                lambda r: (r.date, r.id), reverse=True)[:1]
+            file.last_reopen_reason_id = last.reason_id
+
+    def _log_reopening(self, reason, note, target):
+        """One row per reopening, written under sudo: the approver has
+        no right of their own on the log, and the log is not theirs to
+        edit afterwards."""
+        self.ensure_one()
+        self.env['logistics.file.reopening'].sudo().create({
+            'file_id': self.id,
+            'reason_id': reason.id,
+            'note': note or False,
+            'target_state': target,
+            'from_state': self.state,
+            'user_id': self.env.user.id,
+        })
 
     @api.depends('partner_id', 'partner_id.clearance_invoice_name',
                  'partner_id.street', 'partner_id.email', 'partner_id.vat',
@@ -1474,6 +1512,10 @@ class LogisticsFile(models.Model):
             if file.state != 'imported':
                 raise UserError(self.env._(
                     "%s is not an imported file.", file.name))
+            if not file.reopen_request_reason_id:
+                raise UserError(self.env._(
+                    "Choose the reopening reason for %s from the list "
+                    "before requesting it.", file.name))
             if not file.reopen_request_reason:
                 raise UserError(self.env._(
                     "Say why %s should be reopened before requesting it.",
@@ -1491,6 +1533,8 @@ class LogisticsFile(models.Model):
             if file.reopen_request_state != 'requested':
                 raise UserError(self.env._(
                     "No reopening request is awaiting approval on %s.", file.name))
+            file._log_reopening(file.reopen_request_reason_id,
+                                file.reopen_request_reason, 'in_progress')
             file.write({'reopen_request_state': 'approved',
                         'reopen_approved_by_id': self.env.user.id,
                         'reopen_request_date': fields.Datetime.now(),
@@ -1597,8 +1641,8 @@ class LogisticsFile(models.Model):
                 continue        # Teese history, in whatever state
             if not file.customs_regime:
                 raise ValidationError(self.env._(
-                    "Choose the customs regime for %s (IM4, IM5, IM7 or "
-                    "IM8) before saving it.", file.name or "the file"))
+                    "Choose the customs regime for %s (IM4, IM5, IM7, IM8 "
+                    "or IM9) before saving it.", file.name or "the file"))
 
     def action_start_work(self):
         for file in self:

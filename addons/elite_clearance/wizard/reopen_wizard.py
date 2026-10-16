@@ -1,4 +1,4 @@
-from odoo import fields, models
+from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 
@@ -15,7 +15,12 @@ class LogisticsFileReopenWizard(models.TransientModel):
 
     file_id = fields.Many2one('logistics.file', required=True, readonly=True)
     file_state = fields.Selection(related='file_id.state', string="File Status")
-    reason = fields.Text(required=True)
+    # The reason comes from the list first (owner 16/10/2026), so the
+    # reopenings can be counted later; the free text stays for the record.
+    reason_id = fields.Many2one(
+        'logistics.reopen.reason', string="Reason", required=True,
+        help="From the list under Configuration -> Reopening Reasons.")
+    reason = fields.Text(string="Explanation", required=True)
     # A completed file is reopened for one of two reasons, and they are
     # not the same reopening (owner 13/09/2026): either the bill was
     # wrong, or more cost has landed on the job. Asking makes the second
@@ -26,6 +31,11 @@ class LogisticsFileReopenWizard(models.TransientModel):
         string="Reopen for", default='ops_closed',
         help="Only asked of a completed file. A file that is merely closed "
              "for operations always goes back to operations.")
+
+    @api.onchange('reason_id')
+    def _onchange_reason_id(self):
+        if self.reason_id.target_state and self.file_state == 'done':
+            self.target_state = self.reason_id.target_state
 
     def action_reopen(self):
         self.ensure_one()
@@ -38,11 +48,14 @@ class LogisticsFileReopenWizard(models.TransientModel):
         else:
             raise UserError(self.env._(
                 "%s is not closed — nothing to reopen.", file.name))
+        file._log_reopening(self.reason_id, self.reason, target)
         file.write({'state': target,
                     'reopen_count': file.reopen_count + 1,
                     'date_closed': False})
         file.message_post(body=self.env._(
-            "File reopened to %(target)s (approval by %(user)s): %(reason)s",
+            "File reopened to %(target)s (approval by %(user)s) - "
+            "%(why)s: %(reason)s",
             target=dict(file._fields['state'].selection).get(target, target),
-            user=self.env.user.name, reason=self.reason))
+            user=self.env.user.name, why=self.reason_id.name,
+            reason=self.reason))
         return {'type': 'ir.actions.act_window_close'}

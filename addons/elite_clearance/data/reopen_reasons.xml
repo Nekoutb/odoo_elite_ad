@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- The reopening reasons the owner named on 16/10/2026, as a starting
+       list: Configuration -> Reopening Reasons is theirs to change. -->
+  <data noupdate="1">
+    <record id="reopen_reason_additional_expenditure" model="logistics.reopen.reason">
+      <field name="name">Additional expenditure</field>
+      <field name="sequence">10</field>
+      <field name="target_state">in_progress</field>
+    </record>
+    <record id="reopen_reason_billing_correction" model="logistics.reopen.reason">
+      <field name="name">Billing correction</field>
+      <field name="sequence">20</field>
+      <field name="target_state">ops_closed</field>
+    </record>
+    <record id="reopen_reason_credit_note" model="logistics.reopen.reason">
+      <field name="name">Credit note</field>
+      <field name="sequence">30</field>
+      <field name="target_state">ops_closed</field>
+    </record>
+    <record id="reopen_reason_other" model="logistics.reopen.reason">
+      <field name="name">Other</field>
+      <field name="sequence">90</field>
+    </record>
+  </data>
+</odoo>

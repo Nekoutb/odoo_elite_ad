@@ -150,7 +150,7 @@ class TestOwnerSpec1509(TransactionCase):
         file.invoice_id.action_post()
 
         self.env['logistics.file.reopen.wizard'].create({
-            'file_id': file.id, 'target_state': 'in_progress',
+            'reason_id': self.env.ref('elite_clearance.reopen_reason_other').id, 'file_id': file.id, 'target_state': 'in_progress',
             'reason': "A late cost."}).action_reopen()
         self._disburse(file, 20000)
         file.action_close_operations()

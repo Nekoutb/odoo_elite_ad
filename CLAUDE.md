@@ -15,7 +15,7 @@ working memory that is *not* obvious from the code.
   <in the Odoo.sh project settings — never in this repository, it is public>, Custom plan). The old Odoo Online db (elite-advisors,
   saas~19.3) holds no data and will lapse. Never build against 19.3 minor APIs.
 
-## The module: addons/elite_clearance (v19.0.53.0.0)
+## The module: addons/elite_clearance (v19.0.54.0.0)
 Customs clearance job files for a logistics/clearance services provider.
 - `logistics.file` — one file = one clearance job. States:
   draft → in_progress → ops_closed → done (+cancel, +imported). `imported`
@@ -845,6 +845,25 @@ Customs clearance job files for a logistics/clearance services provider.
      per container, 40 t of cargo = 1. The setting is in the three
      settings places. Shown on the file form beside the weight when Not
      Containerised, and as a hidden list column.
+  6. **Every reopening takes a reason from a list** (owner 16/10/2026,
+     fourth message; version 19.0.54). `logistics.reopen.reason`
+     (Configuration -> Reopening Reasons; seeded in
+     `data/reopen_reasons.xml` with xmlids `reopen_reason_additional_
+     expenditure` / `_billing_correction` / `_credit_note` / `_other`;
+     `target_state` pre-selects where a closed file goes back to) and
+     `logistics.file.reopening`, ONE ROW PER REOPENING written under sudo
+     by `logistics.file._log_reopening()` from the reopen wizard
+     (`reason_id` required beside the free-text explanation) and from
+     `action_approve_reopen_imported` (the imported file's request now
+     needs `reopen_request_reason_id`). Reporting -> Reopenings is a
+     pivot/graph/list over that log (by reason, month, client, regime);
+     the files list has a Reopened filter and a group-by on
+     `last_reopen_reason_id` (stored compute over the log). Every older
+     test that creates the wizard passes `reopen_reason_other`.
+     **IM9** joined the customs regimes (label "Autres régimes
+     d'importation", the owner's to rename): a regime of its own, no
+     special rule - these files are billed, reopened for Additional
+     expenditure, closed for operations and billed again.
 - **Payment evidence (owner, 01/10/2026).** `ir.attachment.clearance_kind`
   ('request' / 'payment', NULL = request) tells a disbursement's documents
   apart: `logistics.expense.request_document_ids` and

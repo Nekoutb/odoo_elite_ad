@@ -257,6 +257,73 @@ class TestOwnerSpec1610(TransactionCase):
         self.assertIn('clearance_tonnes_per_container', Wizard.SETTINGS)
         self.assertIn('clearance_tonnes_per_container', Wizard.get_view()['arch'])
 
+    def test_07_every_reopening_takes_a_reason_from_the_list(self):
+        Reason = self.env['logistics.reopen.reason']
+        extra = self.env.ref('elite_clearance.reopen_reason_additional_expenditure')
+        self.assertEqual(extra.target_state, 'in_progress')
+        self.assertGreaterEqual(len(Reason.search([])), 4, "seeded")
+        # IM9 is a regime of its own
+        file = self._file(customs_regime='im9')
+        self.assertEqual(file.customs_regime, 'im9')
+        file.state = 'ops_closed'
+        Wizard = self.env['logistics.file.reopen.wizard'].with_user(self.ops_head)
+        with self.assertRaises(Exception, msg="no reopening without a reason"):
+            with self.env.cr.savepoint():
+                Wizard.create({'file_id': file.id, 'reason': "Late demurrage"}).action_reopen()
+        wizard = Wizard.create({'file_id': file.id, 'reason_id': extra.id,
+                                'reason': "Late demurrage invoice"})
+        wizard.action_reopen()
+        self.assertEqual(file.state, 'in_progress')
+        self.assertEqual(file.reopen_count, 1)
+        self.assertEqual(file.last_reopen_reason_id, extra)
+        log = file.reopening_ids
+        self.assertEqual(len(log), 1)
+        self.assertEqual((log.reason_id, log.from_state, log.target_state,
+                          log.user_id), (extra, 'ops_closed', 'in_progress', self.ops_head))
+        self.assertIn("Additional expenditure", file.message_ids[0].body)
+        # a closed file: the reason pre-selects where it goes back to
+        file.state = 'done'
+        credit = self.env.ref('elite_clearance.reopen_reason_credit_note')
+        wizard = Wizard.new({'file_id': file.id, 'reason': "Wrong amount"})
+        wizard.reason_id = credit
+        wizard._onchange_reason_id()
+        self.assertEqual(wizard.target_state, 'ops_closed')
+        wizard = Wizard.create({'file_id': file.id, 'reason_id': credit.id,
+                                'reason': "Wrong amount", 'target_state': 'ops_closed'})
+        wizard.action_reopen()
+        self.assertEqual(file.state, 'ops_closed')
+        self.assertEqual(len(file.reopening_ids), 2)
+        self.assertEqual(file.last_reopen_reason_id, credit)
+        # the imported file's request takes one too
+        imported = self.env['logistics.file'].create({
+            'customs_regime': 'im4', 'partner_id': self.client.id,
+            'service_type_id': self.service.id, 'legacy_id': 990015,
+            'state': 'imported', 'bl_awb_ref': "LEG", 'goods_description': "x",
+            'cargo_value': 1.0})
+        imported.reopen_request_reason = "One more bill"
+        with self.assertRaises(UserError):
+            imported.action_request_reopen_imported()
+        imported.reopen_request_reason_id = extra
+        imported.action_request_reopen_imported()
+        imported.action_approve_reopen_imported()
+        self.assertEqual(imported.state, 'in_progress')
+        self.assertEqual(imported.reopening_ids.reason_id, extra)
+        self.assertEqual(imported.reopening_ids.from_state, 'imported')
+        # the report and the list
+        action = self.env.ref('elite_clearance.action_logistics_file_reopening')
+        rows = self.env['logistics.file.reopening'].search(
+            [('reason_id', '=', extra.id)])
+        self.assertEqual(len(rows), 2)
+        groups = self.env['logistics.file.reopening'].read_group(
+            [], ['reason_id'], ['reason_id'])
+        self.assertTrue(any(g['reason_id'] and g['reason_id'][0] == extra.id
+                            and g['reason_id_count'] == 2 for g in groups))
+        arch = self.env['logistics.file'].get_view(view_type='search')['arch']
+        self.assertIn('group_reopen_reason', arch)
+        self.assertIn('name="reopened"', arch)
+        self.assertTrue(self.env.ref('elite_clearance.menu_clearance_reopenings'))
+        self.assertTrue(self.env.ref('elite_clearance.menu_clearance_reopen_reasons'))
+
     def test_05_the_rules_are_per_service_and_import_maritime_is_seeded(self):
         im = self.env['logistics.service.type'].with_context(
             active_test=False).search([('code', '=', 'IM')], limit=1)

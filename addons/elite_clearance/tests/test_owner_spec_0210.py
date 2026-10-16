@@ -348,7 +348,7 @@ class TestOwnerSpec0210(TransactionCase):
         # Service Operations grants: the file is Billing's again, not
         # the head's
         self.env['logistics.file.reopen.wizard'].create({
-            'file_id': file.id, 'target_state': 'in_progress',
+            'reason_id': self.env.ref('elite_clearance.reopen_reason_other').id, 'file_id': file.id, 'target_state': 'in_progress',
             'reason': "The demurrage invoice arrived late."}).action_reopen()
         late = self._expense(file, self.env.user, 20000)
         late.action_submit()

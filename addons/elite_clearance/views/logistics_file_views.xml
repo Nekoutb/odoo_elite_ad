@@ -382,6 +382,7 @@
                             <field name="debours_invoice_id" readonly="1" invisible="not debours_invoice_id"/>
                             <field name="debours_invoice_state" readonly="1" invisible="not debours_invoice_id"/>
                             <field name="reopen_count" readonly="1" invisible="not reopen_count"/>
+                            <field name="last_reopen_reason_id" readonly="1" invisible="not reopen_count"/>
                         </group>
                     </group>
                     <!-- Every invoice on the file, issued here or imported from
@@ -473,6 +474,10 @@
                                    invisible="reopen_request_state not in ('approved', 'refused')"/>
                         </group>
                     </group>
+                    <field name="reopen_request_reason_id"
+                           invisible="state != 'imported' and reopen_request_state == 'none'"
+                           readonly="reopen_request_state != 'none'"
+                           options="{'no_create': True, 'no_open': True}"/>
                     <field name="reopen_request_reason"
                            placeholder="What remains to be done or billed on this imported file, and why should it be worked in Odoo?"
                            invisible="state != 'imported' and reopen_request_state == 'none'"
@@ -517,6 +522,8 @@
                 <field name="customs_declaration_ref" optional="show"/>
                 <field name="date_opened"/>
                 <field name="equivalent_container_count" optional="hide"/>
+                <field name="reopen_count" optional="hide"/>
+                <field name="last_reopen_reason_id" optional="hide"/>
                 <field name="create_date" string="Created On" optional="show"/>
                 <field name="date_target" optional="show"/>
                 <field name="user_id" widget="many2one_avatar_user"/>
@@ -593,12 +600,15 @@
                         domain="[('documents_complete', '=', False)]"/>
                 <filter name="waiver_pending" string="Waiver Awaiting Approval"
                         domain="[('waiver_state', '=', 'requested')]"/>
+                <separator/>
+                <filter name="reopened" string="Reopened" domain="[('reopen_count', '>', 0)]"/>
                 <group>
                     <filter name="group_client" string="Client" context="{'group_by': 'partner_id'}"/>
                     <filter name="group_service" string="Service Type" context="{'group_by': 'service_type_id'}"/>
                     <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
                     <filter name="group_port" string="Port" context="{'group_by': 'port_id'}"/>
                     <filter name="group_month" string="Opened" context="{'group_by': 'date_opened:month'}"/>
+                    <filter name="group_reopen_reason" string="Last Reopening Reason" context="{'group_by': 'last_reopen_reason_id'}"/>
                 </group>
             </search>
         </field>
