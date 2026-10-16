@@ -256,6 +256,11 @@ class LogisticsFile(models.Model):
         string="Billed Commission Rate (%)", digits=(6, 3), readonly=True,
         help="The rate the billing agent actually used, kept once the file "
              "is billed. Zero means the service type's own rate was used.")
+    billing_commission_skipped = fields.Boolean(
+        string="Commission not billed", readonly=True, copy=False,
+        help="Ticked on the billing screen: the commission is left off "
+             "the invoice and nothing is booked for it (owner 16/10/2026). "
+             "Kept across a recharge review.")
     billing_split = fields.Boolean(
         string="Split the bill", readonly=True, copy=False,
         help="Chosen on the billing screen: the disbursements on one "
@@ -1674,7 +1679,7 @@ class LogisticsFile(models.Model):
         self.ensure_one()
         fee = self.company_id.clearance_fee_account_id
         services = []
-        if self.commission_amount:
+        if self.commission_amount and not self.billing_commission_skipped:
             services.append({
                 # The rate is the company's business, not the client's
                 # (owner 10/10/2026): the line says what it is, never the

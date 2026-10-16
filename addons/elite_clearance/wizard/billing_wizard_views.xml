@@ -79,8 +79,9 @@
                 <separator string="Billing parameters"/>
                 <group>
                     <group>
-                        <field name="commission_rate" readonly="review_mode"/>
-                        <field name="commission_amount" readonly="1"/>
+                        <field name="commission_rate" readonly="review_mode or skip_commission"/>
+                        <field name="commission_amount" readonly="1" invisible="skip_commission"/>
+                        <field name="skip_commission" readonly="review_mode"/>
                         <field name="customs_fee_amount" readonly="review_mode"/>
                         <field name="customs_fee_billed" readonly="1"
                                invisible="not customs_fee_billed"/>
@@ -109,7 +110,9 @@
                     <list editable="bottom" create="0" delete="0">
                         <field name="expense_id" column_invisible="1" force_save="1"/>
                         <field name="name" readonly="1" force_save="1"/>
-                        <field name="print_name" placeholder="wording on the invoice"/>
+                        <field name="category_id" column_invisible="1"/>
+                        <field name="alternative_name_id" placeholder="category name"
+                               options="{'no_create': True, 'no_open': True}"/>
                         <field name="unit_label" column_invisible="1" force_save="1"/>
                         <field name="amount_engaged" sum="Disbursed" readonly="1"/>
                         <field name="amount_recharged" sum="Recharged"/>

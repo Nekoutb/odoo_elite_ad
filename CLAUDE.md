@@ -15,7 +15,7 @@ working memory that is *not* obvious from the code.
   <in the Odoo.sh project settings — never in this repository, it is public>, Custom plan). The old Odoo Online db (elite-advisors,
   saas~19.3) holds no data and will lapse. Never build against 19.3 minor APIs.
 
-## The module: addons/elite_clearance (v19.0.49.0.0)
+## The module: addons/elite_clearance (v19.0.50.0.0)
 Customs clearance job files for a logistics/clearance services provider.
 - `logistics.file` — one file = one clearance job. States:
   draft → in_progress → ops_closed → done (+cancel, +imported). `imported`
@@ -732,16 +732,43 @@ Customs clearance job files for a logistics/clearance services provider.
      `_check_client_billable` stays as a safety net that now points at
      Customer Service. `clearance_invoice_name` reads "Full Name"
      everywhere; the Customers list is the export/import screen.
-  3. **Each expense category carries a Billing Name** (`billing_name`,
-     Billing may maintain it: ACL write, create=0). The billing screen
-     proposes `billing_name or name — description` in a "Printed As"
-     column (`print_name`, editable), persists the biller's wording on
-     `logistics.expense.billing_label` so the review proposes it again,
-     and the invoice line carries it in `account.move.line.
-     clearance_print_name` - `_clearance_designation()` prints that
-     when set, while the line's `name` stays `category — description`
-     so the LEDGER and the analytic lines never show the client's
-     wording (owner's rule). A credit note copies it.
+  3. **Each expense category carries ALTERNATIVE NAMES** (owner 14/10,
+     reshaped 16/10/2026: several per category, chosen from a list, no
+     free text). `logistics.expense.category.name` (category_id, name,
+     sequence; unique per category), `alternative_name_ids` on the
+     category, maintained by Billing (ACL on the name model; the
+     category itself stays write-only for Billing, create=0) on the
+     category FORM - the list is `editable="bottom"` with
+     `open_form_view="1"`, because a one2many cannot be edited inside an
+     editable list. The billing screen's debours line has
+     `alternative_name_id` (domain = the line's category) and a computed
+     `print_name` showing `<chosen or category> — description`;
+     `_persist` keeps the choice on `logistics.expense.billing_name_id`
+     so the review proposes it again; the invoice line carries the
+     wording in `account.move.line.clearance_print_name` -
+     `_clearance_designation()` prints that when set, while the line's
+     `name` stays `category — description` so the LEDGER and the
+     analytic lines never show the client's wording (owner's rule). A
+     credit note copies it.
+- **Owner spec 16/10/2026** (tests in `test_owner_spec_1410.py`, 10-11;
+  branch `dev/owner-spec-1610` on top of 1410, version 19.0.50).
+  1. **The commission may be left off the invoice.**
+     `logistics.billing.wizard.skip_commission` ("Do not bill the
+     commission"): ticked, `_compute_totals` sets `commission_amount`
+     to 0, so `_service_lines_for_invoice` adds no line and nothing is
+     booked; persisted as `logistics.file.billing_commission_skipped`
+     (`_persist` / `default_get`) so a recharge review and Resume
+     Billing keep it, and the file's own `_billing_service_lines`
+     honours it. ONLY the commission has a tick (owner's words): the
+     customs fee and the file fee are keyed figures left at zero.
+  2. Alternative names per category: see 14/10 item 3 above.
+  3. The logo size on the invoice is a one-line change in
+     `report/clearance_invoice_templates.xml` (`max-height:70px`),
+     planned with a before/after for the owner and NOT yet applied.
+  4. Partial billing was confirmed to the owner as built (13/09):
+     `test_invoice_reversal.test_09` is the proof. The flow needs the
+     file reopened to operations (Head of Service Operations), closed
+     for operations again, then billed again.
 - **Payment evidence (owner, 01/10/2026).** `ir.attachment.clearance_kind`
   ('request' / 'payment', NULL = request) tells a disbursement's documents
   apart: `logistics.expense.request_document_ids` and

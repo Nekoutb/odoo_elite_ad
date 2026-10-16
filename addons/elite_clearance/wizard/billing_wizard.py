@@ -50,6 +50,15 @@ class LogisticsBillingWizard(models.TransientModel):
     commission_amount = fields.Monetary(
         compute='_compute_totals', currency_field='currency_id',
         string="Commission sur débours")
+    # Owner 16/10/2026: the one revenue line the biller may leave off.
+    # Ticked, the commission is neither printed nor booked - nothing is
+    # billed for it. The customs fee and the file fee are keyed figures,
+    # left at zero when they are not charged, so they need no tick.
+    skip_commission = fields.Boolean(
+        string="Do not bill the commission",
+        help="Ticked: no 'Commission sur débours' line on this invoice, "
+             "and nothing is booked for it. Kept with the file across a "
+             "recharge review.")
     customs_fee_amount = fields.Monetary(
         string="Honoraires Agréés en Douane", currency_field='currency_id',
         help="Read from the customs declaration. Keyed here, at billing, "
@@ -224,7 +233,7 @@ class LogisticsBillingWizard(models.TransientModel):
             fields.Command.create({
                 'expense_id': expense.id,
                 'name': "%s — %s" % (expense.category_id.name, expense.description),
-                'print_name': expense._billing_print_name(),
+                'alternative_name_id': expense.billing_name_id.id,
                 'unit_label': expense.unit_label or "Par dossier",
                 'amount_recharged': (
                     expense.recharge_amount or expense.amount),
@@ -247,6 +256,7 @@ class LogisticsBillingWizard(models.TransientModel):
         ]
         vals['commission_rate'] = (
             file.billing_commission_rate or file.commission_rate)
+        vals['skip_commission'] = file.billing_commission_skipped
         # What an earlier bill already took is not offered again: the box
         # opens on the balance of the declaration's fee, which is zero
         # once it has been charged in full.
@@ -366,6 +376,7 @@ class LogisticsBillingWizard(models.TransientModel):
     @api.depends('debours_line_ids.amount_engaged',
                  'debours_line_ids.amount_recharged',
                  'service_line_ids.amount', 'commission_rate',
+                 'skip_commission',
                  'customs_fee_amount', 'file_fee_amount',
                  'reissue_kind', 'standing_invoice_id',
                  'file_id.recharge_state', 'file_id.recharge_amount')
@@ -387,7 +398,7 @@ class LogisticsBillingWizard(models.TransientModel):
                 base = standing.amount_untaxed
             wizard.commission_amount = wizard.currency_id.round(
                 base * wizard.commission_rate / 100.0
-            ) if wizard.currency_id else 0.0
+            ) if wizard.currency_id and not wizard.skip_commission else 0.0
             wizard.service_total = (
                 wizard.commission_amount + wizard.customs_fee_amount
                 + wizard.file_fee_amount
@@ -458,7 +469,7 @@ class LogisticsBillingWizard(models.TransientModel):
                     line.expense_id.write({
                         'recharge_amount': line.amount_recharged,
                         'recharge_comment': (line.comment or "").strip() or False,
-                        'billing_label': (line.print_name or "").strip() or False,
+                        'billing_name_id': line.alternative_name_id.id,
                     })
         recharged = self.debours_recharged_total
         # At cost means EVERY line at cost: a total that happens to equal
@@ -480,6 +491,7 @@ class LogisticsBillingWizard(models.TransientModel):
             })
         if frozen != 'services':
             vals['billing_commission_rate'] = self.commission_rate
+            vals['billing_commission_skipped'] = self.skip_commission
             # The file's figure is the fee on the DECLARATION. On a second
             # bill this box holds what is left of it to charge, so writing
             # it back would rewrite the declaration.
@@ -595,15 +607,29 @@ class LogisticsBillingWizardDebours(models.TransientModel):
     expense_id = fields.Many2one(
         'logistics.expense', required=True, ondelete='cascade')
     name = fields.Char(string="Description", required=True)
-    # What the client reads. Proposed from the category's billing name
-    # (owner 14/10/2026) and the biller's to change; the ledger keeps
-    # `name`.
+    # What the client reads: one of the category's alternative names,
+    # chosen from a list (owner 16/10/2026), or the category itself.
+    # The ledger keeps `name`.
+    category_id = fields.Many2one(
+        related='expense_id.category_id', string="Category")
+    alternative_name_id = fields.Many2one(
+        'logistics.expense.category.name', string="Printed As",
+        domain="[('category_id', '=', category_id)]",
+        help="An alternative wording of the category for the client's "
+             "invoice, set up under Configuration -> Expense Categories. "
+             "Empty prints the category name. The ledger keeps the "
+             "description.")
     print_name = fields.Char(
-        string="Printed As", required=True,
-        help="The wording printed on the client's invoice for this line. "
-             "Proposed from the category's billing name, or the category "
-             "itself when it has none. The ledger keeps the description.")
+        compute='_compute_print_name', string="On the Invoice",
+        help="What the client's invoice will print for this line.")
     unit_label = fields.Char(string="Unit", default="Par dossier")
+
+    @api.depends('alternative_name_id', 'expense_id')
+    def _compute_print_name(self):
+        for line in self:
+            line.print_name = line.expense_id._billing_print_name(
+                line.alternative_name_id or False
+            ) if line.expense_id else False
     amount_engaged = fields.Monetary(
         string="Disbursed", related='expense_id.amount', readonly=True,
         currency_field='currency_id')

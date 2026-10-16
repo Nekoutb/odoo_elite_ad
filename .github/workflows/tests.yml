@@ -253,6 +253,28 @@ jobs:
           name: odoo-log
           path: odoo.log
 
+      # The French translation file is BUILT from this template (see
+      # CLAUDE.md, owner spec 14/10/2026): `--i18n-export` is gone in 19,
+      # so the export runs through the shell on the database the suite
+      # just installed. `gh run download <id> -n translation-template`.
+      - name: Export the translation template
+        shell: bash
+        run: |
+          cat > export_pot.py <<'PY'
+          import io
+          from odoo.tools import translate as T
+          buf = io.BytesIO()
+          T.trans_export('', ['elite_clearance'], buf, 'po', env)
+          open('elite_clearance.pot', 'wb').write(buf.getvalue())
+          print('exported', len(buf.getvalue()), 'bytes')
+          PY
+          odoo shell             -d ci_clearance             --db_host=db --db_port=5432 --db_user=odoo --db_password=odoo             --addons-path=/usr/lib/python3/dist-packages/odoo/addons,"$GITHUB_WORKSPACE/addons"             --no-http --log-level=error < export_pot.py
+      - name: Keep the translation template
+        uses: actions/upload-artifact@v4
+        with:
+          name: translation-template
+          path: elite_clearance.pot
+
   # Odoo.sh deploys a push to prod / staging by itself, through its webhook;
   # nothing here causes that. This job RECORDS the push against the matching
   # GitHub Environment, so the repository's Environments view shows what is

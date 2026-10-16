@@ -62,15 +62,18 @@ class LogisticsExpenseCategory(models.Model):
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
     # Some clients refuse the wording of the categories on their invoice
-    # (owner, 14/10/2026). The category keeps its name for everybody who
-    # keys and approves a cost and for the ledger; this is what the
-    # client's invoice prints instead, when it is set. Empty means the
-    # category name prints as it is.
-    billing_name = fields.Char(
-        string="Billing Name",
-        help="How this category is worded on the client's invoice. Leave "
-             "empty and the category name is printed. The ledger and the "
-             "analytic lines keep the category name either way.")
+    # (owner, 14/10/2026; several names per category, chosen from a list
+    # at billing, 16/10/2026). The category keeps its name for everybody
+    # who keys and approves a cost and for the ledger; the billing agent
+    # may pick one of these for the client's invoice instead.
+    alternative_name_ids = fields.One2many(
+        'logistics.expense.category.name', 'category_id',
+        string="Alternative Names",
+        help="Other wordings the client's invoice may print for this "
+             "category. The billing agent picks one per disbursement on "
+             "the billing screen; nothing picked prints the category "
+             "name. The ledger and the analytic lines keep the category "
+             "name either way.")
     # Some costs come back with a receipt and some never will - a tip at
     # the gate, an extra-legal fee, a phone call. Advancing cash for one
     # of those and then waiting for paperwork that cannot exist is how a
@@ -90,6 +93,28 @@ class LogisticsExpenseCategory(models.Model):
     _code_company_uniq = models.Constraint(
         'UNIQUE(code, company_id)',
         "An expense category with this code already exists.")
+
+
+class LogisticsExpenseCategoryName(models.Model):
+    """One alternative wording of a category, for the client's invoice.
+
+    Maintained by Billing under Configuration -> Expense Categories (a
+    category may carry several). Chosen per disbursement on the billing
+    screen; printed in the Désignation column; never on the ledger.
+    """
+    _name = 'logistics.expense.category.name'
+    _description = "Expense Category — Alternative Name"
+    _order = 'sequence, id'
+
+    category_id = fields.Many2one(
+        'logistics.expense.category', required=True, ondelete='cascade',
+        string="Expense Category")
+    name = fields.Char(string="Alternative Name", required=True)
+    sequence = fields.Integer(default=10)
+
+    _name_category_uniq = models.Constraint(
+        'UNIQUE(category_id, name)',
+        "This category already carries that alternative name.")
 
 
 class LogisticsExpense(models.Model):
@@ -321,26 +346,22 @@ class LogisticsExpense(models.Model):
         help="The biller's reason for charging this disbursement at other "
              "than cost, keyed on its own line of the billing screen "
              "(owner 10/10/2026).")
-    billing_label = fields.Char(
-        string="Printed on the Invoice As", copy=False,
-        help="The wording the billing agent chose for this disbursement "
-             "on the client's invoice (owner 14/10/2026). Proposed from "
-             "the category's billing name; kept so the approver reviews "
-             "the same wording the biller keyed.")
+    billing_name_id = fields.Many2one(
+        'logistics.expense.category.name', string="Printed on the Invoice As",
+        copy=False, ondelete='set null',
+        help="The alternative name the billing agent chose for this "
+             "disbursement on the client's invoice (owner 16/10/2026). "
+             "Empty prints the category name. Kept so the approver "
+             "reviews the same wording the biller chose.")
 
-    def _billing_print_name(self):
-        """What the client's invoice prints for this disbursement.
-
-        The category's billing name when it has one, else the category
-        name - followed by the description, as the label has always
-        been. The biller may still change it on the billing screen, and
-        what they chose is kept in `billing_label` for the review.
-        """
+    def _billing_print_name(self, name=None):
+        """What the client's invoice prints for this disbursement: the
+        alternative name chosen at billing (`name`, or the one kept on
+        the expense), else the category name - followed by the
+        description, as the label has always been."""
         self.ensure_one()
-        if self.billing_label:
-            return self.billing_label
-        category = self.category_id
-        return "%s — %s" % (category.billing_name or category.name,
+        chosen = name if name is not None else self.billing_name_id
+        return "%s — %s" % (chosen.name if chosen else self.category_id.name,
                             self.description)
 
     # --- billed, or still to bill (owner spec 13/09/2026) ---------------

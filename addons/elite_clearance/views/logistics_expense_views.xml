@@ -287,20 +287,58 @@
         <field name="name">logistics.expense.category.list</field>
         <field name="model">logistics.expense.category</field>
         <field name="arch" type="xml">
-            <list string="Expense Categories" editable="bottom">
+            <!-- open_form_view: the arrow at the end of the row opens
+                 the form, where the alternative names are kept - a
+                 one2many is not editable inside an editable list. -->
+            <list string="Expense Categories" editable="bottom" open_form_view="1">
                 <field name="sequence" widget="handle"/>
                 <field name="code"/>
                 <field name="name"/>
-                <field name="billing_name" placeholder="as the client's invoice words it"/>
+                <field name="alternative_name_ids" widget="many2many_tags"
+                       readonly="1" string="Alternative Names"/>
                 <field name="justification"/>
             </list>
+        </field>
+    </record>
+
+    <record id="logistics_expense_category_view_form" model="ir.ui.view">
+        <field name="name">logistics.expense.category.form</field>
+        <field name="model">logistics.expense.category</field>
+        <field name="arch" type="xml">
+            <form string="Expense Category">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="code"/>
+                        </group>
+                        <group>
+                            <field name="justification"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <separator string="Alternative Names"/>
+                    <p class="text-muted">
+                        Other wordings the client's invoice may print for this
+                        category. The billing agent picks one per disbursement
+                        on the billing screen; nothing picked prints the
+                        category name. The ledger always keeps the category name.
+                    </p>
+                    <field name="alternative_name_ids">
+                        <list editable="bottom">
+                            <field name="sequence" widget="handle"/>
+                            <field name="name" placeholder="e.g. Frais Bordereaux de livraison"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
         </field>
     </record>
 
     <record id="action_logistics_expense_category" model="ir.actions.act_window">
         <field name="name">Expense Categories</field>
         <field name="res_model">logistics.expense.category</field>
-        <field name="view_mode">list</field>
+        <field name="view_mode">list,form</field>
     </record>
 
 </odoo>

@@ -58,7 +58,11 @@ class TestOwnerSpec1410(TransactionCase):
             'supplier_rank': 1})
         cls.category = env['logistics.expense.category'].create({
             'name': "Frais de passage", 'code': "D-PAS",
-            'billing_name': "Redevance portuaire"})
+            'alternative_name_ids': [
+                (0, 0, {'name': "Redevance portuaire"}),
+                (0, 0, {'name': "Frais de manutention portuaire"})]})
+        cls.alt_port = cls.category.alternative_name_ids[0]
+        cls.alt_handling = cls.category.alternative_name_ids[1]
         cls.plain_category = env['logistics.expense.category'].create({
             'name': "Magasinage", 'code': "D-MAG"})
         cls.service = env['logistics.service.type'].create({
@@ -121,7 +125,7 @@ class TestOwnerSpec1410(TransactionCase):
 
     # =================================================================
     # 3. the category's billing name is what the client's invoice prints
-    def test_01_the_billing_name_prints_and_the_ledger_keeps_the_category(self):
+    def test_01_the_alternative_name_prints_and_the_ledger_keeps_the_category(self):
         file = self._working_file()
         exp = self._settled(file)
         file.action_close_operations()
@@ -130,9 +134,20 @@ class TestOwnerSpec1410(TransactionCase):
         line = wizard.debours_line_ids
         self.assertEqual(line.name, "Frais de passage — Passage portuaire TC 40'",
                          "the description the ledger keeps")
+        self.assertFalse(line.alternative_name_id, "nothing chosen yet")
         self.assertEqual(line.print_name,
-                         "Redevance portuaire — Passage portuaire TC 40'",
-                         "proposed from the category's billing name")
+                         "Frais de passage — Passage portuaire TC 40'",
+                         "nothing chosen: the category name prints")
+        # the list offers this category's names and no other's
+        other = self.env['logistics.expense.category.name'].create({
+            'category_id': self.plain_category.id, 'name': "Stockage"})
+        offered = self.env['logistics.expense.category.name'].search(
+            [('category_id', '=', line.category_id.id)])
+        self.assertEqual(offered, self.alt_port + self.alt_handling)
+        self.assertNotIn(other, offered)
+        line.alternative_name_id = self.alt_port
+        self.assertEqual(line.print_name,
+                         "Redevance portuaire — Passage portuaire TC 40'")
         wizard.action_create_invoice()
         invoice = file.invoice_id.sudo()
         billed = invoice.invoice_line_ids.filtered(
@@ -145,8 +160,7 @@ class TestOwnerSpec1410(TransactionCase):
         self.assertEqual(invoice._clearance_designation(billed),
                          "Redevance portuaire — Passage portuaire TC 40'",
                          "and the document prints the billing name")
-        self.assertEqual(exp.billing_label,
-                         "Redevance portuaire — Passage portuaire TC 40'",
+        self.assertEqual(exp.billing_name_id, self.alt_port,
                          "kept on the expense for the review")
         # the analytic line Odoo writes at posting carries the ledger
         # label, never the client's wording
@@ -155,61 +169,118 @@ class TestOwnerSpec1410(TransactionCase):
         self.assertTrue(analytic)
         self.assertNotIn("Redevance", "".join(analytic.mapped('name')))
 
-    def test_02_no_billing_name_means_the_category_and_the_biller_may_reword(self):
+    def test_02_the_choice_survives_a_review_and_a_credit_note_copies_it(self):
         file = self._working_file()
-        exp = self._settled(file, category=self.plain_category,
-                            description="Entreposage 5 jours")
+        exp = self._settled(file)
         file.action_close_operations()
 
         wizard = self._wizard(file, user=self.biller)
         line = wizard.debours_line_ids
-        self.assertEqual(line.print_name, "Magasinage — Entreposage 5 jours",
-                         "empty billing name: the category prints")
-        line.print_name = "Frais de stockage portuaire"
+        line.alternative_name_id = self.alt_handling
         # a recharge above cost, so the screen goes through a review and
-        # comes back: the wording must survive the round trip
+        # comes back: the choice must survive the round trip
         line.amount_recharged = 55000
         line.comment = "Agreed uplift"
         wizard.action_submit_for_review()
-        self.assertEqual(exp.billing_label, "Frais de stockage portuaire",
-                         "the biller's wording is kept")
+        self.assertEqual(exp.billing_name_id, self.alt_handling,
+                         "the biller's choice is kept")
         file.with_user(self.ops_head).action_approve_recharge_ops()
         wizard = self._wizard(file, user=self.biller)
-        self.assertEqual(wizard.debours_line_ids.print_name,
-                         "Frais de stockage portuaire",
+        self.assertEqual(wizard.debours_line_ids.alternative_name_id,
+                         self.alt_handling,
                          "and proposed again when the screen is reopened")
         wizard.action_create_invoice()
         invoice = file.invoice_id.sudo()
         billed = invoice.invoice_line_ids.filtered(
             lambda l: l.clearance_category == 'debours')
-        self.assertEqual(invoice._clearance_designation(billed),
-                         "Frais de stockage portuaire")
-        self.assertEqual(billed.name, "Magasinage — Entreposage 5 jours")
+        self.assertEqual(
+            invoice._clearance_designation(billed),
+            "Frais de manutention portuaire — Passage portuaire TC 40'")
+        self.assertEqual(billed.name,
+                         "Frais de passage — Passage portuaire TC 40'")
         # a credit note reverses the same wording
         invoice.action_post()
         credit = invoice._clearance_raise_credit_note(
             billed, "Erreur de facturation")
         reversed_line = credit.invoice_line_ids.filtered(
             lambda l: l.clearance_category == 'debours')
-        self.assertEqual(reversed_line.clearance_print_name,
-                         "Frais de stockage portuaire")
-        self.assertEqual(credit._clearance_designation(reversed_line),
-                         "Avoir — Frais de stockage portuaire")
+        self.assertEqual(
+            reversed_line.clearance_print_name,
+            "Frais de manutention portuaire — Passage portuaire TC 40'")
+        self.assertEqual(
+            credit._clearance_designation(reversed_line),
+            "Avoir — Frais de manutention portuaire — Passage portuaire TC 40'")
 
-    def test_03_billing_maintains_the_billing_names(self):
+    def test_03_billing_maintains_the_alternative_names(self):
         Category = self.env['logistics.expense.category']
+        Name = self.env['logistics.expense.category.name']
         Category.with_user(self.biller).browse(self.plain_category.id).write(
-            {'billing_name': "Frais de magasinage"})
-        self.assertEqual(self.plain_category.billing_name, "Frais de magasinage")
+            {'alternative_name_ids': [(0, 0, {'name': "Frais de magasinage"}),
+                                      (0, 0, {'name': "Frais de stockage"})]})
+        self.assertEqual(self.plain_category.alternative_name_ids.mapped('name'),
+                         ["Frais de magasinage", "Frais de stockage"],
+                         "more than one name per category")
         with self.assertRaises(AccessError):
-            Category.with_user(self.ops_agent).browse(
-                self.plain_category.id).write({'billing_name': "x"})
-        with self.assertRaises(AccessError, msg="maintains, does not create"):
+            Name.with_user(self.ops_agent).create(
+                {'category_id': self.plain_category.id, 'name': "x"})
+        with self.assertRaises(AccessError, msg="maintains names, not categories"):
             Category.with_user(self.biller).create(
                 {'name': "New", 'code': "D-NEW"})
         arch = Category.with_user(self.biller).get_view(
-            view_type='list')['arch']
-        self.assertIn('name="billing_name"', arch)
+            view_type='form')['arch']
+        self.assertIn('name="alternative_name_ids"', arch)
+        arch = self.env['logistics.billing.wizard'].with_user(
+            self.biller).get_view()['arch']
+        self.assertIn('name="alternative_name_id"', arch)
+
+    # =================================================================
+    # 16/10: the commission may be left off the invoice
+    def test_10_the_biller_may_leave_the_commission_off_the_invoice(self):
+        file = self._working_file()
+        self._settled(file, amount=100000)
+        file.customs_fee_amount = 30000
+        file.action_close_operations()
+
+        wizard = self._wizard(file, user=self.biller)
+        self.assertFalse(wizard.skip_commission, "billed by default")
+        self.assertEqual(wizard.commission_amount, 2000)
+        wizard.skip_commission = True
+        self.assertEqual(wizard.commission_amount, 0,
+                         "ticked: nothing is charged for it")
+        self.assertEqual(wizard.customs_fee_amount, 30000,
+                         "the other revenue lines are untouched")
+        wizard.action_create_invoice()
+        self.assertTrue(file.billing_commission_skipped, "kept on the file")
+        invoice = file.invoice_id.sudo()
+        kinds = invoice.invoice_line_ids.mapped('clearance_service_kind')
+        self.assertNotIn('commission', kinds, "no commission line at all")
+        self.assertIn('customs_fee', kinds)
+        self.assertEqual(
+            sum(invoice.invoice_line_ids.filtered(
+                lambda l: l.clearance_category == 'prestation'
+            ).mapped('price_subtotal')), 30000)
+
+    def test_11_the_commission_tick_survives_a_recharge_review(self):
+        file = self._working_file()
+        exp = self._settled(file, amount=100000)
+        file.customs_fee_amount = 30000
+        file.action_close_operations()
+
+        wizard = self._wizard(file, user=self.biller)
+        wizard.skip_commission = True
+        line = wizard.debours_line_ids
+        line.amount_recharged = 110000
+        line.comment = "Agreed uplift"
+        wizard.action_submit_for_review()
+        self.assertTrue(file.billing_commission_skipped)
+        file.with_user(self.ops_head).action_approve_recharge_ops()
+        wizard = self._wizard(file, user=self.biller)
+        self.assertTrue(wizard.skip_commission, "proposed again as ticked")
+        self.assertEqual(wizard.commission_amount, 0)
+        wizard.action_create_invoice()
+        self.assertNotIn('commission', file.invoice_id.sudo()
+                         .invoice_line_ids.mapped('clearance_service_kind'))
+        self.assertEqual(exp.recharge_amount, 110000)
 
     # =================================================================
     # 2. the customer record is Customer Service's, complete before opening
