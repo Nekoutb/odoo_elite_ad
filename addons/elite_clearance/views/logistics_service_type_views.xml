@@ -73,6 +73,36 @@
         </field>
     </record>
 
+    <!-- Transit Time Settings (owner 16/10/2026): one row per service,
+         where its transit clock starts and stops. -->
+    <record id="logistics_service_type_view_list_transit" model="ir.ui.view">
+        <field name="name">logistics.service.type.list.transit</field>
+        <field name="model">logistics.service.type</field>
+        <field name="priority">40</field>
+        <field name="arch" type="xml">
+            <list string="Transit Time Settings" editable="bottom" create="0" delete="0">
+                <field name="code" readonly="1"/>
+                <field name="name" readonly="1"/>
+                <field name="transit_start_rule"/>
+                <field name="transit_end_rule"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_logistics_service_type_transit" model="ir.actions.act_window">
+        <field name="name">Transit Time Settings</field>
+        <field name="res_model">logistics.service.type</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="logistics_service_type_view_list_transit"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No service types yet</p>
+            <p>For each service, choose what starts the transit clock and what
+            stops it. The manifesting date is keyed on the disbursement against a
+            manifesting vendor (Settings → Manifesting Vendors); the delivery
+            date on the transport disbursement when its advance is justified.</p>
+        </field>
+    </record>
+
     <record id="action_logistics_service_type_numbering" model="ir.actions.act_window">
         <field name="name">File Numbering</field>
         <field name="res_model">logistics.service.type</field>

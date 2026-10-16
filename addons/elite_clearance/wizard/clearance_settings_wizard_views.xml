@@ -47,6 +47,7 @@
                             <field name="clearance_undisclosed_file_sequence_id" string="Undisclosed File Numbering" help="Where a file's reference comes from when its client is an undisclosed account. Open the sequence to set its prefix and its next number - once - and it carries on from there."/>
                             <field name="clearance_undisclosed_invoice_sequence_id" string="Undisclosed Invoice Numbering" help="The same, for the invoices of an undisclosed account. Credit notes keep their own AV series either way."/>
                             <field name="clearance_service_tax_ids" string="VAT on Service Fees" help="Applied to commission, customs fees and any other service line. Disbursements are never taxed here: they are the client's own liability paid on their behalf, outside the scope of VAT." widget="many2many_tags"/>
+                            <field name="clearance_manifesting_vendor_ids" string="Manifesting Vendors" help="Keying a disbursement against one of these vendors asks for the manifesting date before the amount. Paying it ends the transit time of an Import Maritime file." widget="many2many_tags" domain="[('is_company', '=', True)]"/>
                             </group>
                         </page>
                         <page string="Invoice Layout">

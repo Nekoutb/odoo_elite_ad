@@ -1,3 +1,29 @@
+def seed_transit_rules(env):
+    """Import Maritime measures from the later of manifesting and the
+    documents, to the manifesting vendor's payment (owner 16/10/2026).
+    Only a service with NO rule yet is touched: a rule the owner set
+    stays."""
+    Service = env['logistics.service.type'].with_context(active_test=False)
+    for service in Service.search([('code', '=', 'IM'),
+                                   ('transit_start_rule', '=', False),
+                                   ('transit_end_rule', '=', False)]):
+        service.write({'transit_start_rule': 'later',
+                       'transit_end_rule': 'vendor_paid'})
+
+
+def seed_transit_rules(env):
+    """Import Maritime measures from the later of manifesting and the
+    documents, to the manifesting vendor's payment (owner 16/10/2026).
+    Only a service with NO rule yet is touched: a rule the owner set
+    stays."""
+    Service = env['logistics.service.type'].with_context(active_test=False)
+    for service in Service.search([('code', '=', 'IM'),
+                                   ('transit_start_rule', '=', False),
+                                   ('transit_end_rule', '=', False)]):
+        service.write({'transit_start_rule': 'later',
+                       'transit_end_rule': 'vendor_paid'})
+
+
 def seed_clearance_master_data(env):
     """Seed Elite Advisors' real service types, document checklists and
     expense categories. Create-if-missing by code, so it is safe on fresh
@@ -149,3 +175,5 @@ def seed_clearance_master_data(env):
         if not Cat.search([('code', '=', code),
                            ('company_id', '=', company.id)], limit=1):
             Cat.create({'code': code, 'name': name, 'sequence': seq * 10})
+    # transit rules per service (owner 16/10/2026)
+    seed_transit_rules(env)

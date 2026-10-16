@@ -94,6 +94,15 @@
                                    readonly="not can_edit_payment or payment_mode == 'advance' or employee_id"
                                    placeholder="who is paid - not used for a staff advance"
                                    options="{'no_create': True}"/>
+                            <field name="needs_manifesting_date" invisible="1"/>
+                            <field name="manifesting_date"
+                                   invisible="not needs_manifesting_date"
+                                   required="needs_manifesting_date"
+                                   readonly="not can_edit_payment"/>
+                            <field name="needs_delivery_date" invisible="1"/>
+                            <field name="delivery_date"
+                                   invisible="not needs_delivery_date"
+                                   readonly="state == 'justified'"/>
                             <field name="employee_id" force_save="1"
                                    required="payment_mode == 'advance'"
                                    readonly="not can_edit_payment or vendor_id"
@@ -200,6 +209,13 @@
               <field name="vendor_id" force_save="1" placeholder="who is paid"
                      readonly="not can_edit_payment or employee_id"
                      options="{'no_create': True}"/>
+              <field name="needs_manifesting_date" invisible="1"/>
+              <field name="manifesting_date"
+                     invisible="not needs_manifesting_date"
+                     required="needs_manifesting_date"
+                     readonly="not can_edit_payment"/>
+              <field name="needs_delivery_date" invisible="1"/>
+              <field name="delivery_date" invisible="not needs_delivery_date"/>
               <!-- the holder is the requester (owner 13/10/2026), so it
                    is shown, not chosen; who collects the cash is -->
               <field name="employee_id" invisible="not employee_id" readonly="1"/>

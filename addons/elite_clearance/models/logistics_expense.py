@@ -175,6 +175,28 @@ class LogisticsExpense(models.Model):
         string="Unit", default="Par dossier",
         help="How the client is told this was charged - Par dossier, Par "
              "Conteneur, Par tonne. Printed on the invoice.")
+    # Transit and delivery (owner 16/10/2026). A cost keyed against a
+    # manifesting vendor carries the manifesting date, asked before the
+    # amount; a transport cost carries the delivery date, asked when its
+    # advance is justified. The file reads both for its turnaround.
+    needs_manifesting_date = fields.Boolean(
+        compute='_compute_needs_manifesting_date',
+        help="The third party is one of the company's manifesting "
+             "vendors, so the manifesting date is asked for.")
+    manifesting_date = fields.Date(
+        string="Manifesting Date", tracking=True, copy=False,
+        help="The date the shipping line or agent manifested the cargo. "
+             "Asked for before the amount when the third party is a "
+             "manifesting vendor (Settings -> Manifesting Vendors); it "
+             "starts the transit time of an Import Maritime file.")
+    needs_delivery_date = fields.Boolean(
+        compute='_compute_needs_delivery_date',
+        help="The category's name starts with Transport, so the "
+             "delivery date is asked for when the advance is justified.")
+    delivery_date = fields.Date(
+        string="Delivery Date", tracking=True, copy=False,
+        help="The day the goods were delivered. Required to justify a "
+             "transport advance; it closes the file's overall turnaround.")
     vendor_id = fields.Many2one(
         'res.partner', string="Third Party", tracking=True,
         help="Whoever ultimately receives the money - customs, a "
@@ -375,6 +397,28 @@ class LogisticsExpense(models.Model):
              "disbursement on the client's invoice (owner 16/10/2026). "
              "Empty prints the category name. Kept so the approver "
              "reviews the same wording the biller chose.")
+
+    @api.depends('vendor_id', 'company_id.clearance_manifesting_vendor_ids')
+    def _compute_needs_manifesting_date(self):
+        for exp in self:
+            vendors = exp.company_id.clearance_manifesting_vendor_ids
+            exp.needs_manifesting_date = bool(
+                exp.vendor_id and exp.vendor_id in vendors)
+
+    @api.depends('category_id.name')
+    def _compute_needs_delivery_date(self):
+        for exp in self:
+            exp.needs_delivery_date = (exp.category_id.name or "").strip() \
+                .lower().startswith('transport')
+
+    def _check_manifesting_date(self):
+        for exp in self:
+            if exp.needs_manifesting_date and not exp.manifesting_date:
+                raise UserError(self.env._(
+                    "%(exp)s is keyed against %(vendor)s, a manifesting "
+                    "vendor: enter the manifesting date before the "
+                    "disbursement is submitted.",
+                    exp=exp.name, vendor=exp.vendor_id.display_name))
 
     def _billing_print_name(self, name=None):
         """What the client's invoice prints for this disbursement: the
@@ -1249,6 +1293,10 @@ class LogisticsExpense(models.Model):
         }
 
     def action_submit(self):
+        self._check_manifesting_date()
+        return self._action_submit()
+
+    def _action_submit(self):
         for exp in self:
             if exp.state != 'draft':
                 raise UserError(self.env._("%s is not in draft.", exp.name))
@@ -1489,6 +1537,15 @@ class LogisticsExpense(models.Model):
             if exp.state != 'settled' or exp.payment_mode != 'advance':
                 raise UserError(self.env._(
                     "%s is not a settled cash advance.", exp.name))
+            # a transport advance is justified with the delivery date
+            # (owner 16/10/2026): it is what closes the file's overall
+            # turnaround, and the person who delivered is the one asked
+            if exp.needs_delivery_date and not exp.delivery_date:
+                raise UserError(self.env._(
+                    "%(exp)s is a %(cat)s cost: enter the Delivery Date "
+                    "on it before submitting the justification - it is "
+                    "the date the file's overall turnaround ends on.",
+                    exp=exp.name, cat=exp.category_id.name))
             # the receipts - never the cash voucher, which is not one
             attachments = self.env['ir.attachment'].search_count([
                 ('res_model', '=', self._name), ('res_id', '=', exp.id),

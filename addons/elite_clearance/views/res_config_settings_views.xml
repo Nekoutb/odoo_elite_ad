@@ -88,6 +88,12 @@
                             <field name="clearance_service_tax_ids"
                                    widget="many2many_tags"/>
                         </setting>
+                        <setting string="Manifesting Vendors"
+                                 help="Keying a disbursement against one of these vendors asks for the manifesting date before the amount. Paying it ends the transit time of an Import Maritime file.">
+                            <field name="clearance_manifesting_vendor_ids"
+                                   widget="many2many_tags"
+                                   domain="[('is_company', '=', True)]"/>
+                        </setting>
                     </block>
                     <block title="Invoice Layout"
                            help="Only the wording the printed invoice invents.

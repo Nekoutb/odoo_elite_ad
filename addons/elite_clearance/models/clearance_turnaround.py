@@ -14,6 +14,9 @@ STEPS = [
     ('file_adv_waiver', "File: advance waiver requested → approved"),
     ('file_recharge', "File: recharge adjustment requested → approved"),
     ('file_reopen', "File: reopening requested → approved"),
+    # --- the whole job (owner 16/10/2026) --------------------------------
+    ('file_overall', "Overall turnaround time: commercial invoice received → delivered"),
+    ('file_transit', "Transit time: per the service type's rule"),
     # --- a supporting document ----------------------------------------
     ('doc_receive', "Document: requested → received"),
     # --- an out-of-pocket expense -------------------------------------
@@ -32,7 +35,8 @@ STEPS = [
 DEFAULT_TARGET_HOURS = {
     'file_start': 48.0, 'file_waiver': 24.0, 'file_ops_close': 240.0,
     'file_bill': 48.0, 'file_adv_waiver': 48.0, 'file_recharge': 48.0,
-    'file_reopen': 48.0, 'doc_receive': 72.0, 'exp_submit': 24.0,
+    'file_reopen': 48.0, 'file_overall': 24.0 * 21, 'file_transit': 24.0 * 10,
+    'doc_receive': 72.0, 'exp_submit': 24.0,
     'exp_approve': 24.0, 'exp_settle_key': 24.0, 'exp_settle_approve': 24.0,
     'exp_pay': 48.0, 'exp_justify_docs': 72.0, 'exp_justify': 48.0,
 }
@@ -185,6 +189,26 @@ class ClearanceTurnaround(models.Model):
                             started='f.reopen_request_date',
                             done=("CASE WHEN f.reopen_request_state = 'approved'"
                                   " THEN f.write_date END"), extra='TRUE'),
+            # The two whole-job measures (owner 16/10/2026) read the
+            # dates the file computes and stores from its documents and
+            # its disbursements; the rule per service type is applied
+            # there, not here, so one SQL serves every service.
+            file_sql % dict(offset=16, step='file_overall',
+                            started='f.commercial_invoice_received',
+                            done='f.delivery_date::timestamp', extra='TRUE'),
+            file_sql % dict(offset=17, step='file_transit',
+                            started='f.transit_start',
+                            done='f.transit_end', extra='TRUE'),
+            # The two whole-job measures (owner 16/10/2026) read the
+            # dates the file computes and stores from its documents and
+            # its disbursements; the rule per service type is applied
+            # there, not here, so one SQL serves every service.
+            file_sql % dict(offset=16, step='file_overall',
+                            started='f.commercial_invoice_received',
+                            done='f.delivery_date::timestamp', extra='TRUE'),
+            file_sql % dict(offset=17, step='file_transit',
+                            started='f.transit_start',
+                            done='f.transit_end', extra='TRUE'),
             expense_sql % dict(offset=8, step='exp_submit',
                                started='e.date_requested::timestamp',
                                done='e.date_submitted'),

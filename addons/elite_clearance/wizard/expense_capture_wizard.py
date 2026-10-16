@@ -63,6 +63,13 @@ class LogisticsExpenseCaptureWizard(models.TransientModel):
         default=lambda self: self.env.user.employee_id.id,
         help="The requester: the advance stands against them whoever "
              "collects the cash.")
+    needs_manifesting_date = fields.Boolean(
+        compute='_compute_needs_manifesting_date')
+    manifesting_date = fields.Date(
+        string="Manifesting Date",
+        help="Asked for when the third party is a manifesting vendor "
+             "(Settings -> Manifesting Vendors), before the amount: it "
+             "starts the transit time of an Import Maritime file.")
     collector_id = fields.Many2one(
         'hr.employee', string="Cash Collected By",
         default=lambda self: self.env.user.employee_id.id,
@@ -81,9 +88,20 @@ class LogisticsExpenseCaptureWizard(models.TransientModel):
         return vals
 
     # ------------------------------------------------------------------
+    @api.depends('vendor_id', 'company_id.clearance_manifesting_vendor_ids')
+    def _compute_needs_manifesting_date(self):
+        for wizard in self:
+            wizard.needs_manifesting_date = bool(
+                wizard.vendor_id and wizard.vendor_id
+                in wizard.company_id.clearance_manifesting_vendor_ids)
+
     def _capture(self):
         """Create the disbursement, move the documents on to it, submit."""
         self.ensure_one()
+        if self.needs_manifesting_date and not self.manifesting_date:
+            raise UserError(self.env._(
+                "%s is a manifesting vendor: enter the manifesting date "
+                "before the amount.", self.vendor_id.display_name))
         if self.currency_id.compare_amounts(self.amount, 0.0) <= 0:
             raise UserError(self.env._(
                 "A disbursement of nothing is not a disbursement. Key "
@@ -108,6 +126,7 @@ class LogisticsExpenseCaptureWizard(models.TransientModel):
             'date_requested': self.date_requested,
             'journal_id': self.journal_id.id,
             'vendor_id': self.vendor_id.id,
+            'manifesting_date': self.manifesting_date,
             'employee_id': holder.id,
             'collector_id': self.collector_id.id,
         })

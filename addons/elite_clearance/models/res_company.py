@@ -206,6 +206,15 @@ class ResCompany(models.Model):
         help="Which accounts print, and in what order. Empty prints the "
              "first two the company has.")
 
+    # Manifesting vendors (owner 16/10/2026): keying a disbursement
+    # against one of these reveals the Manifesting Date before the amount.
+    clearance_manifesting_vendor_ids = fields.Many2many(
+        'res.partner', 'res_company_clearance_manifesting_vendor_rel',
+        'company_id', 'partner_id', string="Manifesting Vendors",
+        help="The shipping lines and agents whose disbursement carries "
+             "the manifesting date. Keying a cost against one of them "
+             "asks for the date before the amount, and paying that cost "
+             "ends the transit time of an Import Maritime file.")
     clearance_service_tax_ids = fields.Many2many(
         'account.tax', 'res_company_clearance_service_tax_rel',
         'company_id', 'tax_id', string="VAT on Service Fees",

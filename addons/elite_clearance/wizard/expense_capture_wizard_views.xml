@@ -15,19 +15,26 @@
                                placeholder="e.g. container MSCU1234567, 2 days"/>
                     </group>
                     <group>
+                        <!-- who is paid comes BEFORE the amount (owner
+                             16/10/2026): a manifesting vendor reveals the
+                             manifesting date, to be keyed first -->
+                        <field name="company_id" invisible="1"/>
+                        <field name="needs_manifesting_date" invisible="1"/>
+                        <field name="vendor_id" options="{'no_create': True}"
+                               readonly="is_advance" placeholder="who is paid"/>
+                        <field name="manifesting_date"
+                               invisible="not needs_manifesting_date"
+                               required="needs_manifesting_date"/>
                         <field name="amount"/>
                         <field name="date_requested"/>
                     </group>
                 </group>
                 <group string="Payment (Finance may change it)">
-                    <field name="company_id" invisible="1"/>
                     <field name="journal_id" widget="selection"
                            placeholder="till, bank, Mobile Money, Maviance"/>
                     <!-- a supplier OR an advance to the requester: each greys
                          the other (owner 13/10/2026: the holder is not chosen,
                          it is whoever keys the advance) -->
-                    <field name="vendor_id" options="{'no_create': True}"
-                           readonly="is_advance" placeholder="who is paid"/>
                     <field name="is_advance" readonly="vendor_id"/>
                     <field name="employee_id" invisible="not is_advance"/>
                     <!-- who walks to the till: the requester unless they say

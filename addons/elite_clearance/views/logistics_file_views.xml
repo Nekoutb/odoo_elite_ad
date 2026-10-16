@@ -248,6 +248,24 @@
                             <field name="importer_name" required="state == 'draft'"/>
                         </group>
                     </group>
+                    <!-- the whole job measured (owner 16/10/2026) -->
+                    <group string="Turnaround" name="turnaround"
+                           invisible="state == 'imported'">
+                        <group>
+                            <field name="commercial_invoice_received"/>
+                            <field name="delivery_date"/>
+                            <field name="overall_turnaround_days"
+                                   invisible="not delivery_date"/>
+                        </group>
+                        <group>
+                            <field name="documents_received_on"/>
+                            <field name="manifesting_date"/>
+                            <field name="manifesting_paid_on"/>
+                            <field name="transit_start"/>
+                            <field name="transit_end"/>
+                            <field name="transit_days" invisible="not transit_end"/>
+                        </group>
+                    </group>
                     <group string="Legacy" name="legacy" invisible="not legacy_id">
                         <group>
                             <field name="legacy_id" readonly="1"/>

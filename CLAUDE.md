@@ -15,7 +15,7 @@ working memory that is *not* obvious from the code.
   <in the Odoo.sh project settings — never in this repository, it is public>, Custom plan). The old Odoo Online db (elite-advisors,
   saas~19.3) holds no data and will lapse. Never build against 19.3 minor APIs.
 
-## The module: addons/elite_clearance (v19.0.50.0.0)
+## The module: addons/elite_clearance (v19.0.52.0.0)
 Customs clearance job files for a logistics/clearance services provider.
 - `logistics.file` — one file = one clearance job. States:
   draft → in_progress → ops_closed → done (+cancel, +imported). `imported`
@@ -797,6 +797,44 @@ Customs clearance job files for a logistics/clearance services provider.
      `test_invoice_reversal.test_09` is the proof. The flow needs the
      file reopened to operations (Head of Service Operations), closed
      for operations again, then billed again.
+- **Owner spec 16/10/2026, second message: the whole job measured**
+  (tests: `test_owner_spec_1610.py`; version 19.0.52).
+  1. **Overall turnaround time** = commercial invoice received (the
+     checklist line of document type `INV`, `logistics.file.
+     commercial_invoice_received`) -> delivery date (`delivery_date`,
+     the latest keyed on the file's disbursements). A disbursement whose
+     category NAME starts with "Transport" (`needs_delivery_date`) is
+     refused at `action_submit_justification` until its `delivery_date`
+     is keyed - the owner's "at the time of justification". A transport
+     cost paid DIRECT to a transporter never passes through
+     justification, so its delivery date is keyed on the form by hand;
+     flagged to the owner.
+  2. **Transit time per service type** (Configuration -> Transit Time
+     Settings = `logistics.service.type.transit_start_rule` /
+     `transit_end_rule`): start = documents / manifesting / later of
+     both; end = manifesting vendor paid / delivery. Import Maritime
+     (code IM) is seeded `later` / `vendor_paid` by `hooks.
+     seed_transit_rules` (fresh install) and the 19.0.52 migration
+     (upgrade), only where no rule is set. A service with no rule
+     measures nothing.
+  3. **Manifesting vendors** are a company setting
+     (`clearance_manifesting_vendor_ids`, in the three settings places).
+     Keying a cost against one reveals `manifesting_date` BEFORE the
+     amount in the capture dialog (the vendor moved above the amount for
+     that), required there and refused at `action_submit` without it
+     (`_check_manifesting_date`). The file reads `manifesting_date` and
+     `manifesting_paid_on` (= that disbursement's `date_settled`, "the
+     effective date of payment populated by Finance") off the
+     disbursement.
+  4. The file STORES the computed dates (`_compute_turnaround_dates`:
+     commercial_invoice_received, documents_received_on = the last
+     mandatory document when all are in, manifesting_date,
+     manifesting_paid_on, delivery_date, transit_start, transit_end)
+     because `clearance.turnaround` reads them in SQL: two new steps,
+     `file_overall` (offset 16) and `file_transit` (17), with targets in
+     `data/turnaround_targets.xml` (21 and 10 days) - the owner's
+     "section under Turnaround Targets". Shown in a Turnaround group on
+     the file form with the day counts.
 - **Payment evidence (owner, 01/10/2026).** `ir.attachment.clearance_kind`
   ('request' / 'payment', NULL = request) tells a disbursement's documents
   apart: `logistics.expense.request_document_ids` and

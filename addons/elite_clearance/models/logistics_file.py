@@ -79,6 +79,47 @@ class LogisticsFile(models.Model):
         string="Work Started", readonly=True, copy=False)
     date_ops_closed = fields.Datetime(
         string="Closed for Operations", readonly=True, copy=False)
+    # The whole job measured (owner 16/10/2026). Stored, because the
+    # turnaround view reads them in SQL; recomputed from the documents
+    # and the disbursements as they move.
+    commercial_invoice_received = fields.Datetime(
+        compute='_compute_turnaround_dates', store=True,
+        string="Commercial Invoice Received",
+        help="When the commercial invoice was received on the checklist. "
+             "The overall turnaround starts here.")
+    documents_received_on = fields.Datetime(
+        compute='_compute_turnaround_dates', store=True,
+        string="All Documents Received",
+        help="When the last mandatory document of the checklist was "
+             "received. Empty while one is still missing.")
+    manifesting_date = fields.Date(
+        compute='_compute_turnaround_dates', store=True,
+        string="Manifesting Date",
+        help="Keyed on the disbursement against a manifesting vendor.")
+    manifesting_paid_on = fields.Datetime(
+        compute='_compute_turnaround_dates', store=True,
+        string="Manifesting Vendor Paid On",
+        help="When Finance paid the manifesting vendor's disbursement.")
+    delivery_date = fields.Date(
+        compute='_compute_turnaround_dates', store=True,
+        string="Delivery Date",
+        help="Keyed on the transport disbursement when its advance is "
+             "justified. The overall turnaround ends here.")
+    transit_start = fields.Datetime(
+        compute='_compute_turnaround_dates', store=True,
+        string="Transit Starts",
+        help="Per the service type's rule (Configuration -> Transit Time "
+             "Settings).")
+    transit_end = fields.Datetime(
+        compute='_compute_turnaround_dates', store=True,
+        string="Transit Ends")
+    overall_turnaround_days = fields.Float(
+        compute='_compute_turnaround_days', digits=(8, 1),
+        string="Overall Turnaround (days)",
+        help="From the commercial invoice received to the delivery.")
+    transit_days = fields.Float(
+        compute='_compute_turnaround_days', digits=(8, 1),
+        string="Transit Time (days)")
     date_billed = fields.Datetime(
         string="Invoiced On", readonly=True, copy=False)
     note = fields.Html(string="Internal Notes")
@@ -737,6 +778,75 @@ class LogisticsFile(models.Model):
                  'expense_ids.payment_mode', 'expense_ids.is_legacy',
                  'expense_ids.employee_id', 'expense_ids.journal_id',
                  'has_billable', 'invoices_posted')
+    @api.depends('document_ids.received', 'document_ids.date_received',
+                 'document_ids.is_mandatory', 'document_ids.document_type_id',
+                 'expense_ids.manifesting_date', 'expense_ids.date_settled',
+                 'expense_ids.delivery_date', 'expense_ids.vendor_id',
+                 'expense_ids.state', 'expense_ids.needs_manifesting_date',
+                 'service_type_id.transit_start_rule',
+                 'service_type_id.transit_end_rule')
+    def _compute_turnaround_dates(self):
+        for file in self:
+            docs = file.document_ids
+            invoice = docs.filtered(
+                lambda d: d.received and d.date_received
+                and d.document_type_id.code == 'INV')
+            file.commercial_invoice_received = (
+                min(invoice.mapped('date_received')) if invoice else False)
+            mandatory = docs.filtered('is_mandatory')
+            file.documents_received_on = (
+                max(mandatory.mapped('date_received'))
+                if mandatory and all(d.received and d.date_received
+                                     for d in mandatory) else False)
+            manifest = file.expense_ids.filtered(
+                lambda e: e.needs_manifesting_date and e.state != 'cancel')
+            dated = manifest.filtered('manifesting_date')
+            file.manifesting_date = (
+                max(dated.mapped('manifesting_date')) if dated else False)
+            paid = manifest.filtered('date_settled')
+            file.manifesting_paid_on = (
+                max(paid.mapped('date_settled')) if paid else False)
+            delivered = file.expense_ids.filtered(
+                lambda e: e.delivery_date and e.state != 'cancel')
+            file.delivery_date = (
+                max(delivered.mapped('delivery_date')) if delivered else False)
+            file.transit_start, file.transit_end = file._transit_window()
+
+    def _transit_window(self):
+        """(start, end) per the service type's rule; False where the
+        rule is empty or the dates are not in yet."""
+        self.ensure_one()
+        service = self.service_type_id
+        manifest = (fields.Datetime.to_datetime(self.manifesting_date)
+                    if self.manifesting_date else False)
+        docs = self.documents_received_on
+        start = False
+        if service.transit_start_rule == 'documents':
+            start = docs
+        elif service.transit_start_rule == 'manifesting':
+            start = manifest
+        elif service.transit_start_rule == 'later':
+            start = max(manifest, docs) if manifest and docs else False
+        end = False
+        if service.transit_end_rule == 'vendor_paid':
+            end = self.manifesting_paid_on
+        elif service.transit_end_rule == 'delivery':
+            end = (fields.Datetime.to_datetime(self.delivery_date)
+                   if self.delivery_date else False)
+        return start, end
+
+    @api.depends('commercial_invoice_received', 'delivery_date',
+                 'transit_start', 'transit_end')
+    def _compute_turnaround_days(self):
+        for file in self:
+            start, end = file.commercial_invoice_received, file.delivery_date
+            file.overall_turnaround_days = (
+                (fields.Datetime.to_datetime(end) - start).total_seconds()
+                / 86400.0) if start and end else 0.0
+            file.transit_days = (
+                (file.transit_end - file.transit_start).total_seconds()
+                / 86400.0) if file.transit_start and file.transit_end else 0.0
+
     def _compute_stage(self):
         for file in self:
             owner, detail = file._stage()

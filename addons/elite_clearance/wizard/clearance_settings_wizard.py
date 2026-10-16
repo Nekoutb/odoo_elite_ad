@@ -39,6 +39,8 @@ class ClearanceSettingsWizard(models.TransientModel):
         related='company_id.clearance_sale_journal_id', readonly=False)
     clearance_service_tax_ids = fields.Many2many(
         related='company_id.clearance_service_tax_ids', readonly=False)
+    clearance_manifesting_vendor_ids = fields.Many2many(
+        related='company_id.clearance_manifesting_vendor_ids', readonly=False)
     clearance_invoice_title = fields.Char(
         related='company_id.clearance_invoice_title', readonly=False)
     clearance_letterhead_tagline = fields.Char(
@@ -118,6 +120,7 @@ class ClearanceSettingsWizard(models.TransientModel):
         'clearance_misc_journal_id',
         'clearance_sale_journal_id',
         'clearance_service_tax_ids',
+        'clearance_manifesting_vendor_ids',
         'clearance_invoice_title',
         'clearance_letterhead_tagline',
         'clearance_cash_voucher_title',
