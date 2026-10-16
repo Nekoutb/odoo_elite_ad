@@ -62,25 +62,6 @@ class LogisticsServiceType(models.Model):
              "invoice is the disbursement keyed against a vendor listed "
              "under Settings -> Manifesting Vendors; it is paid when "
              "Finance pays it out.")
-    # Transit time (owner 16/10/2026): where the clock starts and stops,
-    # per service. Import Maritime is seeded: the later of the manifesting
-    # date and the day every opening document was in, to the day Finance
-    # paid the manifesting vendor. A service with no rule measures nothing.
-    transit_start_rule = fields.Selection(
-        [('documents', "All opening documents received"),
-         ('manifesting', "Manifesting date"),
-         ('later', "Later of the manifesting date and all documents received")],
-        string="Transit Starts At",
-        help="What starts the transit clock on a file of this service. "
-             "Empty: no transit time is measured for this service.")
-    transit_end_rule = fields.Selection(
-        [('vendor_paid', "Manifesting vendor's invoice paid"),
-         ('delivery', "Delivery date")],
-        string="Transit Ends At",
-        help="What stops the transit clock. The manifesting vendor's "
-             "invoice is the disbursement keyed against a vendor listed "
-             "under Settings -> Manifesting Vendors; it is paid when "
-             "Finance pays it out.")
     document_ids = fields.One2many(
         'logistics.service.type.document', 'service_type_id',
         string="Required Documents", copy=True,

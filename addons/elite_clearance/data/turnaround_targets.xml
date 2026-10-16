@@ -29,15 +29,6 @@
       <field name="step">file_transit</field>
       <field name="target_hours">240</field>
     </record>
-    <!-- the whole job, owner 16/10/2026 -->
-    <record id="tat_file_overall" model="clearance.turnaround.target">
-      <field name="step">file_overall</field>
-      <field name="target_hours">504</field>
-    </record>
-    <record id="tat_file_transit" model="clearance.turnaround.target">
-      <field name="step">file_transit</field>
-      <field name="target_hours">240</field>
-    </record>
     <record id="tat_file_adv_waiver" model="clearance.turnaround.target">
       <field name="step">file_adv_waiver</field>
       <field name="target_hours">48</field>

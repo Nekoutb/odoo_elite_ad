@@ -199,16 +199,6 @@ class ClearanceTurnaround(models.Model):
             file_sql % dict(offset=17, step='file_transit',
                             started='f.transit_start',
                             done='f.transit_end', extra='TRUE'),
-            # The two whole-job measures (owner 16/10/2026) read the
-            # dates the file computes and stores from its documents and
-            # its disbursements; the rule per service type is applied
-            # there, not here, so one SQL serves every service.
-            file_sql % dict(offset=16, step='file_overall',
-                            started='f.commercial_invoice_received',
-                            done='f.delivery_date::timestamp', extra='TRUE'),
-            file_sql % dict(offset=17, step='file_transit',
-                            started='f.transit_start',
-                            done='f.transit_end', extra='TRUE'),
             expense_sql % dict(offset=8, step='exp_submit',
                                started='e.date_requested::timestamp',
                                done='e.date_submitted'),
