@@ -82,10 +82,11 @@ class TestRegimeAndBillingParams(TransactionCase):
                 'goods_description': "Marchandises diverses",
                 'cargo_value': 1000000.0})
 
-    def test_02_the_four_regimes_are_the_only_choices(self):
+    def test_02_the_five_regimes_are_the_only_choices(self):
+        # IM9 joined on 16/10/2026 (owner): a regime of its own, no rule
         keys = dict(self.env['logistics.file']._fields['customs_regime']
                     .selection).keys()
-        self.assertEqual(set(keys), {'im4', 'im5', 'im7', 'im8'})
+        self.assertEqual(set(keys), {'im4', 'im5', 'im7', 'im8', 'im9'})
 
     def test_03_work_cannot_start_without_one(self):
         file = self._file()

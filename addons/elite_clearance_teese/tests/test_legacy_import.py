@@ -371,6 +371,10 @@ class TestLegacyImport(TransactionCase):
         with self.assertRaises(UserError):
             f.with_user(finance).action_request_reopen_imported()   # no reason
         f.write({'reopen_request_reason': "Client asked for the final invoice."})
+        with self.assertRaises(UserError):
+            f.with_user(finance).action_request_reopen_imported()   # no reason from the list (owner 16/10/2026)
+        f.write({'reopen_request_reason_id': self.env.ref(
+            'elite_clearance.reopen_reason_other').id})
         f.with_user(finance).action_request_reopen_imported()
         self.assertEqual(f.reopen_request_state, 'requested')
         self.assertEqual(f.reopen_requested_by_id, finance)

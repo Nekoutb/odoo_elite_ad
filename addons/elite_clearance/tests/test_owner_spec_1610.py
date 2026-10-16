@@ -267,9 +267,9 @@ class TestOwnerSpec1610(TransactionCase):
         self.assertEqual(file.customs_regime, 'im9')
         file.state = 'ops_closed'
         Wizard = self.env['logistics.file.reopen.wizard'].with_user(self.ops_head)
-        with self.assertRaises(Exception, msg="no reopening without a reason"):
-            with self.env.cr.savepoint():
-                Wizard.create({'file_id': file.id, 'reason': "Late demurrage"}).action_reopen()
+        self.assertTrue(Wizard._fields['reason_id'].required,
+                        "no reopening without a reason from the list")
+        self.assertIn('name="reason_id"', Wizard.get_view()['arch'])
         wizard = Wizard.create({'file_id': file.id, 'reason_id': extra.id,
                                 'reason': "Late demurrage invoice"})
         wizard.action_reopen()
