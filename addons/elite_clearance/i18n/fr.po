@@ -892,6 +892,11 @@ msgstr ""
 "Une refacturation à un montant différent du coût attend une approbation."
 
 #. module: elite_clearance
+#: model:ir.model.constraint,message:elite_clearance.constraint_logistics_reopen_reason_name_company_uniq
+msgid "A reopening reason with this name already exists."
+msgstr "Un motif de réouverture porte déjà ce nom."
+
+#. module: elite_clearance
 #. odoo-python
 #: code:addons/elite_clearance/models/logistics_file.py:0
 msgid "A request to reopen an imported file is waiting."
@@ -995,6 +1000,7 @@ msgstr "Action requise"
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_document_type__active
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_category__active
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_port__active
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_reopen_reason__active
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_service_type__active
 msgid "Active"
 msgstr "Actif"
@@ -1487,6 +1493,7 @@ msgstr "Approuvé - chez Finance"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__approved_by_id
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopening__user_id
 msgid "Approved By"
 msgstr "Approuvé par"
 
@@ -1665,6 +1672,7 @@ msgstr "BL / LTA"
 
 #. module: elite_clearance
 #: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file_reopen_wizard__target_state__ops_closed
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_reopen_reason__target_state__ops_closed
 msgid "Back to billing"
 msgstr "Retour en facturation"
 
@@ -1679,6 +1687,7 @@ msgstr ""
 
 #. module: elite_clearance
 #: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file_reopen_wizard__target_state__in_progress
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_reopen_reason__target_state__in_progress
 msgid "Back to operations, to add costs"
 msgstr "Retour en opérations, pour ajouter des coûts"
 
@@ -1833,6 +1842,7 @@ msgstr ""
 #. odoo-python
 #: code:addons/elite_clearance/models/logistics_file.py:0
 #: model:ir.actions.act_window,name:elite_clearance.action_billing_wizard
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file_reopening__target_state__ops_closed
 #: model:ir.ui.menu,name:elite_clearance.menu_clearance_billing
 #: model_terms:ir.ui.view,arch_db:elite_clearance.billing_wizard_view_form
 #: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
@@ -2171,9 +2181,9 @@ msgstr "Choisissez au moins une ligne à créditer sur %s."
 #. odoo-python
 #: code:addons/elite_clearance/models/logistics_file.py:0
 msgid ""
-"Choose the customs regime for %s (IM4, IM5, IM7 or IM8) before saving it."
+"Choose the customs regime for %s (IM4, IM5, IM7, IM8 or IM9) before saving it."
 msgstr ""
-"Choisissez le régime douanier de %s (IM4, IM5, IM7 ou IM8) avant de l'enregistrer."
+"Choisissez le régime douanier de %s (IM4, IM5, IM7, IM8 ou IM9) avant de l'enregistrer."
 
 #. module: elite_clearance
 #. odoo-python
@@ -2186,6 +2196,14 @@ msgstr "Choisissez le dossier auquel cette avance appartient."
 #: code:addons/elite_clearance/wizard/invoice_reversal_wizard.py:0
 msgid "Choose the lines to reverse on %s."
 msgstr "Choisissez les lignes à extourner sur %s."
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/logistics_file.py:0
+msgid ""
+"Choose the reopening reason for %s from the list before requesting it."
+msgstr ""
+"Choisissez le motif de réouverture de %s dans la liste avant de le demander."
 
 #. module: elite_clearance
 #. odoo-python
@@ -2374,8 +2392,10 @@ msgstr "Dédouanement : justificatif de paiement au tiers"
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_task__partner_id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_wizard__partner_id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__partner_id
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopening__partner_id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_invoice_credit_wizard__partner_id
 #: model_terms:ir.ui.view,arch_db:elite_clearance.billing_wizard_view_form
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_reopening_view_search
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_search
 #: model_terms:ir.ui.view,arch_db:elite_clearance.view_clearance_invoice_list
 #: model_terms:ir.ui.view,arch_db:elite_clearance.view_clearance_invoice_search
@@ -2449,6 +2469,7 @@ msgstr "Clôturer le dossier"
 
 #. module: elite_clearance
 #: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file__state__done
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file_reopening__from_state__done
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_search
 msgid "Closed"
 msgstr "Clôturé"
@@ -2549,6 +2570,8 @@ msgstr "Sociétés"
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_category__company_id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__company_id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_document__company_id
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopening__company_id
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_reopen_reason__company_id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_service_type__company_id
 msgid "Company"
 msgstr "Société"
@@ -2703,11 +2726,13 @@ msgstr ""
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_document__create_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_document_date_wizard__create_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopen_wizard__create_uid
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopening__create_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_invoice_cancel_wizard__create_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_invoice_credit_wizard__create_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_invoice_credit_wizard_line__create_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_payment_attribution_wizard__create_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_port__create_uid
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_reopen_reason__create_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_service_type__create_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_service_type_document__create_uid
 msgid "Created by"
@@ -2734,11 +2759,13 @@ msgstr "Créé par"
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_document__create_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_document_date_wizard__create_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopen_wizard__create_date
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopening__create_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_invoice_cancel_wizard__create_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_invoice_credit_wizard__create_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_invoice_credit_wizard_line__create_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_payment_attribution_wizard__create_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_port__create_date
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_reopen_reason__create_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_service_type__create_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_service_type_document__create_date
 msgid "Created on"
@@ -2862,6 +2889,8 @@ msgstr "Déclaration en douane"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__customs_regime
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopening__customs_regime
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_reopening_view_search
 msgid "Customs Regime"
 msgstr "Régime douanier"
 
@@ -2895,6 +2924,11 @@ msgstr ""
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.report_cash_voucher_document
 msgid "DESIGNATION"
+msgstr ""
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopening__date
+msgid "Date"
 msgstr ""
 
 #. module: elite_clearance
@@ -3101,11 +3135,13 @@ msgstr "Divulgué"
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_document__display_name
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_document_date_wizard__display_name
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopen_wizard__display_name
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopening__display_name
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_invoice_cancel_wizard__display_name
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_invoice_credit_wizard__display_name
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_invoice_credit_wizard_line__display_name
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_payment_attribution_wizard__display_name
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_port__display_name
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_reopen_reason__display_name
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_service_type__display_name
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_service_type_document__display_name
 #: model:ir.model.fields,field_description:elite_clearance.field_res_company__display_name
@@ -3424,6 +3460,22 @@ msgstr ""
 "Chaque écriture au crédit du compte de ce client portant l'analytique de ce dossier - c'est ainsi que la Comptabilité enregistre une avance. Rien à saisir : enregistrez-la là-bas et elle apparaît ici."
 
 #. module: elite_clearance
+#: model_terms:ir.actions.act_window,help:elite_clearance.action_logistics_file_reopening
+msgid ""
+"Every reopening of a file lands here with its reason, so they can be\n"
+"            counted by reason, by month, by client or by regime."
+msgstr ""
+"Chaque réouverture d'un dossier arrive ici avec son motif, pour être comptée par motif, par mois, par client ou par régime."
+
+#. module: elite_clearance
+#: model_terms:ir.actions.act_window,help:elite_clearance.action_logistics_reopen_reason
+msgid ""
+"Every reopening of a file takes one of these, so they can be\n"
+"            counted under Reporting → Reopenings."
+msgstr ""
+"Chaque réouverture d'un dossier en prend un, pour qu'elles soient comptées sous Rapports → Réouvertures."
+
+#. module: elite_clearance
 #: model_terms:ir.actions.act_window,help:elite_clearance.action_clearance_turnaround
 msgid ""
 "Every step of every file, expense and document, with how long it\n"
@@ -3586,6 +3638,12 @@ msgstr ""
 "Expliquez pourquoi %s doit être facturé avec une avance au personnel non justifiée, et comment l'avance sera recouvrée."
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopen_wizard__reason
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopening__note
+msgid "Explanation"
+msgstr "Explication"
+
+#. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
 #: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
 msgid ""
@@ -3619,6 +3677,7 @@ msgstr "Compte de produits d'honoraires (par défaut)"
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_document__file_id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_document_date_wizard__file_id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopen_wizard__file_id
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopening__file_id
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_search
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_search
@@ -3678,6 +3737,16 @@ msgid "File Reference"
 msgstr "Référence du dossier"
 
 #. module: elite_clearance
+#: model:ir.model,name:elite_clearance.model_logistics_file_reopening
+msgid "File Reopening"
+msgstr "Réouverture de dossier"
+
+#. module: elite_clearance
+#: model:ir.model,name:elite_clearance.model_logistics_reopen_reason
+msgid "File Reopening Reason"
+msgstr "Motif de réouverture de dossier"
+
+#. module: elite_clearance
 #: model:ir.actions.act_window,name:elite_clearance.action_clearance_file_status
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_turnaround__file_state
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopen_wizard__file_state
@@ -3703,9 +3772,10 @@ msgstr ""
 #. module: elite_clearance
 #. odoo-python
 #: code:addons/elite_clearance/wizard/reopen_wizard.py:0
-msgid "File reopened to %(target)s (approval by %(user)s): %(reason)s"
+msgid ""
+"File reopened to %(target)s (approval by %(user)s) - %(why)s: %(reason)s"
 msgstr ""
-"Dossier réouvert vers %(target)s (approbation de %(user)s) : %(reason)s"
+"Dossier réouvert vers %(target)s (approbation de %(user)s) - %(why)s : %(reason)s"
 
 #. module: elite_clearance
 #: model:ir.model.fields.selection,name:elite_clearance.selection__clearance_turnaround__step__file_adv_waiver
@@ -3896,6 +3966,18 @@ msgid "From the commercial invoice received to the delivery."
 msgstr "De la réception de la facture commerciale à la livraison."
 
 #. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_file__reopen_request_reason_id
+msgid ""
+"From the list under Configuration -> Reopening Reasons (owner 16/10/2026). Required to request the reopening of an imported file."
+msgstr ""
+"Depuis la liste sous Configuration -> Motifs de réouverture. Obligatoire pour demander la réouverture d'un dossier importé."
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_file_reopen_wizard__reason_id
+msgid "From the list under Configuration -> Reopening Reasons."
+msgstr "Depuis la liste sous Configuration -> Motifs de réouverture."
+
+#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_wizard__client_name
 #: model:ir.model.fields,field_description:elite_clearance.field_res_partner__clearance_invoice_name
 #: model:ir.model.fields,field_description:elite_clearance.field_res_users__clearance_invoice_name
@@ -4077,11 +4159,13 @@ msgstr ""
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_document__id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_document_date_wizard__id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopen_wizard__id
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopening__id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_invoice_cancel_wizard__id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_invoice_credit_wizard__id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_invoice_credit_wizard_line__id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_payment_attribution_wizard__id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_port__id
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_reopen_reason__id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_service_type__id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_service_type_document__id
 #: model:ir.model.fields,field_description:elite_clearance.field_res_company__id
@@ -4109,6 +4193,11 @@ msgstr "IM7 - Entrepôt"
 #: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file__customs_regime__im8
 msgid "IM8 - Transit"
 msgstr "IM8 - Transit"
+
+#. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file__customs_regime__im9
+msgid "IM9 - Autres régimes d'importation"
+msgstr "IM9 - Autres régimes d'importation"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__activity_exception_icon
@@ -4161,6 +4250,7 @@ msgstr ""
 
 #. module: elite_clearance
 #: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file__state__imported
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file_reopening__from_state__imported
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form
 #: model_terms:ir.ui.view,arch_db:elite_clearance.view_move_form_clearance_legacy
 msgid "Imported"
@@ -4657,6 +4747,12 @@ msgid "Last File Number in Legacy System"
 msgstr "Dernier numéro de dossier de l'ancien système"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__last_reopen_reason_id
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_search
+msgid "Last Reopening Reason"
+msgstr "Dernier motif de réouverture"
+
+#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_rejection_wizard__write_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_settings_wizard__write_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_turnaround_target__write_uid
@@ -4677,11 +4773,13 @@ msgstr "Dernier numéro de dossier de l'ancien système"
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_document__write_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_document_date_wizard__write_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopen_wizard__write_uid
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopening__write_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_invoice_cancel_wizard__write_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_invoice_credit_wizard__write_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_invoice_credit_wizard_line__write_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_payment_attribution_wizard__write_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_port__write_uid
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_reopen_reason__write_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_service_type__write_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_service_type_document__write_uid
 msgid "Last Updated by"
@@ -4708,11 +4806,13 @@ msgstr "Dernière mise à jour par"
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_document__write_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_document_date_wizard__write_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopen_wizard__write_date
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopening__write_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_invoice_cancel_wizard__write_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_invoice_credit_wizard__write_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_invoice_credit_wizard_line__write_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_payment_attribution_wizard__write_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_port__write_date
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_reopen_reason__write_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_service_type__write_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_service_type_document__write_date
 msgid "Last Updated on"
@@ -4921,6 +5021,11 @@ msgid "Montant"
 msgstr ""
 
 #. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_reopening_view_search
+msgid "Month"
+msgstr "Mois"
+
+#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_invoice_credit_wizard_line__move_line_id
 msgid "Move Line"
 msgstr "Écriture"
@@ -4967,6 +5072,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_document_type__name
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_category__name
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_port__name
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_reopen_reason__name
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_service_type__name
 msgid "Name"
 msgstr "Nom"
@@ -5033,6 +5139,11 @@ msgstr ""
 "Aucune refacturation en dessous du coût n'attend le Directeur Général sur %s."
 
 #. module: elite_clearance
+#: model_terms:ir.actions.act_window,help:elite_clearance.action_logistics_file_reopening
+msgid "No file has been reopened yet"
+msgstr "Aucun dossier n'a encore été réouvert"
+
+#. module: elite_clearance
 #: model_terms:ir.actions.act_window,help:elite_clearance.action_clearance_file_status
 msgid "No files yet"
 msgstr "Aucun dossier pour l'instant"
@@ -5061,6 +5172,11 @@ msgstr "Aucun ajustement de refacturation n'attend les Opérations sur %s."
 #: code:addons/elite_clearance/wizard/billing_wizard.py:0
 msgid "No recharge adjustment is awaiting approval on %s."
 msgstr "Aucun ajustement de refacturation n'attend d'approbation sur %s."
+
+#. module: elite_clearance
+#: model_terms:ir.actions.act_window,help:elite_clearance.action_logistics_reopen_reason
+msgid "No reopening reasons yet"
+msgstr "Aucun motif de réouverture pour l'instant"
 
 #. module: elite_clearance
 #. odoo-python
@@ -5260,6 +5376,7 @@ msgstr ""
 
 #. module: elite_clearance
 #: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file__state__ops_closed
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file_reopening__from_state__ops_closed
 msgid "OK for Billing"
 msgstr "Bon à facturer"
 
@@ -5457,6 +5574,7 @@ msgstr "Ouverture envoyée au Chef du Service Client pour approbation."
 #. module: elite_clearance
 #. odoo-python
 #: code:addons/elite_clearance/models/logistics_file.py:0
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file_reopening__target_state__in_progress
 msgid "Operations"
 msgstr "Opérations"
 
@@ -5795,6 +5913,13 @@ msgstr ""
 "Publié sur l'enregistrement et envoyé à la personne qui a fait la demande, pour qu'elle sache quoi changer."
 
 #. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_reopen_reason__target_state
+msgid ""
+"Pre-selected on the reopening dialog of a closed file when this reason is chosen; the person reopening may still change it. Empty: nothing is pre-selected."
+msgstr ""
+"Présélectionné dans la boîte de réouverture d'un dossier clôturé lorsque ce motif est choisi ; la personne qui réouvre peut encore le changer. Vide : rien n'est présélectionné."
+
+#. module: elite_clearance
 #: model:ir.model.fields.selection,name:elite_clearance.selection__clearance_task__kind__settlement_key
 msgid "Prepare settlement"
 msgstr "Préparer le règlement"
@@ -6017,7 +6142,9 @@ msgstr ""
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_rejection_wizard__reason
-#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopen_wizard__reason
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopen_wizard__reason_id
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopening__reason_id
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_reopening_view_search
 msgid "Reason"
 msgstr "Motif"
 
@@ -6297,6 +6424,21 @@ msgid "Reopen for"
 msgstr "Réouvrir pour"
 
 #. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_search
+msgid "Reopened"
+msgstr "Réouvert"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopening__from_state
+msgid "Reopened From"
+msgstr "Réouvert depuis"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopening__target_state
+msgid "Reopened To"
+msgstr "Réouvert vers"
+
+#. module: elite_clearance
 #. odoo-python
 #: code:addons/elite_clearance/models/logistics_file.py:0
 msgid "Reopened for work"
@@ -6315,6 +6457,18 @@ msgstr "Approbateurs des réouvertures"
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_search
 msgid "Reopening Awaiting Approval"
 msgstr "Réouverture en attente d'approbation"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__reopen_request_reason_id
+msgid "Reopening Reason"
+msgstr "Motif de réouverture"
+
+#. module: elite_clearance
+#: model:ir.actions.act_window,name:elite_clearance.action_logistics_reopen_reason
+#: model:ir.ui.menu,name:elite_clearance.menu_clearance_reopen_reasons
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_reopen_reason_view_list
+msgid "Reopening Reasons"
+msgstr "Motifs de réouverture"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__reopen_request_state
@@ -6343,6 +6497,17 @@ msgstr "Réouverture demandée"
 #: code:addons/elite_clearance/models/logistics_file.py:0
 msgid "Reopening requested: %s"
 msgstr "Réouverture demandée : %s"
+
+#. module: elite_clearance
+#: model:ir.actions.act_window,name:elite_clearance.action_logistics_file_reopening
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__reopening_ids
+#: model:ir.ui.menu,name:elite_clearance.menu_clearance_reopenings
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_reopening_view_graph
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_reopening_view_list
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_reopening_view_pivot
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_reopening_view_search
+msgid "Reopenings"
+msgstr "Réouvertures"
 
 #. module: elite_clearance
 #: model:ir.model,name:elite_clearance.model_ir_actions_report
@@ -6581,6 +6746,7 @@ msgstr "Envoyé au Chef de Service Finance le"
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_category_name__sequence
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_document__sequence
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_port__sequence
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_reopen_reason__sequence
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_service_type__sequence
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_service_type_document__sequence
 msgid "Sequence"
@@ -6614,7 +6780,9 @@ msgstr "Service Transit"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__service_type_id
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopening__service_type_id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_service_type_document__service_type_id
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_reopening_view_search
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_search
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_service_type_view_form
 msgid "Service Type"
@@ -7420,6 +7588,7 @@ msgstr ""
 
 #. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_logistics_file__customs_regime
+#: model:ir.model.fields,help:elite_clearance.field_logistics_file_reopening__customs_regime
 msgid ""
 "The regime declared to Customs. It decides what the file is for, so it is chosen when the file is opened and cannot be left blank once work starts."
 msgstr ""
@@ -7644,6 +7813,11 @@ msgstr ""
 "Cette liste ne montre que le travail sur lequel votre rôle peut agir. Lorsqu'un dossier ou un débours atteint une étape qui vous revient, il apparaît ici."
 
 #. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_reopening_view_search
+msgid "This month"
+msgstr "Ce mois"
+
+#. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.view_account_payment_form_clearance
 msgid ""
 "This receipt is not against a clearance file yet, so it is money on\n"
@@ -7710,6 +7884,16 @@ msgstr "À refacturer"
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_search
 msgid "To Settle"
 msgstr "À régler"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_reopening_view_search
+msgid "To billing"
+msgstr "Vers la facturation"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_reopening_view_search
+msgid "To operations"
+msgstr "Vers les opérations"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_settings_wizard__clearance_tonnes_per_container
@@ -8029,6 +8213,11 @@ msgstr "Langues des utilisateurs"
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_user_language_wizard__line_ids
 msgid "Users"
 msgstr "Utilisateurs"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_reopen_reason__target_state
+msgid "Usually Sends the File"
+msgstr "Renvoie habituellement le dossier"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_invoice_credit_wizard_line__tax_amount
