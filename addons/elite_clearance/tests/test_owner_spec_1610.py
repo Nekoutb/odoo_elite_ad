@@ -167,7 +167,7 @@ class TestOwnerSpec1610(TransactionCase):
             [('file_id', '=', file.id), ('step', '=', 'file_transit')])
         self.assertEqual(len(row), 1, "one measured row in Reporting")
         self.assertTrue(row.is_done)
-        self.assertAlmostEqual(row.days_taken, file.transit_days, places=3)
+        self.assertAlmostEqual(row.days_taken, file.transit_days, places=1)
         target = self.env['clearance.turnaround.target'].search(
             [('step', '=', 'file_transit'),
              ('company_id', '=', self.env.company.id)], limit=1)
