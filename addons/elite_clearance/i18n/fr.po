@@ -108,6 +108,14 @@ msgstr ""
 #. odoo-python
 #: code:addons/elite_clearance/models/logistics_expense.py:0
 msgid ""
+"%(exp)s is a %(cat)s cost: enter the Delivery Date on it before submitting the justification - it is the date the file's overall turnaround ends on."
+msgstr ""
+"%(exp)s est un coût %(cat)s : saisissez la Date de livraison avant de soumettre la justification - c'est la date à laquelle se termine le délai global du dossier."
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/logistics_expense.py:0
+msgid ""
 "%(exp)s is a %(cat)s cost: there is no document to produce for it, and none is waited on. It was charged to the engaged-disbursements account when it was paid."
 msgstr ""
 "%(exp)s est un coût %(cat)s : il n'y a aucune pièce à produire, et aucune n'est attendue. Il a été imputé au compte des débours engagés lors de son paiement."
@@ -119,6 +127,14 @@ msgid ""
 "%(exp)s is approved: who is paid, through which channel and how is Finance's to change now, not the team that keyed it (%(fields)s)."
 msgstr ""
 "%(exp)s est approuvé : qui est payé, par quel canal et comment relève désormais de Finance, pas de l'équipe qui l'a saisi (%(fields)s)."
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/logistics_expense.py:0
+msgid ""
+"%(exp)s is keyed against %(vendor)s, a manifesting vendor: enter the manifesting date before the disbursement is submitted."
+msgstr ""
+"%(exp)s est saisi contre %(vendor)s, un fournisseur de manifeste : saisissez la date de manifeste avant de soumettre le débours."
 
 #. module: elite_clearance
 #. odoo-python
@@ -413,6 +429,14 @@ msgstr "%s n'a pas été soumis pour approbation de la justification."
 
 #. module: elite_clearance
 #. odoo-python
+#: code:addons/elite_clearance/wizard/expense_capture_wizard.py:0
+msgid ""
+"%s is a manifesting vendor: enter the manifesting date before the amount."
+msgstr ""
+"%s est un fournisseur de manifeste : saisissez la date de manifeste avant le montant."
+
+#. module: elite_clearance
+#. odoo-python
 #: code:addons/elite_clearance/models/logistics_expense.py:0
 msgid "%s is a staff advance, so it has no vendor."
 msgstr "%s est une avance au personnel : il n'a pas de fournisseur."
@@ -578,9 +602,9 @@ msgstr ""
 #. odoo-python
 #: code:addons/elite_clearance/models/logistics_expense.py:0
 msgid ""
-"%s was named as the vendor. A staff advance has a holder instead, so the vendor has been cleared - pick the employee who receives the money."
+"%s was named as the vendor. A staff advance stands against the requester instead, so the vendor has been cleared."
 msgstr ""
-"%s était nommé fournisseur. Une avance au personnel a un détenteur à la place : le fournisseur a donc été effacé - choisissez l'employé qui reçoit l'argent."
+"%s était nommé fournisseur. Une avance au personnel est portée au nom du demandeur : le fournisseur a donc été effacé."
 
 #. module: elite_clearance
 #. odoo-python
@@ -623,6 +647,11 @@ msgstr ""
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.report_clearance_invoice_document
 msgid "- TEL :"
+msgstr ""
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.report_cash_voucher_document
+msgid "- date et signature"
 msgstr ""
 
 #. module: elite_clearance
@@ -675,12 +704,13 @@ msgstr ""
 msgid ""
 "<b>Cash from the till.</b> Press <b>Disburse / Pay</b>: the journal\n"
 "                    entry is posted and the <b>cash voucher</b> is printed and kept on the\n"
-"                    disbursement. Download it, have it signed by the person taking the\n"
-"                    cash, and upload the signed copy under <i>Cash Voucher (signed)</i> -\n"
+"                    disbursement. Download it, have it signed by the person collecting the\n"
+"                    cash - named above under <i>Hand the Cash To</i> - and upload the signed\n"
+"                    copy under <i>Cash Voucher (signed)</i> -\n"
 "                    the file cannot be closed for operations until it is there. Any\n"
 "                    receipt attached here is kept as payment evidence as well."
 msgstr ""
-"<b>Espèces de la caisse.</b> Cliquez sur <b>Décaisser / Payer</b> : l'écriture est comptabilisée et le <b>bon de caisse</b> est imprimé et conservé sur le débours. Téléchargez-le, faites-le signer par la personne qui prend les espèces, et chargez la copie signée sous <i>Bon de caisse (signé)</i> - les opérations du dossier ne peuvent être clôturées tant qu'elle n'y est pas. Tout reçu joint ici est également conservé comme justificatif de paiement."
+"<b>Espèces de la caisse.</b> Cliquez sur <b>Décaisser / Payer</b> : l'écriture est comptabilisée et le <b>bon de caisse</b> est imprimé et conservé sur le débours. Téléchargez-le, faites-le signer par la personne qui perçoit les espèces - nommée ci-dessus sous <i>Remettre les espèces à</i> - et chargez la copie signée sous <i>Bon de caisse (signé)</i> - les opérations du dossier ne peuvent être clôturées tant qu'elle n'y est pas. Tout reçu joint ici est également conservé comme justificatif de paiement."
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form
@@ -861,9 +891,9 @@ msgstr "Un débours soumis ne peut être supprimé — annulez-le plutôt."
 #. odoo-python
 #: code:addons/elite_clearance/wizard/expense_capture_wizard.py:0
 msgid ""
-"A supplier OR a member of staff collects the money, not both. Clear one of them."
+"A supplier is paid OR the money is advanced to you, not both. Clear one of them."
 msgstr ""
-"Un fournisseur OU un membre du personnel perçoit l'argent, pas les deux. Effacez l'un des deux."
+"Un fournisseur est payé OU l'argent vous est avancé, pas les deux. Effacez l'un des deux."
 
 #. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_logistics_expense_capture_wizard__journal_id
@@ -1019,6 +1049,13 @@ msgid "Advance Holder"
 msgstr "Détenteur de l'avance"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__employee_id
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_capture_wizard__employee_id
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_settle_wizard__employee_id
+msgid "Advance Holder (accountable)"
+msgstr "Détenteur de l'avance (responsable)"
+
+#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_wizard__advance_had_vat_amount
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__advance_had_vat_amount
 msgid "Advance VAT on HAD/DAU"
@@ -1142,6 +1179,16 @@ msgid "Ajustement sur débours - %s"
 msgstr ""
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__documents_received_on
+msgid "All Documents Received"
+msgstr "Tous les documents reçus"
+
+#. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_service_type__transit_start_rule__documents
+msgid "All opening documents received"
+msgstr "Tous les documents d'ouverture reçus"
+
+#. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.payment_attribution_wizard_view_form
 msgid "Already advanced"
 msgstr "Déjà avancé"
@@ -1194,11 +1241,19 @@ msgstr "Montant reçu"
 
 #. module: elite_clearance
 #. odoo-python
+#: code:addons/elite_clearance/wizard/expense_capture_wizard.py:0
+msgid ""
+"An advance stands against the requester, and you have no employee record for it to stand against. Ask the administrator to create one, then key the advance."
+msgstr ""
+"Une avance est portée au nom du demandeur, et vous n'avez pas de fiche employé à laquelle la rattacher. Demandez à l'administrateur d'en créer une, puis saisissez l'avance."
+
+#. module: elite_clearance
+#. odoo-python
 #: code:addons/elite_clearance/models/logistics_expense.py:0
 msgid ""
-"An advance must be held by a registered staff member (%s). Create the employee first, then hand over the money."
+"An advance stands against the requester, who must be a registered staff member (%s). Create their employee record first, then hand over the money."
 msgstr ""
-"Une avance doit être détenue par un membre du personnel enregistré (%s). Créez d'abord l'employé, puis remettez l'argent."
+"Une avance est portée au nom du demandeur, qui doit être un membre du personnel enregistré (%s). Créez d'abord sa fiche employé, puis remettez l'argent."
 
 #. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_logistics_billing_wizard_debours__alternative_name_id
@@ -1472,6 +1527,13 @@ msgid ""
 "As exported from the legacy system. The draft's own total is built to match it line for line."
 msgstr ""
 "Tel qu'exporté de l'ancien système. Le total du brouillon est construit pour y correspondre ligne par ligne."
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_expense_capture_wizard__manifesting_date
+msgid ""
+"Asked for when the third party is a manifesting vendor (Settings -> Manifesting Vendors), before the amount: it starts the transit time of an Import Maritime file."
+msgstr ""
+"Demandée lorsque le tiers est un fournisseur de manifeste (Paramètres -> Fournisseurs de manifeste), avant le montant : elle déclenche le temps de transit d'un dossier Import Maritime."
 
 #. module: elite_clearance
 #: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file__recharge_state__none
@@ -1836,6 +1898,11 @@ msgid "CAISSE"
 msgstr ""
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__can_edit_collector
+msgid "Can Edit Collector"
+msgstr "Peut modifier le bénéficiaire des espèces"
+
+#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__can_edit_payment
 msgid "Can Edit Payment"
 msgstr "Peut modifier le paiement"
@@ -1956,6 +2023,14 @@ msgstr "Devise de la valeur de la marchandise"
 #: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_expense__payment_mode__cash
 msgid "Cash"
 msgstr "Espèces"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__collector_id
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_capture_wizard__collector_id
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_settle_wizard__collector_id
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_search
+msgid "Cash Collected By"
+msgstr "Espèces perçues par"
 
 #. module: elite_clearance
 #: model:ir.actions.report,name:elite_clearance.action_report_cash_voucher
@@ -2387,6 +2462,11 @@ msgstr "Code"
 #: model:logistics.document.type,name:elite_clearance.doc_type_invoice
 msgid "Commercial Invoice"
 msgstr ""
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__commercial_invoice_received
+msgid "Commercial Invoice Received"
+msgstr "Facture commerciale reçue"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__commission_amount
@@ -2835,6 +2915,17 @@ msgstr "Définissez les documents qu'un dossier de dédouanement peut exiger"
 #: model_terms:ir.actions.act_window,help:elite_clearance.action_logistics_port
 msgid "Define the ports files are handled at"
 msgstr "Définissez les ports où les dossiers sont traités"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__delivery_date
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__delivery_date
+msgid "Delivery Date"
+msgstr "Date de livraison"
+
+#. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_service_type__transit_end_rule__delivery
+msgid "Delivery date"
+msgstr "Date de livraison"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_service__description
@@ -3714,6 +3805,16 @@ msgid "Font awesome icon e.g. fa-tasks"
 msgstr "Icône Font Awesome, ex. fa-tasks"
 
 #. module: elite_clearance
+#: model_terms:ir.actions.act_window,help:elite_clearance.action_logistics_service_type_transit
+msgid ""
+"For each service, choose what starts the transit clock and what\n"
+"            stops it. The manifesting date is keyed on the disbursement against a\n"
+"            manifesting vendor (Settings → Manifesting Vendors); the delivery\n"
+"            date on the transport disbursement when its advance is justified."
+msgstr ""
+"Pour chaque service, choisissez ce qui déclenche le compteur de transit et ce qui l'arrête. La date de manifeste est saisie sur le débours contre un fournisseur de manifeste (Paramètres → Fournisseurs de manifeste) ; la date de livraison sur le débours de transport à la justification de son avance."
+
+#. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
 msgid ""
 "For each service, the reference of the last file opened in the old system - for example 2026IM0019. The next file opened here for that service takes the number after it: 2026IM0020."
@@ -3755,6 +3856,11 @@ msgid "French"
 msgstr "Français"
 
 #. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_file__overall_turnaround_days
+msgid "From the commercial invoice received to the delivery."
+msgstr "De la réception de la facture commerciale à la livraison."
+
+#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_wizard__client_name
 #: model:ir.model.fields,field_description:elite_clearance.field_res_partner__clearance_invoice_name
 #: model:ir.model.fields,field_description:elite_clearance.field_res_users__clearance_invoice_name
@@ -3784,6 +3890,11 @@ msgstr "Donnez une justification avant de demander une dérogation sur %s."
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__goods_description
 msgid "Goods"
 msgstr "Marchandises"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.expense_settle_wizard_view_form
+msgid "Hand the Cash To"
+msgstr "Remettre les espèces à"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_service__has_message
@@ -4464,6 +4575,26 @@ msgid "Keyed by the billing agent from the customs declaration."
 msgstr "Saisi par l'agent de facturation d'après la déclaration en douane."
 
 #. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_file__manifesting_date
+msgid "Keyed on the disbursement against a manifesting vendor."
+msgstr "Saisie sur le débours contre un fournisseur de manifeste."
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_file__delivery_date
+msgid ""
+"Keyed on the transport disbursement when its advance is justified. The overall turnaround ends here."
+msgstr ""
+"Saisie sur le débours de transport à la justification de son avance. Le délai global se termine ici."
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
+msgid ""
+"Keying a disbursement against one of these vendors asks for the manifesting date before the amount. Paying it ends the transit time of an Import Maritime file."
+msgstr ""
+"Saisir un débours contre l'un de ces fournisseurs demande la date de manifeste avant le montant. Le payer termine le temps de transit d'un dossier Import Maritime."
+
+#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_task__kind
 msgid "Kind"
 msgstr "Nature"
@@ -4551,6 +4682,12 @@ msgstr "Dernière mise à jour par"
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_service_type_document__write_date
 msgid "Last Updated on"
 msgstr "Dernière mise à jour le"
+
+#. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_service_type__transit_start_rule__later
+msgid "Later of the manifesting date and all documents received"
+msgstr ""
+"La plus tardive entre la date de manifeste et la réception de tous les documents"
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.report_cash_voucher_document
@@ -4668,6 +4805,37 @@ msgid "Mandatory"
 msgstr "Obligatoire"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__manifesting_date
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_capture_wizard__manifesting_date
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__manifesting_date
+msgid "Manifesting Date"
+msgstr "Date de manifeste"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__manifesting_paid_on
+msgid "Manifesting Vendor Paid On"
+msgstr "Fournisseur de manifeste payé le"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_settings_wizard__clearance_manifesting_vendor_ids
+#: model:ir.model.fields,field_description:elite_clearance.field_res_company__clearance_manifesting_vendor_ids
+#: model:ir.model.fields,field_description:elite_clearance.field_res_config_settings__clearance_manifesting_vendor_ids
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
+msgid "Manifesting Vendors"
+msgstr "Fournisseurs de manifeste"
+
+#. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_service_type__transit_start_rule__manifesting
+msgid "Manifesting date"
+msgstr "Date de manifeste"
+
+#. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_service_type__transit_end_rule__vendor_paid
+msgid "Manifesting vendor's invoice paid"
+msgstr "Facture du fournisseur de manifeste payée"
+
+#. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.report_clearance_invoice_document
 msgid "Max period for complaints regarding invoices:"
 msgstr ""
@@ -4769,6 +4937,17 @@ msgid "Name"
 msgstr "Nom"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__needs_delivery_date
+msgid "Needs Delivery Date"
+msgstr "Date de livraison requise"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__needs_manifesting_date
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_capture_wizard__needs_manifesting_date
+msgid "Needs Manifesting Date"
+msgstr "Date de manifeste requise"
+
+#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_wizard__needs_review
 msgid "Needs Review"
 msgstr "Revue requise"
@@ -4853,6 +5032,18 @@ msgstr "Aucun ajustement de refacturation n'attend d'approbation sur %s."
 #: code:addons/elite_clearance/models/logistics_file.py:0
 msgid "No reopening request is awaiting approval on %s."
 msgstr "Aucune demande de réouverture n'attend d'approbation sur %s."
+
+#. module: elite_clearance
+#: model_terms:ir.actions.act_window,help:elite_clearance.action_logistics_service_type_transit
+msgid "No service types yet"
+msgstr "Aucun type de service pour l'instant"
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_expense_capture_wizard__is_advance
+msgid ""
+"No supplier: the money is advanced to you against 421101 and you justify it with the receipts. Leave unticked when a supplier is paid."
+msgstr ""
+"Pas de fournisseur : l'argent vous est avancé au 421101 et vous le justifiez avec les reçus. Laissez décoché lorsqu'un fournisseur est payé."
 
 #. module: elite_clearance
 #. odoo-python
@@ -5374,9 +5565,20 @@ msgid "Over target and still waiting"
 msgstr "Hors délai et toujours en attente"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__overall_turnaround_days
+msgid "Overall Turnaround (days)"
+msgstr "Délai global (jours)"
+
+#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_wizard__review_reason
 msgid "Overall note on the recharge"
 msgstr "Note globale sur la refacturation"
+
+#. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__clearance_turnaround__step__file_overall
+#: model:ir.model.fields.selection,name:elite_clearance.selection__clearance_turnaround_target__step__file_overall
+msgid "Overall turnaround time: commercial invoice received → delivered"
+msgstr "Délai global : facture commerciale reçue → livraison"
 
 #. module: elite_clearance
 #: model:ir.actions.act_window,name:elite_clearance.action_clearance_turnaround_late
@@ -5501,6 +5703,12 @@ msgid ""
 "Pays from a bank or mobile-money journal once the Head of Service Finance has approved the settlement."
 msgstr ""
 "Paie depuis un journal de banque ou de mobile money une fois le règlement approuvé par le Chef de Service Finance."
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_file__transit_start
+msgid "Per the service type's rule (Configuration -> Transit Time Settings)."
+msgstr ""
+"Selon la règle du type de service (Configuration -> Paramètres de temps de transit)."
 
 #. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_logistics_file__commission_rate
@@ -5746,6 +5954,11 @@ msgstr ""
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.report_clearance_invoice_document
 msgid "Quantité"
+msgstr ""
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.report_cash_voucher_document
+msgid "REMIS À"
 msgstr ""
 
 #. module: elite_clearance
@@ -6000,6 +6213,11 @@ msgstr "Recharger la liste des documents"
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.report_cash_voucher_document
 msgid "Remis par le caissier"
+msgstr ""
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.report_cash_voucher_document
+msgid "Remis à"
 msgstr ""
 
 #. module: elite_clearance
@@ -6604,18 +6822,16 @@ msgid "Split the bill"
 msgstr "Scinder la facture"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_capture_wizard__is_advance
+msgid "Staff Advance to Me"
+msgstr "Avance de caisse à moi-même"
+
+#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_settings_wizard__clearance_advance_account_id
 #: model:ir.model.fields,field_description:elite_clearance.field_res_company__clearance_advance_account_id
 #: model:ir.model.fields,field_description:elite_clearance.field_res_config_settings__clearance_advance_account_id
 msgid "Staff Advances Account (421101)"
 msgstr "Compte des avances au personnel (421101)"
-
-#. module: elite_clearance
-#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__employee_id
-#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_capture_wizard__employee_id
-#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_settle_wizard__employee_id
-msgid "Staff Collecting the Funds"
-msgstr "Membre du personnel qui perçoit les fonds"
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.view_clearance_invoice_search
@@ -6870,6 +7086,13 @@ msgstr ""
 "Le motif du facturier pour facturer ce débours à un montant différent du coût, saisi sur sa propre ligne de l'écran de facturation."
 
 #. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_expense__needs_delivery_date
+msgid ""
+"The category's name starts with Transport, so the delivery date is asked for when the advance is justified."
+msgstr ""
+"Le nom de la catégorie commence par Transport : la date de livraison est donc demandée à la justification de l'avance."
+
+#. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_account_bank_statement_line__logistics_file_id
 #: model:ir.model.fields,help:elite_clearance.field_account_move__logistics_file_id
 #: model:ir.model.fields,help:elite_clearance.field_logistics_invoice_cancel_wizard__file_id
@@ -6923,6 +7146,20 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form
 msgid "The customer record is missing what the invoice prints:"
 msgstr "La fiche client ne comporte pas ce que la facture imprime :"
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_expense__manifesting_date
+msgid ""
+"The date the shipping line or agent manifested the cargo. Asked for before the amount when the third party is a manifesting vendor (Settings -> Manifesting Vendors); it starts the transit time of an Import Maritime file."
+msgstr ""
+"La date à laquelle la compagnie maritime ou l'agent a manifesté la cargaison. Demandée avant le montant lorsque le tiers est un fournisseur de manifeste (Paramètres -> Fournisseurs de manifeste) ; elle déclenche le temps de transit d'un dossier Import Maritime."
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_expense__delivery_date
+msgid ""
+"The day the goods were delivered. Required to justify a transport advance; it closes the file's overall turnaround."
+msgstr ""
+"Le jour où les marchandises ont été livrées. Obligatoire pour justifier une avance de transport ; elle clôt le délai global du dossier."
 
 #. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_account_move_line__clearance_adjustment
@@ -7056,19 +7293,12 @@ msgstr ""
 "Les lignes choisies sont extournées au grand livre par un avoir comptabilisé immédiatement. Ce qu'elles facturaient redevient facturable, et le dossier peut être facturé à nouveau selon les nouvelles instructions."
 
 #. module: elite_clearance
-#: model:ir.model.fields,help:elite_clearance.field_logistics_expense_capture_wizard__employee_id
-msgid ""
-"The member of staff who collects the money as an advance and must justify it. Leave empty if a supplier is paid."
-msgstr ""
-"Le membre du personnel qui perçoit l'argent en avance et doit le justifier. Laissez vide si un fournisseur est payé."
-
-#. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_logistics_expense__employee_id
 #: model:ir.model.fields,help:elite_clearance.field_logistics_expense_settle_wizard__employee_id
 msgid ""
-"The member of staff who collects the money as an advance and must justify it. Named by the requester, or by Finance."
+"The member of staff the advance stands against on 421101 and who must justify it: the requester, set when the advance is keyed. Finance may correct it."
 msgstr ""
-"Le membre du personnel qui perçoit l'argent en avance et doit le justifier. Nommé par le demandeur, ou par Finance."
+"Le membre du personnel au nom duquel l'avance est portée au 421101 et qui doit la justifier : le demandeur, défini à la saisie de l'avance. Finance peut le corriger."
 
 #. module: elite_clearance
 #. odoo-python
@@ -7168,6 +7398,13 @@ msgstr ""
 "Le numéro de registre de la société. Utilisez-le s'il diffère du NIU. Il doit être unique parmi tous les partenaires d'un même pays"
 
 #. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_expense_capture_wizard__employee_id
+msgid ""
+"The requester: the advance stands against them whoever collects the cash."
+msgstr ""
+"Le demandeur : l'avance est portée à son nom, quelle que soit la personne qui perçoit les espèces."
+
+#. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
 #: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
 msgid ""
@@ -7197,6 +7434,15 @@ msgstr ""
 "L'expéditeur ou le fournisseur, imprimé sur la facture comme Fournisseur."
 
 #. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_clearance_settings_wizard__clearance_manifesting_vendor_ids
+#: model:ir.model.fields,help:elite_clearance.field_res_company__clearance_manifesting_vendor_ids
+#: model:ir.model.fields,help:elite_clearance.field_res_config_settings__clearance_manifesting_vendor_ids
+msgid ""
+"The shipping lines and agents whose disbursement carries the manifesting date. Keying a cost against one of them asks for the date before the amount, and paying that cost ends the transit time of an Import Maritime file."
+msgstr ""
+"Les compagnies maritimes et agents dont le débours porte la date de manifeste. Saisir un coût contre l'un d'eux demande la date avant le montant, et payer ce coût termine le temps de transit d'un dossier Import Maritime."
+
+#. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_logistics_expense__signed_voucher_ids
 msgid ""
 "The signed voucher, uploaded by the Cashier. Until it is here the file cannot be closed for operations."
@@ -7209,6 +7455,13 @@ msgid ""
 "The staff member who followed the file in Teese. Kept for the imported files only: the owner removed it from the form on 10/10/2026, because the Responsible user already names who follows a file."
 msgstr ""
 "Le membre du personnel qui suivait le dossier dans Teese. Conservé pour les dossiers importés uniquement : le champ Responsable indique déjà qui suit un dossier."
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_expense__needs_manifesting_date
+msgid ""
+"The third party is one of the company's manifesting vendors, so the manifesting date is asked for."
+msgstr ""
+"Le tiers est l'un des fournisseurs de manifeste de la société : la date de manifeste est donc demandée."
 
 #. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_logistics_expense__cash_voucher_ids
@@ -7443,15 +7696,53 @@ msgid "Transit Agent"
 msgstr "Agent Transit"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__transit_end
+msgid "Transit Ends"
+msgstr "Fin du transit"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_service_type__transit_end_rule
+msgid "Transit Ends At"
+msgstr "Le transit se termine à"
+
+#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__transit_authorisation_ref
 #: model:logistics.document.type,name:elite_clearance.doc_type_authorisation
 msgid "Transit Order / Authorisation"
 msgstr "Ordre de transit / Autorisation"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__transit_start
+msgid "Transit Starts"
+msgstr "Début du transit"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_service_type__transit_start_rule
+msgid "Transit Starts At"
+msgstr "Le transit commence à"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__transit_days
+msgid "Transit Time (days)"
+msgstr "Temps de transit (jours)"
+
+#. module: elite_clearance
+#: model:ir.actions.act_window,name:elite_clearance.action_logistics_service_type_transit
+#: model:ir.ui.menu,name:elite_clearance.menu_clearance_transit_settings
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_service_type_view_list_transit
+msgid "Transit Time Settings"
+msgstr "Paramètres de temps de transit"
+
+#. module: elite_clearance
 #: model:res.groups,comment:elite_clearance.group_clearance_transit
 msgid "Transit team. May key out-of-pocket expenses on a file."
 msgstr "Équipe Transit. Peut saisir des débours sur un dossier."
+
+#. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__clearance_turnaround__step__file_transit
+#: model:ir.model.fields.selection,name:elite_clearance.selection__clearance_turnaround_target__step__file_transit
+msgid "Transit time: per the service type's rule"
+msgstr "Temps de transit : selon la règle du type de service"
 
 #. module: elite_clearance
 #. odoo-python
@@ -7486,6 +7777,7 @@ msgstr ""
 #: model:ir.actions.act_window,name:elite_clearance.action_clearance_turnaround
 #: model:ir.model,name:elite_clearance.model_clearance_turnaround
 #: model:ir.ui.menu,name:elite_clearance.menu_clearance_turnaround
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form
 #: model_terms:ir.ui.view,arch_db:elite_clearance.view_clearance_turnaround_graph
 #: model_terms:ir.ui.view,arch_db:elite_clearance.view_clearance_turnaround_list
 #: model_terms:ir.ui.view,arch_db:elite_clearance.view_clearance_turnaround_pivot
@@ -7890,6 +8182,20 @@ msgstr ""
 "Que reste-t-il à faire ou à facturer sur ce dossier importé, et pourquoi le traiter dans Odoo ?"
 
 #. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_service_type__transit_start_rule
+msgid ""
+"What starts the transit clock on a file of this service. Empty: no transit time is measured for this service."
+msgstr ""
+"Ce qui déclenche le compteur de transit sur un dossier de ce service. Vide : aucun temps de transit n'est mesuré pour ce service."
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_service_type__transit_end_rule
+msgid ""
+"What stops the transit clock. The manifesting vendor's invoice is the disbursement keyed against a vendor listed under Settings -> Manifesting Vendors; it is paid when Finance pays it out."
+msgstr ""
+"Ce qui arrête le compteur de transit. La facture du fournisseur de manifeste est le débours saisi contre un fournisseur listé sous Paramètres -> Fournisseurs de manifeste ; elle est payée lorsque Finance la décaisse."
+
+#. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_logistics_file__recharge_amount
 msgid ""
 "What the client is actually charged for disbursements. Left at zero the invoice recharges at cost; any other figure is an adjustment and has to be approved before the invoice is raised."
@@ -7963,6 +8269,11 @@ msgstr ""
 "Quand Finance a saisi le mode de paiement et le journal, confirmé la contrepartie, et envoyé pour approbation."
 
 #. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_file__manifesting_paid_on
+msgid "When Finance paid the manifesting vendor's disbursement."
+msgstr "Quand Finance a payé le débours du fournisseur de manifeste."
+
+#. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_logistics_expense__date_justification_submitted
 msgid ""
 "When Finance sent the supporting documents to the Operations Manager for review."
@@ -7990,6 +8301,13 @@ msgstr ""
 "Quand l'avance a été justifiée et reclassée du 421101 vers le compte des débours engagés."
 
 #. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_file__commercial_invoice_received
+msgid ""
+"When the commercial invoice was received on the checklist. The overall turnaround starts here."
+msgstr ""
+"Quand la facture commerciale a été reçue sur la liste des documents. Le délai global commence ici."
+
+#. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_logistics_expense__date_requested
 msgid ""
 "When the disbursement was asked for. Set when the expense is keyed; with Paid On this gives the disbursement lag."
@@ -8002,6 +8320,13 @@ msgid ""
 "When the first supporting document was attached to this expense. Stamped by the upload itself."
 msgstr ""
 "Quand la première pièce justificative a été jointe à ce débours. Horodaté par le chargement lui-même."
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_file__documents_received_on
+msgid ""
+"When the last mandatory document of the checklist was received. Empty while one is still missing."
+msgstr ""
+"Quand le dernier document obligatoire de la liste a été reçu. Vide tant qu'il en manque un."
 
 #. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_logistics_expense__date_submitted
@@ -8138,6 +8463,13 @@ msgstr ""
 "Si l'utilisateur courant peut saisir ou modifier le canal de paiement et la contrepartie dans l'état actuel du débours."
 
 #. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_expense__can_edit_collector
+msgid ""
+"Whether the current user may still change who collects the cash: the requester while the expense is theirs, Finance until it is paid out."
+msgstr ""
+"Si l'utilisateur courant peut encore changer qui perçoit les espèces : le demandeur tant que le débours est le sien, Finance jusqu'au décaissement."
+
+#. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
 msgid ""
 "Which accounts print, and in what order.                                        Empty prints the first two the company has.                                        Maintain the accounts themselves under                                        Invoicing > Bank Accounts."
@@ -8202,6 +8534,29 @@ msgid ""
 "Who closes a billed file for good. Empty = any Head of Customer Service."
 msgstr ""
 "Qui clôture définitivement un dossier facturé. Vide = tout Chef du Service Client."
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/logistics_expense.py:0
+msgid ""
+"Who collects the cash for %s can no longer be changed: the requester names them while the disbursement is theirs, Finance until it is paid out."
+msgstr ""
+"Qui perçoit les espèces pour %s ne peut plus être modifié : le demandeur le désigne tant que le débours est le sien, Finance jusqu'au décaissement."
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_expense__collector_id
+#: model:ir.model.fields,help:elite_clearance.field_logistics_expense_settle_wizard__collector_id
+msgid ""
+"Who comes to the till for the money - the requester, unless they name somebody else. Administrative only: the requester stays accountable and the entries are raised in their name, whoever collected the cash."
+msgstr ""
+"Qui vient à la caisse chercher l'argent - le demandeur, sauf s'il désigne quelqu'un d'autre. Purement administratif : le demandeur reste responsable et les écritures sont passées à son nom, quelle que soit la personne qui a perçu les espèces."
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_expense_capture_wizard__collector_id
+msgid ""
+"Who comes to the till for the money - you, unless you name somebody else. Administrative only: the requester stays accountable."
+msgstr ""
+"Qui vient à la caisse chercher l'argent - vous, sauf si vous désignez quelqu'un d'autre. Purement administratif : le demandeur reste responsable."
 
 #. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_logistics_expense_capture_wizard__vendor_id
@@ -8786,6 +9141,17 @@ msgid "the full legal name, as it prints on an invoice"
 msgstr "la raison sociale complète, telle qu'imprimée sur une facture"
 
 #. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_form
+msgid "the requester - who must justify it"
+msgstr "le demandeur - qui doit la justifier"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_capture_form
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_form
+msgid "the requester, unless somebody else collects it"
+msgstr "le demandeur, sauf si quelqu'un d'autre les perçoit"
+
+#. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.expense_capture_wizard_view_form
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_capture_form
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_form
@@ -8805,13 +9171,6 @@ msgstr "était le total facturé ;"
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.expense_capture_wizard_view_form
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_capture_form
-#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_form
-msgid "who collects the money"
-msgstr "qui perçoit l'argent"
-
-#. module: elite_clearance
-#: model_terms:ir.ui.view,arch_db:elite_clearance.expense_capture_wizard_view_form
-#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_capture_form
 msgid "who is paid"
 msgstr "qui est payé"
 
@@ -8824,3 +9183,8 @@ msgstr "qui est payé - sans objet pour une avance au personnel"
 #: model_terms:ir.ui.view,arch_db:elite_clearance.billing_wizard_view_form
 msgid "why it differs from cost"
 msgstr "pourquoi il diffère du coût"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.expense_capture_wizard_view_form
+msgid "you, unless somebody else collects it"
+msgstr "vous, sauf si quelqu'un d'autre les perçoit"
