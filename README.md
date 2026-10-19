@@ -169,12 +169,56 @@ lines after approval lapses it; a refusal bills at cost.
 `addons/elite_clearance_teese` is a one-off importer for the Teese warehouse
 export: upload the zip on *Clearance → Configuration → Teese Legacy Import*.
 It is record-keeping only — legacy invoices arrive as **draft** customer
-invoices that a server-side guard refuses to post, and nothing is posted;
+invoices and nothing is posted;
 the balances arrive as a trial balance at the 31/08/2026 cutoff. It is idempotent and never puts
 the data in this repository. The mapping,
 every judgement call and the reconciliation figures are in
 [docs/legacy-migration-teese.md](docs/legacy-migration-teese.md). Uninstall
 it after go-live; the fields it needs live in `elite_clearance`.
+
+### Legacy uploads (19.0.55, brief of 19/10/2026)
+
+The zip importer is superseded by the owner's own load scripts, which
+feed the module through the API. *Clearance → Legacy uploads* groups
+what they need:
+
+- **Two loads.** The Sage general ledger to 31/08/2026 is loaded as plain
+  journal entries (not through the module). The Teese history to
+  16/10/2026 is loaded with `model.load()` on files, checklist lines,
+  disbursements, invoices and invoice lines under the context key
+  `clearance_migration=True`, each row carrying an external id so a
+  second load updates instead of duplicating; then
+  `logistics.file.action_migration_finalize()` posts the invoices, marks
+  the billed files as billed, frozen and locked, and books the débours
+  result when due. Both calls are idempotent.
+- **Every Teese invoice is posted**, whatever its date; its lines land
+  on the accounts named in Settings according to their clearance
+  category (débours, service, VAT), never on an account given by the
+  load. A disbursement paid on or before 31/08/2026 is loaded with
+  `accounting = record_only` and posts nothing; one paid after, or
+  unpaid, posts through the legacy channel mapped under *Payment
+  Channels*.
+- **Files opened on or before the cutoff** (`clearance.legacy_cutoff_date`,
+  16/10/2026) may be saved, started and billed with mandatory fields
+  missing; a banner lists them. Their disbursements go through the single
+  legacy débours account 471100 with the customer as partner. A file
+  opened after the cutoff is checked like a new one and keeps the
+  two-account scheme.
+- **A billed file is locked**: the file, its disbursements and its
+  invoice lines are read-only, in Python, for the screens, Odoo's Import
+  and the API alike. *Re-open for Additional Billing* is the Head of
+  Customer Service's, takes a reason, keeps the earlier round frozen and
+  opens the next one; re-billing invoices only the new round and posts
+  only the change in the débours result.
+- **The débours result** of a fully paid legacy file (billed débours,
+  Handling excluded, less débours incurred) is booked once on 758801 or
+  658801 when the file is billed and every approved disbursement is
+  paid; until then it reads Pending. A daily job and a button on the
+  file re-evaluate it.
+- **The accountant's two actions** on an approved disbursement nobody
+  paid here: *Confirm Sage Payment* (settled, record only, nothing
+  posted) and *Cancel Approval* (reason required). The list *Approved
+  Expenses Awaiting Payment* shows them, older than 60 days in red.
 
 ## Repository layout
 
