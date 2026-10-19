@@ -15,7 +15,7 @@ working memory that is *not* obvious from the code.
   <in the Odoo.sh project settings — never in this repository, it is public>, Custom plan). The old Odoo Online db (elite-advisors,
   saas~19.3) holds no data and will lapse. Never build against 19.3 minor APIs.
 
-## The module: addons/elite_clearance (v19.0.54.0.0)
+## The module: addons/elite_clearance (v19.0.55.0.0)
 Customs clearance job files for a logistics/clearance services provider.
 - `logistics.file` — one file = one clearance job. States:
   draft → in_progress → ops_closed → done (+cancel, +imported). `imported`
@@ -864,6 +864,87 @@ Customs clearance job files for a logistics/clearance services provider.
      d'importation", the owner's to rename): a regime of its own, no
      special rule - these files are billed, reopened for Additional
      expenditure, closed for operations and billed again.
+- **Legacy uploads (owner's change brief v3, 19/10/2026; version 19.0.55;
+  `models/legacy_uploads.py`, tests `test_legacy_uploads.py` = the eleven
+  acceptance tests of the brief).** The owner's own scripts load the Sage
+  general ledger to 31/08/2026 as plain `account.move` and the Teese
+  history to 16/10/2026 through `model.load()` with context
+  `clearance_migration=True`, then call `logistics.file.
+  action_migration_finalize()` (idempotent). Decisions of 20/10/2026:
+  1. `is_legacy` KEEPS its meaning (Teese ZIP record, nothing posted);
+     the brief's relief is `legacy_relief` (stored compute: opened on or
+     before `ir.config_parameter clearance.legacy_cutoff_date`, default
+     16/10/2026, or loaded by the migration). A relieved file may be
+     saved, started and billed with mandatory fields missing -
+     `_get_missing_mandatory_fields()` lists them in a banner
+     (`missing_fields_display`); `_check_mandatory_complete()` blocks the
+     state buttons of a strict file (opened after the cutoff, or
+     `completion_required` after a re-opening). The older gates
+     (`_check_ready_to_work`, `_check_cargo_described`, the two billing
+     checks, the two constraints, `action_start_work`) are overridden to
+     stand down under the relief.
+  2. **Every Teese invoice is POSTED** - the `action_post` guard on
+     `is_legacy` is gone; the ZIP importer's drafts are deleted before
+     load B. The entry per invoice IS the invoice's own posting; under
+     the migration context `_clearance_migration_prepare()` sets each
+     line's account from its `clearance_category` (`debours` -> 471100
+     on a relieved file, `vat` -> `clearance_vat_account_id`, `prestation`
+     by `clearance_service_kind`), never from the load.
+  3. **Files before 17/10/2026 go through the single 471100**
+     (`clearance_legacy_oop_account_id`, the CUSTOMER as partner, no
+     accrual - `_oop_accrual_account()` returns empty); files after keep
+     the two-account scheme. `action_settle` / `action_justify_finance`
+     branch on `file_id.legacy_relief`; the replay uses
+     `_post_legacy_settlement()` / `_post_legacy_justification()` at the
+     row's own dates. `accounting = record_only` posts NOTHING (paid on
+     or before the GL cutoff). A payment to a payee stops at `settled`
+     whatever `target_state` says.
+  4. **Lock and rounds.** Billing sets `billing_status = billed`,
+     `is_locked`, `billing_round += 1`, freezes the recharged
+     disbursements (`is_frozen`, `billing_round`) and stamps the round on
+     the invoices. `write()`/`unlink()` on the file (`LOCK_EXEMPT` is what
+     stays writable: workflow stamps, chatter, `internal_note`), on the
+     expense (`FROZEN_FIELDS`) and on a posted invoice's lines refuse
+     unless context `clearance_migration` or `clearance_unlock` (the
+     module's own writes). `button_draft` is refused on a locked file's
+     invoice. **Re-opening is the Head of Customer Service's** (owner
+     20/10; `APPROVAL_KINDS['reopen']` moved from the Ops head): the
+     existing reopen wizard, opened by "Re-open for Additional Billing"
+     on a locked file, calls `_reopen_for_billing()` -> `reopened`,
+     `completion_required`, earlier round frozen, next bill is round + 1
+     (`_billable_expenses` excludes frozen rows).
+  5. **The débours result** (relieved files only - a new file books its
+     variance at billing): `_evaluate_debours_result()` is `none` /
+     `not_billed` / `pending` (an approved disbursement unpaid) / `due`,
+     and when due posts the CHANGE since `_result_already_posted()`:
+     Dr 471100 / Cr 758801 or Dr 658801 / Cr 471100, partner the
+     customer, dated the later of the billing and the last payment, ref
+     `<file> - Écart sur débours[ round n]`, `clearance_entry_type =
+     debours_result`. Handling lines (`account.move.line.is_handling`)
+     are excluded. Called from `account.move._post` (invoices), from the
+     accountant's actions, by the button and by the daily cron
+     `cron_evaluate_debours_results`. `skip_gain_loss` -> `none`.
+  6. **The accountant's actions** on an approved disbursement nobody
+     paid (kind `sage_confirm`, Head of Finance): Confirm Sage Payment
+     (`clearance.sage.payment.wizard` -> settled, or justified for an
+     advance on a billed file, `record_only`, nothing posted) and Cancel
+     Approval (through the rejection dialog). List: Legacy uploads ->
+     Approved Expenses Awaiting Payment (`age_days > 60` in red).
+  7. Legacy payment channels: `clearance.payment.channel` (TEESE name ->
+     journal; seeded names, journals the owner's), read by the replay
+     from `logistics.expense.teese_channel`. Menu "Legacy uploads"
+     (Finance + Clearance Admin): files loaded from TEESE, awaiting
+     payment, journal entries by file, payment channels; server action
+     "Finalize migration" on the files list (Clearance Admin).
+  8. Field names the load script needs: `logistics.file` (`file_id` on
+     documents and disbursements, `logistics_file_id` on invoices),
+     `teese_ref` on all three, `target_state` + `accounting` +
+     `teese_channel` + `sage_match` on the expense, `clearance_category`
+     + `clearance_service_kind` on the line, `document_type` on the
+     invoice. D1 is NOT enforced beyond `completion_required` (it
+     contradicts acceptance test 1); D3/D4/D5/D6 as the brief says.
+     `migrations/19.0.55.0.0/post-migrate.py` marks files already billed
+     under earlier builds as round 1, locked, frozen.
 - **Payment evidence (owner, 01/10/2026).** `ir.attachment.clearance_kind`
   ('request' / 'payment', NULL = request) tells a disbursement's documents
   apart: `logistics.expense.request_document_ids` and

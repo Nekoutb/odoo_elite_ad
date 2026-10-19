@@ -5,10 +5,11 @@ from odoo.exceptions import UserError
 class LogisticsFileReopenWizard(models.TransientModel):
     """Reopening a closed file is an exception and must be approved.
 
-    The Head of Service Operations signs it (owner spec 14/09/2026): closing a
-    billed file is the Billing Agent's own decision, but going back into
-    a closed one - for more billing, a credit note, any adjustment - is
-    an operational judgement. The reason is posted to the file."""
+    The Head of Customer Service signs it (owner 20/10/2026; it was the
+    Head of Service Operations' from 14/09/2026): closing a billed file
+    is the Billing Agent's own decision, but going back into a closed
+    one - for more billing, a credit note, any adjustment - is not. The
+    reason is posted to the file."""
 
     _name = 'logistics.file.reopen.wizard'
     _description = "Reopen Clearance File"
@@ -49,9 +50,15 @@ class LogisticsFileReopenWizard(models.TransientModel):
             raise UserError(self.env._(
                 "%s is not closed — nothing to reopen.", file.name))
         file._log_reopening(self.reason_id, self.reason, target)
+        # A billed file is locked (brief v3, 19/10/2026): reopening it is
+        # re-opening for additional billing - the earlier round stays
+        # frozen, the file is strict from now on.
+        locked = file.is_locked
         file.write({'state': target,
                     'reopen_count': file.reopen_count + 1,
                     'date_closed': False})
+        if locked:
+            file._reopen_for_billing(self.reason_id, self.reason, target)
         file.message_post(body=self.env._(
             "File reopened to %(target)s (approval by %(user)s) - "
             "%(why)s: %(reason)s",

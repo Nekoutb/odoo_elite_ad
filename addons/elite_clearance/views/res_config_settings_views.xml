@@ -17,6 +17,22 @@
                                  help="Where an approved disbursement waits between being approved and being paid. Name it and the vendor is credited as soon as the disbursement is approved; paying it moves the debit across to Débours Engagés, which is what billing recharges. Leave it empty and nothing posts until payment.">
                             <field name="clearance_oop_payable_account_id"/>
                         </setting>
+                        <setting string="Legacy Débours Account (471100)"
+                                 help="The single débours account of files opened on or before the legacy cutoff: debited with the customer as partner, no accrual through the supplier, credited by the invoice.">
+                            <field name="clearance_legacy_oop_account_id"/>
+                        </setting>
+                        <setting string="Gain on Débours (758801)"
+                                 help="Credited with the débours result of a fully paid legacy file when what was billed exceeds what was incurred.">
+                            <field name="clearance_oop_gain_account_id"/>
+                        </setting>
+                        <setting string="Loss on Débours (658801)"
+                                 help="Debited with the débours result of a fully paid legacy file when what was incurred exceeds what was billed.">
+                            <field name="clearance_oop_loss_account_id"/>
+                        </setting>
+                        <setting string="VAT Collected (443100)"
+                                 help="Where the VAT line of a migrated invoice is credited.">
+                            <field name="clearance_vat_account_id"/>
+                        </setting>
                         <setting string="Employee Advances Account"
                                  help="Where cash advances sit until justified with supporting documents.">
                             <field name="clearance_advance_account_id"/>
@@ -187,8 +203,12 @@
                             <field name="clearance_file_close_approver_ids" widget="many2many_tags"/>
                         </setting>
                         <setting string="Reopening Approvers"
-                                 help="Who may reopen a file that has been closed - for more billing, a credit note or any other adjustment. Empty = any Clearance Head of Service Operations.">
+                                 help="Who may reopen a file that has been closed - for more billing, a credit note or any other adjustment. Empty = any Head of Customer Service.">
                             <field name="clearance_reopen_approver_ids" widget="many2many_tags"/>
+                        </setting>
+                        <setting string="Sage Payment Confirmation Approvers"
+                                 help="Who may confirm that an approved disbursement nobody paid here was paid in Sage, or cancel its approval. Empty = any Head of Service Finance.">
+                            <field name="clearance_sage_confirm_approver_ids" widget="many2many_tags"/>
                         </setting>
                         <setting string="Operations Close Approvers"
                                  help="Who may close a file for operations. Empty = any Clearance Head of Service Operations.">

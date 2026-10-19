@@ -167,15 +167,10 @@ class AccountMove(models.Model):
                 'file_close', file, detail=self.env._("Billed and posted"))
         return posted
 
-    def action_post(self):
-        legacy = self.filtered('is_legacy')
-        if legacy:
-            raise UserError(self.env._(
-                "%s was issued by the legacy system and is kept as a draft "
-                "for the record. Its revenue is in the trial balance "
-                "uploaded at the cutoff date; posting it would count that "
-                "revenue twice.", ", ".join(legacy.mapped('name'))))
-        return super().action_post()
+    # The guard that refused to post an is_legacy invoice is gone (owner
+    # 20/10/2026, brief v3): the general ledger loaded from Sage no longer
+    # carries the Teese revenue, so every Teese invoice is posted. The
+    # ZIP importer's drafts are deleted before the new load runs.
 
 
     # ------------------------------------------------------------------
@@ -527,7 +522,10 @@ class AccountMoveLine(models.Model):
 
     clearance_category = fields.Selection(
         [('debours', "Débours"), ('prestation', "Prestations"),
-         ('adjustment', "Recharge adjustment")],
+         ('adjustment', "Recharge adjustment"),
+         # a migrated invoice's VAT, given as its own line because the
+         # old system's VAT is not reproducible from a rate (brief v3)
+         ('vat', "VAT (migrated)")],
         string="Clearance Category", copy=False,
         help="Which block of the printed clearance invoice this line "
              "belongs under. An 'adjustment' line is accounting only: it "

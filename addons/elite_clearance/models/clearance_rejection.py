@@ -13,6 +13,7 @@ REJECTIONS = {
     ('logistics.expense', 'action_refuse'),
     ('logistics.expense', 'action_return_settlement'),
     ('logistics.expense', 'action_refuse_justification'),
+    ('logistics.expense', 'action_cancel_approval'),
     ('logistics.billing.service', 'action_refuse'),
 }
 

@@ -69,9 +69,16 @@ APPROVAL_KINDS = {
     # finished job, and going back into it - for more billing, a credit
     # note, any adjustment at all - is the Head of Service Operations's call
     # (owner spec 14/09/2026).
+    # Reopening is the Head of Customer Service's (owner 20/10/2026, brief
+    # v3 answer 5) - it was the Head of Service Operations' from 14/09.
     'reopen': ("clearance_reopen_approver_ids",
-               ('elite_clearance.group_clearance_ops_manager',),
+               ('elite_clearance.group_clearance_customer_service_manager',),
                "reopen a closed file"),
+    # The accountant confirms a Sage payment or cancels an approval on a
+    # disbursement nobody paid (brief v3, 6.5; D2).
+    'sage_confirm': ("clearance_sage_confirm_approver_ids",
+                     ('elite_clearance.group_clearance_finance_manager',),
+                     "confirm a Sage payment or cancel an approval"),
     # Opening a file and closing it for good are Customer Service's, and
     # the head of that service signs both (owner spec 02/10/2026).
     'file_open': ("clearance_file_open_approver_ids",
@@ -289,7 +296,13 @@ class ResCompany(models.Model):
         'res.users', 'clearance_reopen_approver_rel',
         string="Reopening Approvers",
         help="Who may reopen a file that has been closed. Empty = any "
-             "Clearance Head of Service Operations.")
+             "Head of Customer Service.")
+    clearance_sage_confirm_approver_ids = fields.Many2many(
+        'res.users', 'clearance_sage_confirm_approver_rel',
+        string="Sage Payment Confirmation Approvers",
+        help="Who may confirm, on an approved disbursement nobody paid "
+             "here, that its payment is in the Sage ledger - or cancel "
+             "the approval. Empty = any Head of Service Finance.")
     clearance_ops_close_approver_ids = fields.Many2many(
         'res.users', 'clearance_ops_close_approver_rel',
         string="Operations Close Approvers",

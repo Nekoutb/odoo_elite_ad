@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- A file opened on or before this date is history: it may be
+             saved, started and billed with mandatory fields missing
+             (brief v3, 19/10/2026). -->
+        <record id="param_legacy_cutoff_date" model="ir.config_parameter">
+            <field name="key">clearance.legacy_cutoff_date</field>
+            <field name="value">2026-10-16</field>
+        </record>
+
+        <!-- The payment channels of the old system. The journal each one
+             maps to is the owner's to set under Legacy uploads -> Payment
+             Channels (D4: AFB / SCB / BGFI for the three bank accounts). -->
+        <record id="channel_caisse_sage" model="clearance.payment.channel">
+            <field name="name">CAISSE SAGE</field>
+        </record>
+        <record id="channel_caisse_excel" model="clearance.payment.channel">
+            <field name="name">CAISSE EXCEL</field>
+        </record>
+        <record id="channel_caisse_smobilpay" model="clearance.payment.channel">
+            <field name="name">CAISSE SMOBILPAY</field>
+        </record>
+        <record id="channel_ancienne_caisse_smobilpay" model="clearance.payment.channel">
+            <field name="name">ANCIENNE CAISSE SMOBILPAY</field>
+        </record>
+        <record id="channel_bank_afb" model="clearance.payment.channel">
+            <field name="name">10005 00002 05987501001-50</field>
+        </record>
+        <record id="channel_bank_scb" model="clearance.payment.channel">
+            <field name="name">10002 00021 90000882509 90</field>
+        </record>
+        <record id="channel_bank_bgfi" model="clearance.payment.channel">
+            <field name="name">10035 01110 40008467011-58</field>
+        </record>
+
+        <!-- Daily: the files whose débours result waited for a payment
+             (brief v3, 6.4). -->
+        <record id="cron_evaluate_debours_results" model="ir.cron">
+            <field name="name">Clearance: post the débours results that became due</field>
+            <field name="model_id" ref="model_logistics_file"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_evaluate_debours_results()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active" eval="True"/>
+        </record>
+    </data>
+</odoo>

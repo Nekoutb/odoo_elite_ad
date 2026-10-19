@@ -73,6 +73,16 @@ class ClearanceSettingsWizard(models.TransientModel):
         related='company_id.clearance_ops_close_approver_ids', readonly=False)
     clearance_reopen_approver_ids = fields.Many2many(
         related='company_id.clearance_reopen_approver_ids', readonly=False)
+    clearance_sage_confirm_approver_ids = fields.Many2many(
+        related='company_id.clearance_sage_confirm_approver_ids', readonly=False)
+    clearance_legacy_oop_account_id = fields.Many2one(
+        related='company_id.clearance_legacy_oop_account_id', readonly=False)
+    clearance_oop_gain_account_id = fields.Many2one(
+        related='company_id.clearance_oop_gain_account_id', readonly=False)
+    clearance_oop_loss_account_id = fields.Many2one(
+        related='company_id.clearance_oop_loss_account_id', readonly=False)
+    clearance_vat_account_id = fields.Many2one(
+        related='company_id.clearance_vat_account_id', readonly=False)
     clearance_file_open_approver_ids = fields.Many2many(
         related='company_id.clearance_file_open_approver_ids', readonly=False)
     clearance_file_close_approver_ids = fields.Many2many(
@@ -159,6 +169,12 @@ class ClearanceSettingsWizard(models.TransientModel):
         'clearance_reopen_imported_approver_ids',
         'clearance_advance_waiver_approver_ids',
         'account_storno',
+        # legacy uploads (brief v3, 19/10/2026)
+        'clearance_sage_confirm_approver_ids',
+        'clearance_legacy_oop_account_id',
+        'clearance_oop_gain_account_id',
+        'clearance_oop_loss_account_id',
+        'clearance_vat_account_id',
     )
 
     def _check_manager(self):

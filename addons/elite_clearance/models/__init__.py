@@ -16,5 +16,7 @@ from . import logistics_reopen_reason
 from . import logistics_billing_service
 from . import logistics_file
 from . import logistics_expense
+# after the file, the expense and account.move: it inherits all three
+from . import legacy_uploads
 from . import clearance_turnaround
 from . import clearance_task

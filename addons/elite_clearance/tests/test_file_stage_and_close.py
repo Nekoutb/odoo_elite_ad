@@ -179,10 +179,11 @@ class TestFileStageAndClose(TransactionCase):
                                    "reopening it is not"):
             wizard.with_user(plain).action_reopen()
 
+        # the Head of Customer Service signs it (owner 20/10/2026)
         ops = self.env['res.users'].create({
-            'name': "Ops Mgr Stage", 'login': "ops.stage@clearance.test",
+            'name': "CS Head Stage", 'login': "cs.stage@clearance.test",
             'group_ids': [(6, 0, [self.env.ref(
-                'elite_clearance.group_clearance_ops_manager').id])]})
+                'elite_clearance.group_clearance_customer_service_manager').id])]})
         wizard.with_user(ops).action_reopen()
         self.assertEqual(self.file.state, 'ops_closed')
         self.assertFalse(self.file.date_closed)

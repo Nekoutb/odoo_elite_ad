@@ -94,10 +94,22 @@
                     <button name="action_mark_complete" type="object" string="Close the File"
                             invisible="state != 'ops_closed' or not invoices_posted"
                             groups="elite_clearance.group_clearance_customer_service_manager"/>
+                    <!-- Reopening is the Head of Customer Service's (owner
+                         20/10/2026). A billed file is locked: its reopening
+                         is "Re-open for additional billing", below. -->
                     <button name="%(action_logistics_reopen_wizard)d" type="action" string="Reopen (Approval)"
-                            invisible="state not in ('ops_closed', 'done')"
-                            groups="elite_clearance.group_clearance_manager"
+                            invisible="state not in ('ops_closed', 'done') or is_locked"
+                            groups="elite_clearance.group_clearance_customer_service_manager,elite_clearance.group_clearance_manager"
                             context="{'default_file_id': id}"/>
+                    <button name="action_reopen_for_billing" type="object" string="Re-open for Additional Billing"
+                            invisible="not is_locked or state == 'cancel'"
+                            groups="elite_clearance.group_clearance_customer_service_manager"/>
+                    <button name="action_evaluate_debours_result" type="object" string="Evaluate Débours Result"
+                            invisible="result_status not in ('pending', 'due')"
+                            groups="elite_clearance.group_clearance_finance"/>
+                    <button name="action_view_journal_entries" type="object" string="Journal Entries"
+                            invisible="not entry_count"
+                            groups="account.group_account_invoice,account.group_account_readonly"/>
                     <button name="action_cancel" type="object" string="Cancel"
                             invisible="state in ('done', 'cancel', 'imported')"/>
                     <button name="action_reset_to_draft" type="object" string="Reset to Draft"

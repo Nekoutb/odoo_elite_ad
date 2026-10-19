@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================================
+         The file: the lock, the relief banner, the legacy group
+         ============================================================ -->
+    <record id="logistics_file_view_form_legacy_uploads" model="ir.ui.view">
+        <field name="name">logistics.file.form.legacy.uploads</field>
+        <field name="model">logistics.file</field>
+        <field name="inherit_id" ref="logistics_file_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <field name="is_locked" invisible="1"/>
+                <field name="legacy_relief" invisible="1"/>
+                <field name="completion_required" invisible="1"/>
+                <field name="entry_count" invisible="1"/>
+                <field name="result_status" invisible="1"/>
+            </xpath>
+            <xpath expr="//widget[@name='web_ribbon'][1]" position="before">
+                <widget name="web_ribbon" title="Billed - Locked" bg_color="text-bg-danger"
+                        invisible="not is_locked"/>
+            </xpath>
+            <!-- The relief banner: what a new file would have to carry and
+                 this one lacks. Shown while the relief holds; once the
+                 file is strict the same list is what blocks the buttons. -->
+            <xpath expr="//div[@class='alert alert-info d-flex flex-wrap align-items-baseline mb-3']" position="before">
+                <div class="alert alert-warning" role="alert"
+                     invisible="not missing_fields_display or state in ('cancel', 'imported')">
+                    <b invisible="not legacy_relief or completion_required">Opened before the cutoff:</b>
+                    <b invisible="legacy_relief and not completion_required">This file is checked like a new one:</b>
+                    mandatory fields still missing
+                    <span invisible="not legacy_relief or completion_required">(the file may still be started and billed)</span>
+                    <span invisible="legacy_relief and not completion_required">(no state change until they are filled)</span>:
+                    <field name="missing_fields_display" nolabel="1" readonly="1" class="d-block mt-1"/>
+                </div>
+                <div class="alert alert-danger" role="alert" invisible="not is_locked">
+                    <b>Billed and locked.</b> Round <field name="billing_round" nolabel="1" readonly="1" class="oe_inline"/>
+                    is issued: the file, its disbursements and its invoice lines are read-only.
+                    The Head of Customer Service re-opens it for additional billing, with a reason.
+                </div>
+            </xpath>
+            <xpath expr="//group[@name='legacy']" position="after">
+                <group string="Legacy Uploads &amp; Billing Rounds" name="legacy_uploads">
+                    <group string="Provenance">
+                        <field name="teese_ref"/>
+                        <field name="legacy_relief" readonly="1"/>
+                        <field name="completion_required" readonly="1"/>
+                    </group>
+                    <group string="Billing">
+                        <field name="billing_status" readonly="1"/>
+                        <field name="billing_round" readonly="1"/>
+                        <field name="internal_note" placeholder="writable even when the file is locked"/>
+                    </group>
+                    <group string="Débours Result" groups="elite_clearance.group_clearance_finance">
+                        <field name="result_status" readonly="1"/>
+                        <field name="skip_gain_loss" readonly="1"/>
+                        <field name="debours_incurred"/>
+                        <field name="debours_billed"/>
+                        <field name="debours_result"/>
+                        <field name="debours_result_posted"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="logistics_file_view_list_legacy_uploads" model="ir.ui.view">
+        <field name="name">logistics.file.list.legacy.uploads</field>
+        <field name="model">logistics.file</field>
+        <field name="inherit_id" ref="logistics_file_view_list"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='state']" position="before">
+                <field name="billing_status" optional="hide"/>
+                <field name="is_locked" optional="hide"/>
+                <field name="result_status" optional="hide"/>
+                <field name="legacy_relief" optional="hide"/>
+                <field name="teese_ref" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="logistics_file_view_search_legacy_uploads" model="ir.ui.view">
+        <field name="name">logistics.file.search.legacy.uploads</field>
+        <field name="model">logistics.file</field>
+        <field name="inherit_id" ref="logistics_file_view_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <field name="teese_ref"/>
+                <filter name="locked" string="Billed - locked" domain="[('is_locked', '=', True)]"/>
+                <filter name="legacy_relief" string="Opened before the cutoff" domain="[('legacy_relief', '=', True)]"/>
+                <filter name="result_pending" string="Débours result pending" domain="[('result_status', '=', 'pending')]"/>
+                <filter name="result_due" string="Débours result due" domain="[('result_status', '=', 'due')]"/>
+                <filter name="migrated" string="Loaded from TEESE" domain="[('teese_ref', '!=', False)]"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         The disbursement: provenance, the freeze, the accountant's buttons
+         ============================================================ -->
+    <record id="logistics_expense_view_form_legacy_uploads" model="ir.ui.view">
+        <field name="name">logistics.expense.form.legacy.uploads</field>
+        <field name="model">logistics.expense</field>
+        <field name="inherit_id" ref="logistics_expense_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_open_sage_payment_wizard" type="object"
+                        string="Confirm Sage Payment"
+                        invisible="state not in ('approved', 'settlement_submitted', 'settlement_approved') or settlement_move_id"
+                        groups="elite_clearance.group_clearance_finance_manager"/>
+                <button name="action_open_rejection" type="object"
+                        context="{'rejection_method': 'action_cancel_approval'}"
+                        string="Cancel Approval"
+                        invisible="state not in ('approved', 'settlement_submitted', 'settlement_approved') or settlement_move_id"
+                        groups="elite_clearance.group_clearance_finance_manager"/>
+            </xpath>
+            <xpath expr="//sheet" position="inside">
+                <field name="is_frozen" invisible="1"/>
+            </xpath>
+            <xpath expr="//group[@string='Payment']" position="after">
+                <group string="Legacy &amp; Billing Round">
+                    <field name="source" readonly="1"/>
+                    <field name="teese_ref"/>
+                    <field name="teese_channel" invisible="not teese_channel"/>
+                    <field name="accounting" readonly="state not in ('draft', 'submitted')"
+                           groups="elite_clearance.group_clearance_finance"/>
+                    <field name="billing_round" readonly="1"/>
+                    <field name="is_frozen" readonly="1"/>
+                    <field name="sage_match" invisible="not sage_match"/>
+                    <field name="sage_payment_ref" invisible="not sage_payment_ref" readonly="1"/>
+                    <field name="sage_payment_date" invisible="not sage_payment_date" readonly="1"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Approved expenses awaiting payment (brief 6.5): older than 60
+         days in red, filterable by the Sage match. -->
+    <record id="logistics_expense_view_list_awaiting_payment" model="ir.ui.view">
+        <field name="name">logistics.expense.list.awaiting.payment</field>
+        <field name="model">logistics.expense</field>
+        <field name="arch" type="xml">
+            <list string="Approved Expenses Awaiting Payment" create="0"
+                  decoration-danger="age_days > 60">
+                <field name="name"/>
+                <field name="teese_ref" optional="show"/>
+                <field name="file_id"/>
+                <field name="category_id"/>
+                <field name="description" optional="hide"/>
+                <field name="vendor_id" optional="show"/>
+                <field name="employee_id" optional="show"/>
+                <field name="amount" sum="Total"/>
+                <field name="date_approved" optional="show"/>
+                <field name="age_days"/>
+                <field name="sage_match" optional="show"/>
+                <field name="state" widget="badge"/>
+                <field name="currency_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="logistics_expense_view_search_awaiting_payment" model="ir.ui.view">
+        <field name="name">logistics.expense.search.awaiting.payment</field>
+        <field name="model">logistics.expense</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="teese_ref"/>
+                <field name="file_id"/>
+                <field name="vendor_id"/>
+                <field name="sage_match"/>
+                <filter name="over_60" string="Older than 60 days" domain="[('age_days', '>', 60)]"/>
+                <filter name="proposed" string="Sage piece proposed"
+                        domain="[('sage_match', '!=', False), ('sage_match', 'not ilike', 'no match'), ('sage_match', 'not ilike', 'after sage')]"/>
+                <filter name="no_match" string="No Sage match" domain="[('sage_match', 'ilike', 'no match')]"/>
+                <filter name="after_sage" string="After the Sage period" domain="[('sage_match', 'ilike', 'after sage')]"/>
+                <group>
+                    <filter name="group_file" string="File" context="{'group_by': 'file_id'}"/>
+                    <filter name="group_vendor" string="Supplier" context="{'group_by': 'vendor_id'}"/>
+                    <filter name="group_match" string="Sage match" context="{'group_by': 'sage_match'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_logistics_expense_awaiting_payment" model="ir.actions.act_window">
+        <field name="name">Approved Expenses Awaiting Payment</field>
+        <field name="res_model">logistics.expense</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="logistics_expense_view_list_awaiting_payment"/>
+        <field name="search_view_id" ref="logistics_expense_view_search_awaiting_payment"/>
+        <field name="domain">[('state', 'in', ('approved', 'settlement_submitted', 'settlement_approved')), ('settlement_move_id', '=', False)]</field>
+        <field name="context">{'search_default_group_file': 0}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Nothing is waiting for a payment.</p>
+            <p>An approved disbursement nobody paid here is either confirmed from the Sage ledger or its approval is cancelled, with a reason.</p>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         The accountant's dialog
+         ============================================================ -->
+    <record id="clearance_sage_payment_wizard_view_form" model="ir.ui.view">
+        <field name="name">clearance.sage.payment.wizard.form</field>
+        <field name="model">clearance.sage.payment.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Confirm the Sage payment">
+                <p class="text-muted">
+                    The payment is already in the general ledger loaded from Sage. The
+                    disbursement is marked paid with the piece you give, and nothing is
+                    posted here.
+                </p>
+                <group>
+                    <field name="expense_id"/>
+                    <field name="amount"/>
+                    <field name="currency_id" invisible="1"/>
+                    <field name="sage_match" invisible="not sage_match"/>
+                    <field name="sage_payment_ref"/>
+                    <field name="sage_payment_date"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object" string="Confirm" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         Payment channels
+         ============================================================ -->
+    <record id="clearance_payment_channel_view_list" model="ir.ui.view">
+        <field name="name">clearance.payment.channel.list</field>
+        <field name="model">clearance.payment.channel</field>
+        <field name="arch" type="xml">
+            <list string="Legacy Payment Channels" editable="bottom">
+                <field name="name"/>
+                <field name="journal_id"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_clearance_payment_channel" model="ir.actions.act_window">
+        <field name="name">Payment Channels</field>
+        <field name="res_model">clearance.payment.channel</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Map each payment channel of the old system to a till or bank.</p>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         Journal entries carrying a file
+         ============================================================ -->
+    <record id="action_clearance_journal_entries" model="ir.actions.act_window">
+        <field name="name">Journal Entries by File</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('logistics_file_id', '!=', False)]</field>
+        <field name="context">{'search_default_posted': 1, 'search_default_group_file': 1}</field>
+    </record>
+
+    <record id="view_account_move_filter_legacy_uploads" model="ir.ui.view">
+        <field name="name">account.move.search.legacy.uploads</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_account_move_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <field name="logistics_file_id"/>
+                <field name="teese_ref"/>
+                <filter name="clearance_entry_type" string="Clearance entry" domain="[('clearance_entry_type', '!=', False)]"/>
+                <group>
+                    <filter name="group_file" string="Clearance file" context="{'group_by': 'logistics_file_id'}"/>
+                    <filter name="group_entry_type" string="Clearance entry type" context="{'group_by': 'clearance_entry_type'}"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_move_form_legacy_uploads" model="ir.ui.view">
+        <field name="name">account.move.form.legacy.uploads</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='ref']" position="after">
+                <field name="clearance_entry_type" invisible="not clearance_entry_type"/>
+                <field name="teese_ref" invisible="not teese_ref"/>
+                <field name="billing_round" invisible="not billing_round"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         Finalize the migration: a server action on the files list
+         ============================================================ -->
+    <record id="action_server_migration_finalize" model="ir.actions.server">
+        <field name="name">Finalize migration (billed, frozen, posted, result)</field>
+        <field name="model_id" ref="model_logistics_file"/>
+        <field name="binding_model_id" ref="model_logistics_file"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code">records.action_migration_finalize()</field>
+        <field name="group_ids" eval="[(4, ref('elite_clearance.group_clearance_admin'))]"/>
+    </record>
+
+    <record id="action_logistics_file_legacy" model="ir.actions.act_window">
+        <field name="name">Files Loaded from TEESE</field>
+        <field name="res_model">logistics.file</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('legacy_relief', '=', True)]</field>
+        <field name="context">{'search_default_migrated': 1}</field>
+    </record>
+
+    <!-- ============================================================
+         The tab: Clearance -> Legacy uploads
+         ============================================================ -->
+    <menuitem id="menu_clearance_legacy_uploads" name="Legacy uploads"
+              parent="menu_clearance_root" sequence="60"
+              groups="group_clearance_finance,group_clearance_admin"/>
+
+    <menuitem id="menu_clearance_legacy_files" name="Files Loaded from TEESE"
+              parent="menu_clearance_legacy_uploads"
+              action="action_logistics_file_legacy" sequence="10"/>
+
+    <menuitem id="menu_clearance_awaiting_payment" name="Approved Expenses Awaiting Payment"
+              parent="menu_clearance_legacy_uploads"
+              action="action_logistics_expense_awaiting_payment" sequence="20"/>
+
+    <menuitem id="menu_clearance_journal_entries" name="Journal Entries by File"
+              parent="menu_clearance_legacy_uploads"
+              action="action_clearance_journal_entries" sequence="30"/>
+
+    <menuitem id="menu_clearance_payment_channels" name="Payment Channels"
+              parent="menu_clearance_legacy_uploads"
+              action="action_clearance_payment_channel" sequence="40"
+              groups="group_clearance_manager,group_clearance_admin"/>
+
+</odoo>
