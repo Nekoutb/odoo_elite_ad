@@ -219,14 +219,12 @@ class LogisticsFile(models.Model):
     # ------------------------------------------------------------------
     # computes
     # ------------------------------------------------------------------
-    @api.depends('date_opened', 'legacy_id')
+    @api.depends('date_opened', 'legacy_id', 'teese_ref')
     def _compute_legacy_relief(self):
         cutoff = self.env['res.company']._clearance_legacy_cutoff()
         for file in self:
-            if file.legacy_relief:
-                continue            # once relieved, stays so (the migration sets it)
             file.legacy_relief = bool(
-                file.legacy_id
+                file.legacy_id or file.teese_ref
                 or (file.date_opened and file.date_opened <= cutoff))
 
     @api.depends('billing_status')
@@ -673,7 +671,9 @@ class LogisticsFile(models.Model):
             }) for account, debit, credit in postings],
         })
         move.action_post()
-        self.message_post(body=self.env._(
+        # sudo: the accountant who confirmed the payment may not have
+        # write on the file, and the note is the system's
+        self.sudo().message_post(body=self.env._(
             "Débours result posted (%(ref)s): %(kind)s of %(amount)s - "
             "billed %(billed)s against %(incurred)s incurred.",
             ref=move.name, kind="gain" if change > 0 else "loss",

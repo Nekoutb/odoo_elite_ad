@@ -79,8 +79,6 @@ class TestLegacyUploads(TransactionCase):
             'name': "Migration", 'is_company': True, 'supplier_rank': 1})
         cls.cat = env['logistics.expense.category'].create({
             'name': "KCT test", 'code': "L-KCT"})
-        cls.cat_nj = env['logistics.expense.category'].create({
-            'name': "Mole test", 'code': "L-MOLE", 'justification_required': False})
         cls.service = env['logistics.service.type'].create({
             'name': "Import legacy test", 'code': "L-IM", 'commission_rate': 0.0})
         cls.port = env['logistics.port'].create({'name': "Douala L"})

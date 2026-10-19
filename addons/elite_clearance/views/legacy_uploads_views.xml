@@ -23,7 +23,7 @@
             <!-- The relief banner: what a new file would have to carry and
                  this one lacks. Shown while the relief holds; once the
                  file is strict the same list is what blocks the buttons. -->
-            <xpath expr="//div[@class='alert alert-info d-flex flex-wrap align-items-baseline mb-3']" position="before">
+            <xpath expr="//field[@name='stage_owner']/parent::div" position="before">
                 <div class="alert alert-warning" role="alert"
                      invisible="not missing_fields_display or state in ('cancel', 'imported')">
                     <b invisible="not legacy_relief or completion_required">Opened before the cutoff:</b>
@@ -117,7 +117,8 @@
             <xpath expr="//sheet" position="inside">
                 <field name="is_frozen" invisible="1"/>
             </xpath>
-            <xpath expr="//group[@string='Payment']" position="after">
+            <!-- the Payment group: a string is not a selector, a field is -->
+            <xpath expr="//field[@name='collector_id']/parent::group" position="after">
                 <group string="Legacy &amp; Billing Round">
                     <field name="source" readonly="1"/>
                     <field name="teese_ref"/>
