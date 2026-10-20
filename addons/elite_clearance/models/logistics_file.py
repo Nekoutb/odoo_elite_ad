@@ -2176,6 +2176,9 @@ class LogisticsFile(models.Model):
                     'price_unit': line['amount'],
                     'account_id': handling_account.id,
                     'tax_ids': [fields.Command.clear()],
+                    # a product line, whatever the account: Odoo would
+                    # otherwise read the receivable and make it a term line
+                    'display_type': 'product',
                     'is_handling': True,
                     'clearance_category': 'prestation',
                     'clearance_unit': line.get('unit') or "Par dossier",

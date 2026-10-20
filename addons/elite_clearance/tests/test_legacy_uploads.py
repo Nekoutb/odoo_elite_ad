@@ -321,7 +321,7 @@ class TestLegacyUploads(TransactionCase):
         self._load_expense(file, 1165611, 'settled', "FA-T5b", paid_on="2026-09-05")
         inv = self._load_invoice(
             file, "EL26IM952",
-            debours=[("KCT", 3500000), ("Scanner", 1500000), ("Handling", 300000)],
+            debours=[("KCT", 3500000), ("Scanner", 1500000), ("Handling", 300000, True)],
             services=[("HAD", 450000, 'customs_fee')], vat=119753)
         self.assertEqual(inv.state, 'draft')
         file.action_migration_finalize()
@@ -353,7 +353,7 @@ class TestLegacyUploads(TransactionCase):
         self._load_expense(file, 165611, 'settled', "FA-T6b", paid_on="2026-09-05")
         self._load_invoice(
             file, "EL26IM952",
-            debours=[("KCT", 3500000), ("Scanner", 1500000), ("Handling", 300000)],
+            debours=[("KCT", 3500000), ("Scanner", 1500000), ("Handling", 300000, True)],
             services=[("HAD", 450000, 'customs_fee')], vat=119753)
         file.action_migration_finalize()
         self.assertEqual(file.debours_incurred, 3165611)
