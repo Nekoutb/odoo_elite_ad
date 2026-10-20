@@ -174,11 +174,10 @@ class LogisticsExpense(models.Model):
         return self.env.ref('elite_clearance.seq_logistics_expense').sudo()
 
 
-class LogisticsBillingWizardService(models.TransientModel):
-    _inherit = 'logistics.billing.wizard.service'
-
-    is_handling = fields.Boolean(
-        related='service_id.is_handling', string="Handling")
+# The billing screen's service line carries the flag too (related to
+# the component): it is declared in wizard/billing_wizard.py, because
+# the wizard package loads after models and an _inherit here would find
+# no such model in the registry (cost one CI cycle, 20/10/2026).
 
 
 # =====================================================================

@@ -703,6 +703,10 @@ class LogisticsBillingWizardService(models.TransientModel):
         domain="[('account_type', 'in', ('income', 'income_other'))]",
         help="Where this fee is credited. Left empty it falls back to the "
              "company's clearance fee income account.")
+    # Handling (owner's brief, 20/10/2026): due back to the customer, so
+    # the invoice builder credits the receivable and not the account above
+    is_handling = fields.Boolean(
+        related='service_id.is_handling', string="Handling")
 
     @api.onchange('service_id')
     def _onchange_service_id(self):
