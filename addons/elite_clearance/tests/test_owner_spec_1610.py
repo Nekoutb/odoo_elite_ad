@@ -266,7 +266,12 @@ class TestOwnerSpec1610(TransactionCase):
         file = self._file(customs_regime='im9')
         self.assertEqual(file.customs_regime, 'im9')
         file.state = 'ops_closed'
-        Wizard = self.env['logistics.file.reopen.wizard'].with_user(self.ops_head)
+        # the Head of Customer Service signs a reopening (owner 20/10/2026)
+        cs_head = self.env['res.users'].create({
+            'name': "CS Head 1610", 'login': "cs.head@1610.test",
+            'group_ids': [(6, 0, [self.env.ref(
+                'elite_clearance.group_clearance_customer_service_manager').id])]})
+        Wizard = self.env['logistics.file.reopen.wizard'].with_user(cs_head)
         self.assertTrue(Wizard._fields['reason_id'].required,
                         "no reopening without a reason from the list")
         self.assertIn('name="reason_id"', Wizard.get_view()['arch'])

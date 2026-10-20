@@ -198,23 +198,25 @@ class LogisticsFile(models.Model):
         copy=False, tracking=True, index=True)
     debours_incurred = fields.Monetary(
         string="Débours Incurred", compute='_compute_debours_result',
-        currency_field='currency_id',
+        compute_sudo=True, currency_field='currency_id',
         help="Every disbursement approved or later, cancelled ones aside.")
     debours_billed = fields.Monetary(
         string="Débours Billed", compute='_compute_debours_result',
-        currency_field='currency_id',
+        compute_sudo=True, currency_field='currency_id',
         help="The débours lines of the file's posted invoices, Handling "
              "excluded, net of credit notes.")
     debours_result = fields.Monetary(
         string="Result (billed - incurred)", compute='_compute_debours_result',
-        currency_field='currency_id')
+        compute_sudo=True, currency_field='currency_id')
     debours_result_posted = fields.Monetary(
         string="Result Already Posted", compute='_compute_debours_result',
-        currency_field='currency_id')
+        compute_sudo=True, currency_field='currency_id')
     move_ids = fields.One2many(
         'account.move', 'logistics_file_id', string="Journal Entries",
         domain=[('move_type', '=', 'entry')])
-    entry_count = fields.Integer(compute='_compute_entry_count')
+    # compute_sudo: an operations agent has no right on account.move,
+    # and the file form must open for every role
+    entry_count = fields.Integer(compute='_compute_entry_count', compute_sudo=True)
 
     # ------------------------------------------------------------------
     # computes
@@ -237,44 +239,48 @@ class LogisticsFile(models.Model):
         for file in self:
             file.entry_count = len(file.move_ids)
 
-    # Every field a new file must carry, with the label the banner prints.
+    # What the module has always demanded server-side, in one list: the
+    # regime and the three invoice essentials (also constraints, so a
+    # strict file cannot even be saved without them), the cargo figures
+    # (demanded at the start of work), and the customer record (demanded
+    # at the opening and at billing). The fields the form marks required
+    # in draft only (port, incoterm, currency, shipment type, importer)
+    # stay the form's business: making them a server gate at close or
+    # billing would have blocked every file in progress today.
     MANDATORY_FIELDS = [
         ('customs_regime', "Customs regime"),
         ('bl_awb_ref', "N° BL / N° LTA"),
         ('goods_description', "Produits (the goods being cleared)"),
         ('cargo_value', "Valeur RVC"),
-        ('cargo_value_currency_id', "Currency of the cargo value"),
-        ('shipment_type', "Shipment type"),
-        ('incoterm_id', "Incoterm"),
-        ('port_id', "Port"),
-        ('importer_name', "Importer"),
+    ]
+    CARGO_MANDATORY = [
         ('package_count', "Packages"),
         ('weight_kg', "Weight (kg)"),
     ]
 
-    def _get_missing_mandatory_fields(self):
-        """The labels of what a new file must carry and this one lacks:
-        the file's own fields, the containers unless Not Containerised,
-        the customer record the invoice prints, and the counterparty of
-        each disbursement."""
+    def _get_missing_mandatory_fields(self, full=True):
+        """The labels of what a new file must carry and this one lacks.
+        `full` adds the cargo figures and the customer record: what the
+        START of work and the opening demand, and what a re-opened
+        legacy file must complete before it is billed again."""
         self.ensure_one()
         missing = [label for name, label in self.MANDATORY_FIELDS
                    if not self[name]]
-        if not self.not_containerised and not self.container_count:
-            missing.append("Containers (or tick Not Containerised)")
-        missing += ["Customer: %s" % label
-                    for label in self._client_missing_details()]
-        for exp in self.expense_ids.filtered(lambda e: e.state != 'cancel'):
-            if not exp.vendor_id and not exp.employee_id:
-                missing.append("%s: supplier or advance holder" % exp.name)
+        if full:
+            missing += [label for name, label in self.CARGO_MANDATORY
+                        if not self[name]]
+            if not self.not_containerised and not self.container_count:
+                missing.append("Containers (or tick Not Containerised)")
+            missing += ["Customer: %s" % label
+                        for label in self._client_missing_details()]
         return missing
 
     @api.depends('customs_regime', 'bl_awb_ref', 'goods_description',
-                 'cargo_value', 'cargo_value_currency_id', 'shipment_type',
-                 'incoterm_id', 'port_id', 'importer_name', 'package_count',
-                 'weight_kg', 'not_containerised', 'container_count',
-                 'partner_id', 'expense_ids.vendor_id',
-                 'expense_ids.employee_id')
+                 'cargo_value', 'package_count', 'weight_kg',
+                 'not_containerised', 'container_count', 'partner_id',
+                 'partner_id.clearance_invoice_name', 'partner_id.street',
+                 'partner_id.email', 'partner_id.vat',
+                 'partner_id.company_registry')
     def _compute_missing_fields(self):
         for file in self:
             missing = file._get_missing_mandatory_fields()
@@ -290,12 +296,16 @@ class LogisticsFile(models.Model):
             return True
         return self.legacy_relief and not self.completion_required
 
-    def _check_mandatory_complete(self, what):
-        """The server-side gate every state-changing button runs."""
+    def _check_mandatory_complete(self, what, full=None):
+        """The server-side gate every state-changing button runs. The
+        full list applies at the start of work and to a file re-opened
+        for additional billing; a file that started under the full check
+        is held to the invoice essentials afterwards."""
         for file in self:
             if file._mandatory_relieved():
                 continue
-            missing = file._get_missing_mandatory_fields()
+            missing = file._get_missing_mandatory_fields(
+                full=file.completion_required if full is None else full)
             if missing:
                 raise UserError(self.env._(
                     "%(name)s cannot be %(what)s until every mandatory "
@@ -309,7 +319,7 @@ class LogisticsFile(models.Model):
     def _check_ready_to_work(self):
         if self._mandatory_relieved():
             return
-        self._check_mandatory_complete(self.env._("opened"))
+        self._check_mandatory_complete(self.env._("opened"), full=True)
         return super()._check_ready_to_work()
 
     def _check_cargo_described(self):
@@ -366,7 +376,7 @@ class LogisticsFile(models.Model):
             file.write({'state': 'in_progress',
                         'date_started': fields.Datetime.now()})
         strict = self - relieved
-        strict._check_mandatory_complete(self.env._("started"))
+        strict._check_mandatory_complete(self.env._("started"), full=True)
         return super(LogisticsFile, strict).action_start_work() if strict else True
 
     def action_close_operations(self):
@@ -532,8 +542,10 @@ class LogisticsFile(models.Model):
         credit notes, Handling excluded. Credit notes count negative."""
         self.ensure_one()
         total = 0.0
+        # is_legacy: the ZIP importer's drafts, outside every total
         moves = self.invoice_ids.sudo().filtered(
             lambda m: m.state == 'posted' and m._clearance_stands()
+            and not m.is_legacy
             and m.move_type in ('out_invoice', 'out_refund'))
         for move in moves:
             sign = -1 if move.move_type == 'out_refund' else 1
@@ -598,7 +610,7 @@ class LogisticsFile(models.Model):
                 status = 'none'
             elif not file.invoice_ids.sudo().filtered(
                     lambda m: m.state == 'posted' and m._clearance_stands()
-                    and m.move_type == 'out_invoice'):
+                    and not m.is_legacy and m.move_type == 'out_invoice'):
                 status = 'not_billed'
             elif file._unpaid_approved_expenses():
                 status = 'pending'
@@ -830,8 +842,14 @@ class LogisticsExpense(models.Model):
                 fields=", ".join(sorted(touched))))
 
     def write(self, vals):
+        # ONE write: the freeze guard first, the migration replay after.
+        # (The first build had two `write` methods in this class and the
+        # second silently replaced the first - cost one CI cycle.)
         self._check_not_frozen(vals)
-        return super().write(vals)
+        res = super().write(vals)
+        if _migrating(self.env) and ('target_state' in vals or 'state' in vals):
+            self._migration_replay([vals] * len(self))
+        return res
 
     def _notify_landed(self):
         # seven thousand replayed rows would ring seven thousand bells
@@ -1103,12 +1121,6 @@ class LogisticsExpense(models.Model):
             legacy_import=True)).create(vals_list)
         records._migration_replay(vals_list)
         return records.with_env(self.env)
-
-    def write(self, vals):
-        res = super().write(vals)
-        if _migrating(self.env) and ('target_state' in vals or 'state' in vals):
-            self._migration_replay([vals] * len(self))
-        return res
 
     def _migration_replay(self, vals_list):
         """Walk the states up to target_state, stamping the dates given

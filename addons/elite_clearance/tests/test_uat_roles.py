@@ -922,7 +922,7 @@ class TestUatRoles(TransactionCase):
         with self.case('UAT-27', "A cost that arrives late", 'OPSM, OPS, BILL'):
             file = self._ready()
             self._bill(file)
-            self.env['logistics.file.reopen.wizard'].with_user(self.opsm).create({
+            self.env["logistics.file.reopen.wizard"].with_user(self.csm).create({
                 'reason_id': self.env.ref('elite_clearance.reopen_reason_other').id, 'file_id': file.id, 'target_state': 'in_progress',
                 'reason': "Facture de surestaries recue apres facturation."}).action_reopen()
             self.check(file.state == 'in_progress', "back to operations")
@@ -959,7 +959,7 @@ class TestUatRoles(TransactionCase):
             self.refused(lambda: Reopen.with_user(self.bill).create({
                 'reason_id': self.env.ref('elite_clearance.reopen_reason_other').id, 'file_id': file.id, 'target_state': 'ops_closed', 'reason': "Avoir."}).action_reopen(),
                 "Billing may not reopen")
-            Reopen.with_user(self.opsm).create({
+            Reopen.with_user(self.csm).create({
                 'reason_id': self.env.ref('elite_clearance.reopen_reason_other').id, 'file_id': file.id, 'target_state': 'ops_closed', 'reason': "Avoir a emettre."}).action_reopen()
             self.check(file.state == 'ops_closed', "back to billing")
             w = Credit.with_context(active_id=inv.id).create({'reason': "Ligne en trop."})

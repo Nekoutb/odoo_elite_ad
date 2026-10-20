@@ -246,9 +246,11 @@ class TestLegacyImport(TransactionCase):
         self.assertEqual(deb.price_unit, 250000)
         self.assertEqual(deb.account_id, self.oop)
         self.assertFalse(deb.tax_ids)
-        with self.assertRaises(UserError):
-            inv.action_post()
-        self.assertEqual(inv.state, 'draft', "Still a draft after the refused post.")
+        # The guard that refused to post it is gone (owner's brief v3,
+        # 20/10/2026): the general ledger no longer carries the Teese
+        # revenue, so the new load posts every Teese invoice. The ZIP
+        # importer still creates drafts, to be deleted before that load.
+        self.assertEqual(inv.state, 'draft')
         credit = f.invoice_ids.filtered(lambda m: m.name == "AV26IM001")
         self.assertEqual(credit.move_type, 'out_refund')
         self.assertEqual(credit.amount_total, 10000, "Refund lines are positive in Odoo.")
@@ -273,12 +275,11 @@ class TestLegacyImport(TransactionCase):
         # the accounts, not "already has invoice"
         f.customs_fee_amount = 1000
         f.state = 'ops_closed'
-        # A Teese client arrives with a name and nothing else, so billing
-        # refuses it until somebody records what the invoice prints. That
-        # is the rule working, and it is what the billing agent will meet
-        # on every imported client the first time they bill one.
-        with self.assertRaises(UserError):
-            f.action_create_invoice()
+        # A Teese file is relieved of the customer and shipment gates
+        # (owner's brief v3, 20/10/2026): it may be billed with gaps,
+        # and the banner lists them. The billing screen still completes
+        # them on the spot.
+        self.assertIn("Customer:", f.missing_fields_display)
         f.partner_id.write({
             'street': "BP 1234 Douala", 'email': "client@test.cm",
             'vat': "M000000000003A",
@@ -287,8 +288,6 @@ class TestLegacyImport(TransactionCase):
         # value for this file but no BL and no goods, and the invoice
         # prints both. The billing screen completes them on the spot,
         # saved to the file - the path the billing agent will take.
-        with self.assertRaises(UserError):
-            f.action_create_invoice()
         wizard = self.env['logistics.billing.wizard'].with_context(
             active_id=f.id).create({})
         self.assertTrue(wizard.shipment_details_missing)

@@ -201,19 +201,20 @@ class TestLegacyUploads(TransactionCase):
     def test_02_new_file_with_a_gap_cannot_change_state(self):
         file = self._file("2026IM0902", "2026-10-17", complete=True, migrated=False)
         self.assertFalse(file.legacy_relief)
-        file.write({'port_id': False})
-        self.assertIn("Port", file.missing_fields_display)
+        file.write({'weight_kg': 0})
+        self.assertIn("Weight", file.missing_fields_display)
         with self.assertRaises(UserError) as caught:
             file.action_start_work()
-        self.assertIn("Port", str(caught.exception))
+        self.assertIn("Weight", str(caught.exception))
         self.assertEqual(file.state, 'draft')
-        file.write({'port_id': self.port.id})
+        # an incomplete customer blocks it the same way
+        file.write({'weight_kg': 500.0, 'partner_id': self.incomplete.id})
+        with self.assertRaises(UserError) as caught:
+            file.action_start_work()
+        self.assertIn("Customer:", str(caught.exception))
+        file.write({'partner_id': self.client.id})
+        self.assertFalse(file.missing_fields_display)
         file.action_start_work()
-        self.assertEqual(file.state, 'in_progress')
-        file.customs_fee_amount = 1000
-        file.write({'incoterm_id': False})
-        with self.assertRaises(UserError):
-            file.action_close_operations()
         self.assertEqual(file.state, 'in_progress')
 
     def test_03_billed_file_refuses_edit_and_delete_everywhere(self):
@@ -285,10 +286,11 @@ class TestLegacyUploads(TransactionCase):
         exp2 = self._load_expense(file, 100000, 'settled', "FA-T4b")
         self.assertFalse(exp2.is_frozen)
         # re-billing is blocked until the mandatory fields are complete
-        file.with_context(clearance_migration=False).write({'port_id': False})
-        with self.assertRaises(UserError):
+        file.with_context(clearance_migration=False).write({'weight_kg': 0})
+        with self.assertRaises(UserError) as caught:
             file.with_context(clearance_migration=False).action_close_operations()
-        file.with_context(clearance_migration=False).write({'port_id': self.port.id})
+        self.assertIn("Weight", str(caught.exception))
+        file.with_context(clearance_migration=False).write({'weight_kg': 500.0})
         file.with_context(clearance_migration=False).action_close_operations()
         file.action_create_invoice()
         second = file.invoice_id
