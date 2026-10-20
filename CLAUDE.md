@@ -879,7 +879,15 @@ Customs clearance job files for a logistics/clearance services provider.
      `_get_missing_mandatory_fields()` lists them in a banner
      (`missing_fields_display`); `_check_mandatory_complete()` blocks the
      state buttons of a strict file (opened after the cutoff, or
-     `completion_required` after a re-opening). The older gates
+     `completion_required` after a re-opening). The list is what the
+     module already demanded server-side - `MANDATORY_FIELDS` (regime +
+     the three invoice essentials, also constraints) plus, at the START
+     of work and for a re-opened LEGACY file, the cargo figures and the
+     customer record (`full=True`). The fields the form requires in
+     draft only (port, incoterm, currency, shipment type, importer) are
+     NOT a server gate: making them one blocked 134 tests whose
+     fixtures write the state directly, and would block every file in
+     progress. The older gates
      (`_check_ready_to_work`, `_check_cargo_described`, the two billing
      checks, the two constraints, `action_start_work`) are overridden to
      stand down under the relief.
@@ -900,14 +908,21 @@ Customs clearance job files for a logistics/clearance services provider.
      or before the GL cutoff). A payment to a payee stops at `settled`
      whatever `target_state` says.
   4. **Lock and rounds.** Billing sets `billing_status = billed`,
-     `is_locked`, `billing_round += 1`, freezes the recharged
-     disbursements (`is_frozen`, `billing_round`) and stamps the round on
-     the invoices. `write()`/`unlink()` on the file (`LOCK_EXEMPT` is what
-     stays writable: workflow stamps, chatter, `internal_note`), on the
+     `billing_round += 1`, freezes the recharged disbursements
+     (`is_frozen`, `billing_round`) and stamps the round on the invoices.
+     `is_locked` is NOT stored: it is `billed AND bill_stands`, so a bill
+     Billing withdraws (cancelled, or a half cancelled) unlocks the file
+     for the re-issue the module already allowed. `write()`/`unlink()`
+     on the file (`LOCK_EXEMPT` is what stays writable: workflow stamps,
+     chatter, `internal_note`, the billing screen's own figures), on the
      expense (`FROZEN_FIELDS`) and on a posted invoice's lines refuse
-     unless context `clearance_migration` or `clearance_unlock` (the
-     module's own writes). `button_draft` is refused on a locked file's
-     invoice. **Re-opening is the Head of Customer Service's** (owner
+     unless context `clearance_migration` or `clearance_unlock` - the
+     billing wizard's `_persist` writes under that key. `button_draft` is
+     refused on a locked file's invoice. A frozen disbursement billed
+     HERE is still tracked by `billed_line_id`, so a credited line makes
+     it billable again (owner 13/09 rule kept); a migrated one has no
+     line and stays out of `_billable_expenses`. Two `write` methods in
+     one class: the second silently replaces the first (cost one cycle). **Re-opening is the Head of Customer Service's** (owner
      20/10; `APPROVAL_KINDS['reopen']` moved from the Ops head): the
      existing reopen wizard, opened by "Re-open for Additional Billing"
      on a locked file, calls `_reopen_for_billing()` -> `reopened`,

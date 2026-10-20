@@ -181,6 +181,14 @@ msgstr ""
 
 #. module: elite_clearance
 #. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid ""
+"%(files)s is billed and locked: %(fields)s cannot be changed. Re-open it for additional billing first - the Head of Customer Service signs that, with a reason."
+msgstr ""
+"%(files)s est facturé et verrouillé : %(fields)s ne peut plus être modifié. Réouvrez-le d'abord pour facturation complémentaire - le Chef du Service Clientèle le signe, avec un motif."
+
+#. module: elite_clearance
+#. odoo-python
 #: code:addons/elite_clearance/wizard/invoice_reversal_wizard.py:0
 msgid ""
 "%(inv)s cancelled by %(user)s: %(reason)s%(gap)sThe file is billable again."
@@ -200,6 +208,14 @@ msgstr ""
 #: code:addons/elite_clearance/wizard/billing_wizard.py:0
 msgid "%(label)s (déclaration %(ref)s)"
 msgstr ""
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid ""
+"%(name)s cannot be %(what)s until every mandatory field is filled:%(gap)s  - %(missing)s"
+msgstr ""
+"%(name)s ne peut pas être %(what)s tant que tous les champs obligatoires ne sont pas renseignés :%(gap)s  - %(missing)s"
 
 #. module: elite_clearance
 #. odoo-python
@@ -289,11 +305,33 @@ msgstr ""
 
 #. module: elite_clearance
 #. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid "%(ref)s is a staff advance with no holder."
+msgstr "%(ref)s est une avance au personnel sans détenteur."
+
+#. module: elite_clearance
+#. odoo-python
 #: code:addons/elite_clearance/models/logistics_service_type.py:0
 msgid ""
 "%(ref)s is not a %(service)s file number. It reads as the year, the service code and the number, e.g. %(example)s."
 msgstr ""
 "%(ref)s n'est pas un numéro de dossier %(service)s. Il se lit : l'année, le code du service et le numéro, par ex. %(example)s."
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid ""
+"%(ref)s is to be loaded as paid and posted but names no payment channel."
+msgstr ""
+"%(ref)s doit être chargé comme payé et comptabilisé mais ne nomme aucun canal de paiement."
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid ""
+"%(refs)s belong(s) to a billing round that is closed and cannot be changed (%(fields)s). Add a new disbursement in the new round instead."
+msgstr ""
+"%(refs)s appartient à un tour de facturation clos et ne peut plus être modifié (%(fields)s). Ajoutez plutôt un nouveau débours dans le nouveau tour."
 
 #. module: elite_clearance
 #. odoo-python
@@ -322,6 +360,14 @@ msgid ""
 "%s already has a journal entry against it. Refuse it instead - that reverses what was recognised - or reverse the entry from Accounting first."
 msgstr ""
 "%s a déjà une écriture comptable. Refusez-le plutôt - cela extourne ce qui a été constaté - ou extournez d'abord l'écriture depuis la Comptabilité."
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid ""
+"%s belongs to a billed and locked file. A posted invoice on it is corrected by a credit note, never reset to draft."
+msgstr ""
+"%s appartient à un dossier facturé et verrouillé. Une facture comptabilisée s'y corrige par un avoir, jamais par une remise en brouillon."
 
 #. module: elite_clearance
 #. odoo-python
@@ -399,6 +445,7 @@ msgstr "%s n'a aucune avance au personnel non justifiée — rien à déroger."
 
 #. module: elite_clearance
 #. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
 #: code:addons/elite_clearance/models/logistics_expense.py:0
 msgid "%s has not been accepted by Operations yet."
 msgstr "%s n'a pas encore été accepté par les Opérations."
@@ -483,6 +530,12 @@ msgstr "%s n'est pas une avance de caisse réglée."
 
 #. module: elite_clearance
 #. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid "%s is not an approved disbursement awaiting payment."
+msgstr "%s n'est pas un débours approuvé en attente de paiement."
+
+#. module: elite_clearance
+#. odoo-python
 #: code:addons/elite_clearance/models/logistics_file.py:0
 msgid "%s is not an imported file."
 msgstr "%s n'est pas un dossier importé."
@@ -510,6 +563,12 @@ msgstr "%s n'est pas clôturé — rien à réouvrir."
 #: code:addons/elite_clearance/models/logistics_expense.py:0
 msgid "%s is not in draft."
 msgstr "%s n'est pas en brouillon."
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid "%s is not locked - nothing to re-open."
+msgstr "%s n'est pas verrouillé - rien à réouvrir."
 
 #. module: elite_clearance
 #. odoo-python
@@ -581,14 +640,6 @@ msgstr ""
 #: code:addons/elite_clearance/models/logistics_file.py:0
 msgid "%s settlement(s) to sign."
 msgstr "%s règlement(s) à signer."
-
-#. module: elite_clearance
-#. odoo-python
-#: code:addons/elite_clearance/models/account_move.py:0
-msgid ""
-"%s was issued by the legacy system and is kept as a draft for the record. Its revenue is in the trial balance uploaded at the cutoff date; posting it would count that revenue twice."
-msgstr ""
-"%s a été émise par l'ancien système et est conservée en brouillon pour mémoire. Son chiffre d'affaires est dans la balance chargée à la date de bascule ; la comptabiliser compterait ce chiffre d'affaires deux fois."
 
 #. module: elite_clearance
 #. odoo-python
@@ -690,6 +741,17 @@ msgstr ""
 "47xx Débours engagés. Un débours n'atteint ce compte qu'une fois justifié : payé directement, ou avancé au personnel puis justifié par des pièces. La facture client refacture ce compte au coût, ce qui le solde. Rien en dehors de ce compte n'est jamais facturé."
 
 #. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form_legacy_uploads
+msgid ""
+"<b invisible=\"not legacy_relief or completion_required\">Opened before the cutoff:</b>\n"
+"                    <b invisible=\"legacy_relief and not completion_required\">This file is checked like a new one:</b>\n"
+"                    mandatory fields still missing\n"
+"                    <span invisible=\"not legacy_relief or completion_required\">(the file may still be started and billed)</span>\n"
+"                    <span invisible=\"legacy_relief and not completion_required\">(no state change until they are filled)</span>:"
+msgstr ""
+"<b invisible=\"not legacy_relief or completion_required\">Ouvert avant la date de bascule :</b> <b invisible=\"legacy_relief and not completion_required\">Ce dossier est contrôlé comme un nouveau :</b> champs obligatoires encore manquants <span invisible=\"not legacy_relief or completion_required\">(le dossier peut quand même être démarré et facturé)</span> <span invisible=\"legacy_relief and not completion_required\">(aucun changement d'état tant qu'ils ne sont pas renseignés)</span> :"
+
+#. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.billing_wizard_view_form
 msgid ""
 "<b>At least one disbursement is charged at other than what was disbursed.</b>\n"
@@ -698,6 +760,11 @@ msgid ""
 "                    line (or in the overall note) and send it for review."
 msgstr ""
 "<b>Au moins un débours est facturé à un montant différent de ce qui a été décaissé.</b> Aucune facture ne peut être émise tant que le Chef de Service Opérations ne l'a pas approuvé — et si une ligne ou le total est <i>en dessous</i> du coût, le Directeur Général également. Indiquez le motif sur chaque ligne (ou dans la note globale) et envoyez pour revue."
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form_legacy_uploads
+msgid "<b>Billed and locked.</b> Round"
+msgstr "<b>Facturé et verrouillé.</b> Le tour"
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.expense_settle_wizard_view_form
@@ -793,6 +860,19 @@ msgid "A bill was cancelled"
 msgstr "Une facture a été annulée"
 
 #. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid "A billed file is never deleted."
+msgstr "Un dossier facturé n'est jamais supprimé."
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_file__is_locked
+msgid ""
+"A billed file whose bill stands is read-only except for its chatter and internal notes, until it is re-opened for additional billing."
+msgstr ""
+"Un dossier facturé dont la facture tient est en lecture seule, hormis sa discussion et sa note interne, jusqu'à sa réouverture pour facturation complémentaire."
+
+#. module: elite_clearance
 #: model:ir.model.constraint,message:elite_clearance.constraint_logistics_file_name_company_uniq
 msgid "A clearance file with this reference already exists."
 msgstr "Un dossier de dédouanement porte déjà cette référence."
@@ -810,6 +890,12 @@ msgid ""
 "A customer receipt that has not been put against a clearance file yet."
 msgstr ""
 "Un encaissement client pas encore imputé à un dossier de dédouanement."
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid "A disbursement billed in a closed round is never deleted."
+msgstr "Un débours facturé dans un tour clos n'est jamais supprimé."
 
 #. module: elite_clearance
 #. odoo-python
@@ -837,6 +923,13 @@ msgid ""
 "A document waiver is waiting to be signed; signing it starts the work."
 msgstr ""
 "Une dérogation documentaire attend d'être signée ; la signer démarre le travail."
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_account_move_line__is_handling
+msgid ""
+"A débours line whose description contains Handling: posted to 471100 like any débours, left out of the débours result, and kept in 471100 for the customer."
+msgstr ""
+"Une ligne de débours dont le libellé contient Handling : comptabilisée au 471100 comme tout débours, exclue de l'écart sur débours, et conservée au 471100 pour le client."
 
 #. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_logistics_service_type_document__is_mandatory
@@ -970,6 +1063,9 @@ msgid "AVANCE TVA/HAD DAU"
 msgstr ""
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_account_bank_statement_line__accounting
+#: model:ir.model.fields,field_description:elite_clearance.field_account_move__accounting
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__accounting
 #: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
 #: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
 msgid "Accounting"
@@ -1120,12 +1216,25 @@ msgid "Advance holder cleared"
 msgstr "Détenteur de l'avance effacé"
 
 #. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__account_move__clearance_entry_type__justification
+msgid "Advance justification"
+msgstr "Justification d'avance"
+
+#. module: elite_clearance
 #. odoo-python
 #: code:addons/elite_clearance/models/logistics_expense.py:0
 msgid ""
 "Advance justified by Operations and the Head of Service Finance: %(amount)s reclassified from 421101 (held by %(who)s) to the engaged disbursements account. It is now billable."
 msgstr ""
 "Avance justifiée par les Opérations et le Chef de Service Finance : %(amount)s reclassés du 421101 (détenue par %(who)s) vers le compte des débours engagés. Elle est désormais facturable."
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid ""
+"Advance justified: %(amount)s reclassified from 421101 (held by %(who)s) to the legacy débours account."
+msgstr ""
+"Avance justifiée : %(amount)s reclassé du 421101 (détenu par %(who)s) vers le compte de débours historique."
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.payment_attribution_wizard_view_form
@@ -1194,6 +1303,11 @@ msgstr ""
 "Avances décaissées par l'ancien système sur ce dossier, hors extournes. Non comptabilisées ici ; affichées pour lire ensemble ce qui a été dépensé et ce qui a été facturé."
 
 #. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_search_awaiting_payment
+msgid "After the Sage period"
+msgstr "Après la période Sage"
+
+#. module: elite_clearance
 #. odoo-python
 #: code:addons/elite_clearance/models/logistics_file.py:0
 msgid "Ajustement sur débours"
@@ -1251,6 +1365,15 @@ msgid "Alternative Names"
 msgstr "Libellés alternatifs"
 
 #. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_account_bank_statement_line__accounting
+#: model:ir.model.fields,help:elite_clearance.field_account_move__accounting
+msgid ""
+"Always Post for the migration: every TEESE invoice is posted, whatever its date."
+msgstr ""
+"Toujours Comptabiliser pour la migration : chaque facture TEESE est comptabilisée, quelle que soit sa date."
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_sage_payment_wizard__amount
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_task__amount
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_wizard_service__amount
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__amount
@@ -1288,6 +1411,13 @@ msgid ""
 "An alternative wording of the category for the client's invoice, set up under Configuration -> Expense Categories. Empty prints the category name. The ledger keeps the description."
 msgstr ""
 "Un libellé alternatif de la catégorie pour la facture du client, défini sous Configuration -> Catégories de débours. Vide imprime le nom de la catégorie. Le grand livre garde la description."
+
+#. module: elite_clearance
+#: model_terms:ir.actions.act_window,help:elite_clearance.action_logistics_expense_awaiting_payment
+msgid ""
+"An approved disbursement nobody paid here is either confirmed from the Sage ledger or its approval is cancelled, with a reason."
+msgstr ""
+"Un débours approuvé que personne n'a payé ici est soit confirmé depuis le grand livre Sage, soit son approbation est annulée, avec un motif."
 
 #. module: elite_clearance
 #: model:ir.model.constraint,message:elite_clearance.constraint_logistics_expense_category_code_company_uniq
@@ -1362,6 +1492,12 @@ msgstr "Appliquer"
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_document_date_wizard__line_ids
 msgid "Apply To"
 msgstr "Appliquer à"
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid "Approval cancelled by %(user)s: %(why)s"
+msgstr "Approbation annulée par %(user)s : %(why)s"
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
@@ -1477,6 +1613,7 @@ msgstr "Approuver une sous-facturation (Directeur Général)"
 
 #. module: elite_clearance
 #: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_billing_service__state__approved
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_expense__target_state__approved
 #: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file__advance_waiver_state__approved
 #: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file__opening_state__approved
 #: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file__recharge_state__approved
@@ -1501,6 +1638,13 @@ msgstr "Approuvé par"
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_service__approved_date
 msgid "Approved Date"
 msgstr "Date d'approbation"
+
+#. module: elite_clearance
+#: model:ir.actions.act_window,name:elite_clearance.action_logistics_expense_awaiting_payment
+#: model:ir.ui.menu,name:elite_clearance.menu_clearance_awaiting_payment
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_list_awaiting_payment
+msgid "Approved Expenses Awaiting Payment"
+msgstr "Dépenses approuvées en attente de paiement"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__date_approved
@@ -1557,6 +1701,13 @@ msgstr ""
 "Tel qu'exporté de l'ancien système. Le total du brouillon est construit pour y correspondre ligne par ligne."
 
 #. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_clearance_payment_channel__name
+msgid ""
+"As the old system named it: CAISSE SAGE, CAISSE EXCEL, a bank account number..."
+msgstr ""
+"Tel que l'ancien système le nommait : CAISSE SAGE, CAISSE EXCEL, un numéro de compte bancaire..."
+
+#. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_logistics_expense_capture_wizard__manifesting_date
 msgid ""
 "Asked for when the third party is a manifesting vendor (Settings -> Manifesting Vendors), before the amount: it starts the transit time of an Import Maritime file."
@@ -1589,6 +1740,12 @@ msgid ""
 "Attach the payment evidence for %s - the receipt, the transfer advice or the mobile-money confirmation - before it is paid out."
 msgstr ""
 "Joignez le justificatif de paiement pour %s - le reçu, l'avis de virement ou la confirmation mobile money - avant qu'il ne soit décaissé."
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid "Attach the payment evidence for %s before it is paid out."
+msgstr "Joignez la preuve de paiement de %s avant son décaissement."
 
 #. module: elite_clearance
 #. odoo-python
@@ -1794,8 +1951,19 @@ msgstr "Prestations facturables"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__is_billed
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file__billing_status__billed
 msgid "Billed"
 msgstr "Facturé"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form_legacy_uploads
+msgid "Billed - Locked"
+msgstr "Facturé - Verrouillé"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_search_legacy_uploads
+msgid "Billed - locked"
+msgstr "Facturé - verrouillé"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_wizard__billed_before
@@ -1831,6 +1999,13 @@ msgid "Billed and posted. The file can be closed."
 msgstr "Facturé et comptabilisé. Le dossier peut être clôturé."
 
 #. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_expense__is_frozen
+msgid ""
+"Billed in a round that is closed: it can no longer be edited, deleted or billed again."
+msgstr ""
+"Facturé dans un tour clos : il ne peut plus être modifié, supprimé ni refacturé."
+
+#. module: elite_clearance
 #. odoo-python
 #: code:addons/elite_clearance/models/logistics_file.py:0
 msgid ""
@@ -1848,6 +2023,7 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
 #: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form_legacy_uploads
 msgid "Billing"
 msgstr "Facturation"
 
@@ -1876,6 +2052,19 @@ msgid "Billing Ref."
 msgstr "Réf. de facturation"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_account_bank_statement_line__billing_round
+#: model:ir.model.fields,field_description:elite_clearance.field_account_move__billing_round
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__billing_round
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__billing_round
+msgid "Billing Round"
+msgstr "Tour de facturation"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__billing_status
+msgid "Billing Status"
+msgstr "Statut de facturation"
+
+#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_account_move_line__clearance_unit
 msgid "Billing Unit"
 msgstr "Unité de facturation"
@@ -1899,6 +2088,14 @@ msgstr "Assistant de facturation — Ligne de prestation"
 #: model_terms:ir.ui.view,arch_db:elite_clearance.billing_wizard_view_form
 msgid "Billing parameters"
 msgstr "Paramètres de facturation"
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid ""
+"Billing round %(round)s issued: the file is locked and %(count)s disbursement(s) are frozen."
+msgstr ""
+"Tour de facturation %(round)s émis : le dossier est verrouillé et %(count)s débours sont gelés."
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form
@@ -1953,6 +2150,7 @@ msgstr ""
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.billing_wizard_view_form
 #: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_rejection_wizard_view_form
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_sage_payment_wizard_view_form
 #: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_user_language_wizard_view_form
 #: model_terms:ir.ui.view,arch_db:elite_clearance.document_date_wizard_view_form
 #: model_terms:ir.ui.view,arch_db:elite_clearance.expense_capture_wizard_view_form
@@ -1963,6 +2161,11 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:elite_clearance.payment_attribution_wizard_view_form
 msgid "Cancel"
 msgstr "Annuler"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_form_legacy_uploads
+msgid "Cancel Approval"
+msgstr "Annuler l'approbation"
 
 #. module: elite_clearance
 #: model:ir.actions.act_window,name:elite_clearance.action_invoice_cancel_wizard
@@ -1984,6 +2187,7 @@ msgstr "Les annulations sont en négatif plutôt qu'inversées"
 
 #. module: elite_clearance
 #: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_expense__state__cancel
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_expense__target_state__cancel
 #: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file__state__cancel
 #: model_terms:ir.ui.view,arch_db:elite_clearance.view_move_form_clearance_reversal
 msgid "Cancelled"
@@ -2152,6 +2356,11 @@ msgid "Certificate of Origin"
 msgstr ""
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_payment_channel__name
+msgid "Channel in TEESE"
+msgstr "Canal dans TEESE"
+
+#. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_logistics_billing_wizard__commission_rate
 msgid ""
 "Charged on what the disbursements are recharged at. Proposed from the service type; the billing agent may change it for this file."
@@ -2196,6 +2405,12 @@ msgstr "Choisissez le dossier auquel cette avance appartient."
 #: code:addons/elite_clearance/wizard/invoice_reversal_wizard.py:0
 msgid "Choose the lines to reverse on %s."
 msgstr "Choisissez les lignes à extourner sur %s."
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid "Choose the payment channel on %s."
+msgstr "Choisissez le canal de paiement sur %s."
 
 #. module: elite_clearance
 #. odoo-python
@@ -2271,6 +2486,12 @@ msgstr "Nature du document de dédouanement"
 #: model:ir.model,name:elite_clearance.model_logistics_document_type
 msgid "Clearance Document Type"
 msgstr "Type de document de dédouanement"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_account_bank_statement_line__clearance_entry_type
+#: model:ir.model.fields,field_description:elite_clearance.field_account_move__clearance_entry_type
+msgid "Clearance Entry"
+msgstr "Écriture Clearance"
 
 #. module: elite_clearance
 #: model:ir.model,name:elite_clearance.model_logistics_expense_category
@@ -2384,9 +2605,29 @@ msgid "Clearance Task"
 msgstr "Tâche de dédouanement"
 
 #. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.view_account_move_filter_legacy_uploads
+msgid "Clearance entry"
+msgstr "Écriture Clearance"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.view_account_move_filter_legacy_uploads
+msgid "Clearance entry type"
+msgstr "Type d'écriture Clearance"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.view_account_move_filter_legacy_uploads
+msgid "Clearance file"
+msgstr "Dossier Clearance"
+
+#. module: elite_clearance
 #: model:mail.template,name:elite_clearance.mail_template_payment_evidence
 msgid "Clearance: payment evidence to the third party"
 msgstr "Dédouanement : justificatif de paiement au tiers"
+
+#. module: elite_clearance
+#: model:ir.actions.server,name:elite_clearance.cron_evaluate_debours_results_ir_actions_server
+msgid "Clearance: post the débours results that became due"
+msgstr "Clearance : comptabiliser les écarts sur débours devenus exigibles"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_task__partner_id
@@ -2559,6 +2800,7 @@ msgid "Companies"
 msgstr "Sociétés"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_payment_channel__company_id
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_settings_wizard__company_id
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_task__company_id
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_turnaround__company_id
@@ -2615,6 +2857,11 @@ msgid "Completed"
 msgstr "Terminé"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__completion_required
+msgid "Completion Required"
+msgstr "Complétion requise"
+
+#. module: elite_clearance
 #: model:ir.model,name:elite_clearance.model_res_config_settings
 msgid "Config Settings"
 msgstr "Paramètres de configuration"
@@ -2642,6 +2889,7 @@ msgstr ""
 
 #. module: elite_clearance
 #. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
 #: code:addons/elite_clearance/models/logistics_expense.py:0
 msgid "Configure the Clearance Miscellaneous Journal in Settings."
 msgstr ""
@@ -2657,11 +2905,41 @@ msgstr ""
 
 #. module: elite_clearance
 #. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid ""
+"Configure the Legacy Débours, Gain on Débours and Loss on Débours accounts and the Miscellaneous Journal under Clearance -> Configuration -> Settings before the débours result of %s can be posted."
+msgstr ""
+"Configurez les comptes Débours historiques, Gain sur débours et Perte sur débours ainsi que le journal d'opérations diverses sous Clearance -> Configuration -> Paramètres avant de comptabiliser l'écart sur débours de %s."
+
+#. module: elite_clearance
+#. odoo-python
 #: code:addons/elite_clearance/models/account_move.py:0
 msgid ""
 "Configure the disbursement over/undercharge accounts under Clearance - Configuration - Settings before crediting a line that was recharged at other than cost."
 msgstr ""
 "Configurez les comptes de sur/sous-facturation des débours sous Dédouanement - Configuration - Paramètres avant de créditer une ligne refacturée à un montant différent du coût."
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_sage_payment_wizard_view_form
+msgid "Confirm"
+msgstr "Confirmer"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_form_legacy_uploads
+msgid "Confirm Sage Payment"
+msgstr "Confirmer le paiement Sage"
+
+#. module: elite_clearance
+#: model:ir.model,name:elite_clearance.model_clearance_sage_payment_wizard
+msgid "Confirm a Sage Payment"
+msgstr "Confirmer un paiement Sage"
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_sage_payment_wizard_view_form
+msgid "Confirm the Sage payment"
+msgstr "Confirmer le paiement Sage"
 
 #. module: elite_clearance
 #: model:ir.model,name:elite_clearance.model_res_partner
@@ -2706,7 +2984,9 @@ msgstr ""
 "Créé automatiquement avec le dossier. Chaque coût et produit comptabilisé ensuite porte cette étiquette, ce qui rend possible la rentabilité par dossier."
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_payment_channel__create_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_rejection_wizard__create_uid
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_sage_payment_wizard__create_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_settings_wizard__create_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_turnaround_target__create_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_user_language_wizard__create_uid
@@ -2739,7 +3019,9 @@ msgid "Created by"
 msgstr "Créé par"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_payment_channel__create_date
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_rejection_wizard__create_date
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_sage_payment_wizard__create_date
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_settings_wizard__create_date
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_turnaround_target__create_date
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_user_language_wizard__create_date
@@ -2794,6 +3076,11 @@ msgid "Credit a Clearance Invoice — Line"
 msgstr "Créditer une facture de dédouanement — Ligne"
 
 #. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__account_move__document_type__credit_note
+msgid "Credit note"
+msgstr "Avoir"
+
+#. module: elite_clearance
 #. odoo-python
 #: code:addons/elite_clearance/wizard/invoice_reversal_wizard.py:0
 msgid ""
@@ -2822,6 +3109,18 @@ msgid "Credited"
 msgstr "Créditée"
 
 #. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_clearance_settings_wizard__clearance_oop_gain_account_id
+#: model:ir.model.fields,help:elite_clearance.field_res_company__clearance_oop_gain_account_id
+#: model:ir.model.fields,help:elite_clearance.field_res_config_settings__clearance_oop_gain_account_id
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
+msgid ""
+"Credited with the débours result of a fully paid legacy file when what was billed exceeds what was incurred."
+msgstr ""
+"Crédité de l'écart sur débours d'un dossier historique entièrement payé lorsque le facturé dépasse l'engagé."
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_sage_payment_wizard__currency_id
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_task__currency_id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_service__currency_id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_wizard__currency_id
@@ -2942,6 +3241,27 @@ msgid "Days"
 msgstr "Jours"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__age_days
+msgid "Days Since Approval"
+msgstr "Jours depuis l'approbation"
+
+#. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__account_move__document_type__debit_note
+msgid "Debit note"
+msgstr "Note de débit"
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_clearance_settings_wizard__clearance_oop_loss_account_id
+#: model:ir.model.fields,help:elite_clearance.field_res_company__clearance_oop_loss_account_id
+#: model:ir.model.fields,help:elite_clearance.field_res_config_settings__clearance_oop_loss_account_id
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
+msgid ""
+"Debited with the débours result of a fully paid legacy file when what was incurred exceeds what was billed."
+msgstr ""
+"Débité de l'écart sur débours d'un dossier historique entièrement payé lorsque l'engagé dépasse le facturé."
+
+#. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.report_clearance_invoice_document
 msgid "Debours"
 msgstr ""
@@ -3055,6 +3375,16 @@ msgid "Disbursement Undercharge Account"
 msgstr "Compte de sous-facturation des débours"
 
 #. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__account_move__clearance_entry_type__accrual
+msgid "Disbursement accrual"
+msgstr "Engagement de débours"
+
+#. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__account_move__clearance_entry_type__payment
+msgid "Disbursement payment"
+msgstr "Paiement de débours"
+
+#. module: elite_clearance
 #. odoo-python
 #: code:addons/elite_clearance/models/logistics_expense.py:0
 msgid "Disbursement refused by %s."
@@ -3109,8 +3439,10 @@ msgstr "Divulgué"
 #: model:ir.model.fields,field_description:elite_clearance.field_account_move_line__display_name
 #: model:ir.model.fields,field_description:elite_clearance.field_account_payment__display_name
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_documents_mixin__display_name
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_payment_channel__display_name
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_rejection_mixin__display_name
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_rejection_wizard__display_name
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_sage_payment_wizard__display_name
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_settings_wizard__display_name
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_task__display_name
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_turnaround__display_name
@@ -3172,6 +3504,8 @@ msgid "Document Ref."
 msgstr "Réf. du document"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_account_bank_statement_line__document_type
+#: model:ir.model.fields,field_description:elite_clearance.field_account_move__document_type
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_document__document_type_id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_service_type_document__document_type_id
 msgid "Document Type"
@@ -3298,6 +3632,7 @@ msgid "Drop files anywhere on this screen, or use Upload."
 msgstr "Déposez les fichiers n'importe où sur cet écran, ou utilisez Charger."
 
 #. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file__result_status__due
 #: model_terms:ir.ui.view,arch_db:elite_clearance.view_clearance_invoice_list
 msgid "Due"
 msgstr "Échéance"
@@ -3306,6 +3641,45 @@ msgstr "Échéance"
 #: model:ir.model.fields.selection,name:elite_clearance.selection__account_move_line__clearance_category__debours
 msgid "Débours"
 msgstr ""
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__debours_billed
+msgid "Débours Billed"
+msgstr "Débours facturés"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__debours_incurred
+msgid "Débours Incurred"
+msgstr "Débours engagés"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__result_status
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form_legacy_uploads
+msgid "Débours Result"
+msgstr "Écart sur débours"
+
+#. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__account_move__clearance_entry_type__debours_result
+msgid "Débours result"
+msgstr "Écart sur débours"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_search_legacy_uploads
+msgid "Débours result due"
+msgstr "Écart sur débours exigible"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_search_legacy_uploads
+msgid "Débours result pending"
+msgstr "Écart sur débours en attente"
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid ""
+"Débours result posted (%(ref)s): %(kind)s of %(amount)s - billed %(billed)s against %(incurred)s incurred."
+msgstr ""
+"Écart sur débours comptabilisé (%(ref)s) : %(kind)s de %(amount)s - facturé %(billed)s contre %(incurred)s engagé."
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_settings_wizard__clearance_oop_payable_account_id
@@ -3335,6 +3709,11 @@ msgid ""
 "                        signed in sees the change after reloading their screen."
 msgstr ""
 "Chaque utilisateur du dédouanement travaille dans la langue choisie ici. Une langue utilisée pour la première fois est activée pour toute la base, ce qui prend un moment. Un utilisateur connecté voit le changement après avoir rechargé son écran."
+
+#. module: elite_clearance
+#: model:ir.model.constraint,message:elite_clearance.constraint_clearance_payment_channel_name_company_uniq
+msgid "Each legacy channel is mapped once per company."
+msgstr "Chaque canal historique est associé une seule fois par société."
 
 #. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_clearance_turnaround__days_taken
@@ -3381,14 +3760,29 @@ msgid "English"
 msgstr "Anglais"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__entry_count
+msgid "Entry Count"
+msgstr "Nombre d'écritures"
+
+#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__equivalent_container_count
 msgid "Equivalent Containers"
 msgstr "Conteneurs équivalents"
 
 #. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form
+msgid "Evaluate Débours Result"
+msgstr ""
+
+#. module: elite_clearance
 #: model_terms:ir.actions.act_window,help:elite_clearance.action_clearance_customers
 msgid "Every customer is complete"
 msgstr "Tous les clients sont complets"
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_file__debours_incurred
+msgid "Every disbursement approved or later, cancelled ones aside."
+msgstr "Tout débours approuvé ou au-delà, hors annulés."
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
@@ -3530,6 +3924,7 @@ msgid "Exempt from VAT"
 msgstr "Exonéré de TVA"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_sage_payment_wizard__expense_id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_wizard_billed__expense_id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_wizard_debours__expense_id
 msgid "Expense"
@@ -3679,6 +4074,7 @@ msgstr "Compte de produits d'honoraires (par défaut)"
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopen_wizard__file_id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopening__file_id
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_search
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_search_awaiting_payment
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_search
 #: model_terms:ir.ui.view,arch_db:elite_clearance.view_clearance_task_search
@@ -3702,6 +4098,7 @@ msgstr ""
 
 #. module: elite_clearance
 #. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
 #: code:addons/elite_clearance/models/logistics_file.py:0
 msgid "File %s is not in draft."
 msgstr "Le dossier %s n'est pas en brouillon."
@@ -3827,6 +4224,12 @@ msgid "Files"
 msgstr "Dossiers"
 
 #. module: elite_clearance
+#: model:ir.actions.act_window,name:elite_clearance.action_logistics_file_legacy
+#: model:ir.ui.menu,name:elite_clearance.menu_clearance_legacy_files
+msgid "Files Loaded from TEESE"
+msgstr "Dossiers chargés depuis TEESE"
+
+#. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form
 msgid ""
 "Fill the file in and receive the documents, then press\n"
@@ -3835,6 +4238,11 @@ msgid ""
 "                        starts the work."
 msgstr ""
 "Complétez le dossier et réceptionnez les documents, puis cliquez sur <b>Demander l'approbation de l'ouverture</b> - ou <b>Demander une dérogation</b> avec un motif si un document obligatoire manque encore. La signature du Chef du Service Client démarre le travail."
+
+#. module: elite_clearance
+#: model:ir.actions.server,name:elite_clearance.action_server_migration_finalize
+msgid "Finalize migration (billed, frozen, posted, result)"
+msgstr "Finaliser la migration (facturé, gelé, comptabilisé, écart)"
 
 #. module: elite_clearance
 #. odoo-python
@@ -3978,12 +4386,26 @@ msgid "From the list under Configuration -> Reopening Reasons."
 msgstr "Depuis la liste sous Configuration -> Motifs de réouverture."
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__is_frozen
+msgid "Frozen"
+msgstr "Gelé"
+
+#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_wizard__client_name
 #: model:ir.model.fields,field_description:elite_clearance.field_res_partner__clearance_invoice_name
 #: model:ir.model.fields,field_description:elite_clearance.field_res_users__clearance_invoice_name
 #: model_terms:ir.ui.view,arch_db:elite_clearance.res_partner_view_list_clearance
 msgid "Full Name"
 msgstr "Nom complet"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_settings_wizard__clearance_oop_gain_account_id
+#: model:ir.model.fields,field_description:elite_clearance.field_res_company__clearance_oop_gain_account_id
+#: model:ir.model.fields,field_description:elite_clearance.field_res_config_settings__clearance_oop_gain_account_id
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
+msgid "Gain on Débours (758801)"
+msgstr "Gain sur débours (758801)"
 
 #. module: elite_clearance
 #. odoo-python
@@ -4004,6 +4426,25 @@ msgid "Give a justification before requesting a waiver on %s."
 msgstr "Donnez une justification avant de demander une dérogation sur %s."
 
 #. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid "Give the Sage piece and its date."
+msgstr "Indiquez la pièce Sage et sa date."
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid "Give the reason for cancelling the approval of %s."
+msgstr "Indiquez le motif de l'annulation de l'approbation de %s."
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_expense__target_state
+msgid ""
+"Given by the migration load: the workflow is replayed up to this state with the dates given."
+msgstr ""
+"Fourni par le chargement de migration : le circuit est rejoué jusqu'à cet état avec les dates fournies."
+
+#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__goods_description
 msgid "Goods"
 msgstr "Marchandises"
@@ -4012,6 +4453,11 @@ msgstr "Marchandises"
 #: model_terms:ir.ui.view,arch_db:elite_clearance.expense_settle_wizard_view_form
 msgid "Hand the Cash To"
 msgstr "Remettre les espèces à"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_account_move_line__is_handling
+msgid "Handling"
+msgstr "Handling"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_service__has_message
@@ -4133,8 +4579,10 @@ msgstr ""
 #: model:ir.model.fields,field_description:elite_clearance.field_account_move_line__id
 #: model:ir.model.fields,field_description:elite_clearance.field_account_payment__id
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_documents_mixin__id
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_payment_channel__id
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_rejection_mixin__id
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_rejection_wizard__id
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_sage_payment_wizard__id
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_settings_wizard__id
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_task__id
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_turnaround__id
@@ -4368,9 +4816,21 @@ msgid "Incoterm"
 msgstr "Incoterm"
 
 #. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_file__billing_round
+msgid ""
+"Incremented at each billing. Items added after a re-opening belong to the new round."
+msgstr ""
+"Incrémenté à chaque facturation. Les éléments ajoutés après une réouverture appartiennent au nouveau tour."
+
+#. module: elite_clearance
 #: model:logistics.document.type,name:elite_clearance.doc_type_insurance
 msgid "Insurance Certificate"
 msgstr ""
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__internal_note
+msgid "Internal Note"
+msgstr "Note interne"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__note
@@ -4381,8 +4841,14 @@ msgstr "Notes internes"
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_invoice_cancel_wizard__invoice_id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_invoice_credit_wizard__invoice_id
+#: model:ir.model.fields.selection,name:elite_clearance.selection__account_move__document_type__invoice
 msgid "Invoice"
 msgstr "Facture"
+
+#. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__account_move__clearance_entry_type__invoice
+msgid "Invoice / credit note"
+msgstr "Facture / avoir"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__invoice_count
@@ -4525,6 +4991,24 @@ msgid "Journal %s has no default account."
 msgstr "Le journal %s n'a pas de compte par défaut."
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__move_ids
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form
+msgid "Journal Entries"
+msgstr "Écritures comptables"
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid "Journal Entries - %s"
+msgstr "Écritures comptables - %s"
+
+#. module: elite_clearance
+#: model:ir.actions.act_window,name:elite_clearance.action_clearance_journal_entries
+#: model:ir.ui.menu,name:elite_clearance.menu_clearance_journal_entries
+msgid "Journal Entries by File"
+msgstr "Écritures comptables par dossier"
+
+#. module: elite_clearance
 #: model:ir.model,name:elite_clearance.model_account_move
 msgid "Journal Entry"
 msgstr "Pièce comptable"
@@ -4660,6 +5144,7 @@ msgstr "Justification : Opérations"
 
 #. module: elite_clearance
 #: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_expense__state__justified
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_expense__target_state__justified
 msgid "Justified"
 msgstr "Justifié"
 
@@ -4698,6 +5183,11 @@ msgstr "Saisi par"
 #: model:ir.model.fields,help:elite_clearance.field_logistics_file__customs_fee_amount
 msgid "Keyed by the billing agent from the customs declaration."
 msgstr "Saisi par l'agent de facturation d'après la déclaration en douane."
+
+#. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_expense__source__odoo
+msgid "Keyed in Odoo"
+msgstr "Saisi dans Odoo"
 
 #. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_logistics_file__manifesting_date
@@ -4753,7 +5243,9 @@ msgid "Last Reopening Reason"
 msgstr "Dernier motif de réouverture"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_payment_channel__write_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_rejection_wizard__write_uid
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_sage_payment_wizard__write_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_settings_wizard__write_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_turnaround_target__write_uid
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_user_language_wizard__write_uid
@@ -4786,7 +5278,9 @@ msgid "Last Updated by"
 msgstr "Dernière mise à jour par"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_payment_channel__write_date
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_rejection_wizard__write_date
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_sage_payment_wizard__write_date
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_settings_wizard__write_date
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_turnaround_target__write_date
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_user_language_wizard__write_date
@@ -4846,10 +5340,24 @@ msgid "Legacy"
 msgstr "Ancien système"
 
 #. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_form_legacy_uploads
+msgid "Legacy & Billing Round"
+msgstr "Historique & tour de facturation"
+
+#. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_search
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_search
 msgid "Legacy (Teese)"
 msgstr "Ancien système (Teese)"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_settings_wizard__clearance_legacy_oop_account_id
+#: model:ir.model.fields,field_description:elite_clearance.field_res_company__clearance_legacy_oop_account_id
+#: model:ir.model.fields,field_description:elite_clearance.field_res_config_settings__clearance_legacy_oop_account_id
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
+msgid "Legacy Débours Account (471100)"
+msgstr "Compte de débours historique (471100)"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_account_bank_statement_line__legacy_id
@@ -4867,6 +5375,21 @@ msgid "Legacy Invoice Count"
 msgstr "Nombre de factures de l'ancien système"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_account_move_line__legacy_id
+msgid "Legacy Line ID"
+msgstr "ID de ligne historique"
+
+#. module: elite_clearance
+#: model:ir.model,name:elite_clearance.model_clearance_payment_channel
+msgid "Legacy Payment Channel"
+msgstr "Canal de paiement historique"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_payment_channel_view_list
+msgid "Legacy Payment Channels"
+msgstr "Canaux de paiement historiques"
+
+#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__legacy_customs_regime
 msgid "Legacy Regime"
 msgstr "Régime (ancien système)"
@@ -4875,6 +5398,16 @@ msgstr "Régime (ancien système)"
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__legacy_type_name
 msgid "Legacy Type"
 msgstr "Type (ancien système)"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form_legacy_uploads
+msgid "Legacy Uploads & Billing Rounds"
+msgstr "Chargements historiques & tours de facturation"
+
+#. module: elite_clearance
+#: model:ir.ui.menu,name:elite_clearance.menu_clearance_legacy_uploads
+msgid "Legacy uploads"
+msgstr "Chargements historiques"
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_search
@@ -4906,6 +5439,16 @@ msgid "Lines to reverse"
 msgstr "Lignes à extourner"
 
 #. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_search_legacy_uploads
+msgid "Loaded from TEESE"
+msgstr "Chargé depuis TEESE"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__is_locked
+msgid "Locked"
+msgstr "Verrouillé"
+
+#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_user_language_wizard_line__login
 msgid "Login"
 msgstr "Identifiant"
@@ -4915,6 +5458,15 @@ msgstr "Identifiant"
 #: model_terms:ir.ui.view,arch_db:elite_clearance.report_clearance_invoice_document
 msgid "Logo"
 msgstr ""
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_settings_wizard__clearance_oop_loss_account_id
+#: model:ir.model.fields,field_description:elite_clearance.field_res_company__clearance_oop_loss_account_id
+#: model:ir.model.fields,field_description:elite_clearance.field_res_config_settings__clearance_oop_loss_account_id
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
+msgid "Loss on Débours (658801)"
+msgstr "Perte sur débours (658801)"
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.report_cash_voucher_document
@@ -4971,6 +5523,12 @@ msgid "Manifesting vendor's invoice paid"
 msgstr "Facture du fournisseur de manifeste payée"
 
 #. module: elite_clearance
+#: model_terms:ir.actions.act_window,help:elite_clearance.action_clearance_payment_channel
+msgid "Map each payment channel of the old system to a till or bank."
+msgstr ""
+"Associez chaque canal de paiement de l'ancien système à une caisse ou une banque."
+
+#. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.report_clearance_invoice_document
 msgid "Max period for complaints regarding invoices:"
 msgstr ""
@@ -4995,6 +5553,14 @@ msgid "Method"
 msgstr "Méthode"
 
 #. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_clearance_sage_payment_wizard__sage_match
+#: model:ir.model.fields,help:elite_clearance.field_logistics_expense__sage_match
+msgid ""
+"Migration: the result of the search for this payment in the Sage general ledger (proposed piece, no match, after the Sage period)."
+msgstr ""
+"Migration : le résultat de la recherche de ce paiement dans le grand livre Sage (pièce proposée, aucune correspondance, après la période Sage)."
+
+#. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
 #: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
 msgid "Miscellaneous Journal"
@@ -5004,6 +5570,11 @@ msgstr "Journal des opérations diverses"
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__missing_mandatory_count
 msgid "Missing Mandatory Documents"
 msgstr "Documents obligatoires manquants"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__missing_fields_display
+msgid "Missing Mandatory Fields"
+msgstr "Champs obligatoires manquants"
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_list
@@ -5124,6 +5695,16 @@ msgid "Next Activity Type"
 msgstr "Type de la prochaine activité"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__skip_gain_loss
+msgid "No Débours Result"
+msgstr "Sans écart sur débours"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_search_awaiting_payment
+msgid "No Sage match"
+msgstr "Aucune correspondance Sage"
+
+#. module: elite_clearance
 #. odoo-python
 #: code:addons/elite_clearance/models/logistics_file.py:0
 msgid ""
@@ -5236,6 +5817,17 @@ msgstr ""
 "Aucune de ces valeurs n'est saisie. Les deux premières suivent les Honoraires Agréés en Douane ci-dessus ; la troisième est l'ensemble des écritures au crédit du compte de ce client portant l'analytique de ce dossier — enregistrez l'avance en Comptabilité et elle apparaît ici."
 
 #. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file__result_status__none
+msgid "Not Applicable"
+msgstr "Sans objet"
+
+#. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file__billing_status__not_billed
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file__result_status__not_billed
+msgid "Not Billed"
+msgstr "Non facturé"
+
+#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__not_containerised
 msgid "Not Containerised"
 msgstr "Non conteneurisé"
@@ -5286,6 +5878,11 @@ msgid ""
 "                    party."
 msgstr ""
 "Rien n'est décaissé sans justificatif. Joignez le reçu de caisse, l'avis de virement ou la confirmation mobile money, puis cliquez sur <b>Décaisser / Payer</b> : l'écriture est comptabilisée et le justificatif reste sur le débours pour que le Service Client l'envoie au tiers."
+
+#. module: elite_clearance
+#: model_terms:ir.actions.act_window,help:elite_clearance.action_logistics_expense_awaiting_payment
+msgid "Nothing is waiting for a payment."
+msgstr "Rien n'attend de paiement."
 
 #. module: elite_clearance
 #: model_terms:ir.actions.act_window,help:elite_clearance.action_clearance_tasks
@@ -5391,6 +5988,16 @@ msgstr "Bon à facturer"
 #: code:addons/elite_clearance/models/logistics_file.py:0
 msgid "OK for billing. The invoice has not been raised yet."
 msgstr "Bon à facturer. La facture n'a pas encore été émise."
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_payment_channel__journal_id
+msgid "Odoo Journal"
+msgstr "Journal Odoo"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_search_awaiting_payment
+msgid "Older than 60 days"
+msgstr "Plus de 60 jours"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_wizard_debours__print_name
@@ -5518,9 +6125,26 @@ msgid "Opened"
 msgstr "Ouvert"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__legacy_relief
+msgid "Opened Before the Cutoff"
+msgstr "Ouvert avant la date de bascule"
+
+#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__date_opened
 msgid "Opened On"
 msgstr "Ouvert le"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_search_legacy_uploads
+msgid "Opened before the cutoff"
+msgstr "Ouvert avant la date de bascule"
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_file__legacy_relief
+msgid ""
+"Opened on or before the legacy cutoff date, or loaded by the migration: it may be saved, started and billed with mandatory fields missing, and the banner lists them. The relief ends when the file is re-opened for additional billing."
+msgstr ""
+"Ouvert au plus tard à la date de bascule, ou chargé par la migration : il peut être enregistré, démarré et facturé avec des champs obligatoires manquants, que le bandeau liste. Cette tolérance cesse à la réouverture pour facturation complémentaire."
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__opening_state
@@ -5770,6 +6394,7 @@ msgid "Paid By"
 msgstr "Payé par"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_sage_payment_wizard__sage_payment_date
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__date_settled
 msgid "Paid On"
 msgstr "Payé le"
@@ -5808,6 +6433,12 @@ msgid "Payment Channel"
 msgstr "Canal de paiement"
 
 #. module: elite_clearance
+#: model:ir.actions.act_window,name:elite_clearance.action_clearance_payment_channel
+#: model:ir.ui.menu,name:elite_clearance.menu_clearance_payment_channels
+msgid "Payment Channels"
+msgstr "Canaux de paiement"
+
+#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_settings_wizard__clearance_invoice_payment_terms
 #: model:ir.model.fields,field_description:elite_clearance.field_res_company__clearance_invoice_payment_terms
 #: model:ir.model.fields,field_description:elite_clearance.field_res_config_settings__clearance_invoice_payment_terms
@@ -5834,6 +6465,14 @@ msgid "Payment conditions"
 msgstr "Conditions de paiement"
 
 #. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid ""
+"Payment confirmed from the Sage ledger by %(user)s: piece %(ref)s of %(date)s. Nothing posted here - the entry is in the loaded general ledger."
+msgstr ""
+"Paiement confirmé depuis le grand livre Sage par %(user)s : pièce %(ref)s du %(date)s. Rien de comptabilisé ici - l'écriture est dans le grand livre chargé."
+
+#. module: elite_clearance
 #: model:ir.model.fields.selection,name:elite_clearance.selection__ir_attachment__clearance_kind__payment
 msgid "Payment evidence"
 msgstr "Justificatif de paiement"
@@ -5856,6 +6495,11 @@ msgid ""
 "Pays from a bank or mobile-money journal once the Head of Service Finance has approved the settlement."
 msgstr ""
 "Paie depuis un journal de banque ou de mobile money une fois le règlement approuvé par le Chef de Service Finance."
+
+#. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file__result_status__pending
+msgid "Pending Payment"
+msgstr "En attente de paiement"
 
 #. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_logistics_file__transit_start
@@ -5893,6 +6537,11 @@ msgstr ""
 "Positif : le client est facturé plus que ce qui a été décaissé. Négatif : la société absorbe une partie du coût."
 
 #. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__account_move__accounting__post
+msgid "Post"
+msgstr "Comptabiliser"
+
+#. module: elite_clearance
 #. odoo-python
 #: code:addons/elite_clearance/models/logistics_file.py:0
 msgid ""
@@ -5901,6 +6550,12 @@ msgstr ""
 "Comptabilisez la ou les factures client de %(file)s avant de le clôturer - une facture scindée se clôture en entier.%(gap)s%(detail)s"
 
 #. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_expense__accounting__post
+msgid "Post the entries"
+msgstr "Comptabiliser les écritures"
+
+#. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file__result_status__posted
 #: model_terms:ir.ui.view,arch_db:elite_clearance.view_clearance_invoice_search
 msgid "Posted"
 msgstr "Comptabilisée"
@@ -6086,6 +6741,11 @@ msgid "Proposed on the billing screen. The biller may change it."
 msgstr "Proposé sur l'écran de facturation. Le facturier peut le modifier."
 
 #. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form_legacy_uploads
+msgid "Provenance"
+msgstr "Provenance"
+
+#. module: elite_clearance
 #: model:ir.model,name:elite_clearance.model_logistics_payment_attribution_wizard
 msgid "Put a Receipt Against a Clearance File"
 msgstr "Imputer un encaissement à un dossier de dédouanement"
@@ -6125,6 +6785,24 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:elite_clearance.report_clearance_invoice_document
 msgid "RESTE"
 msgstr ""
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form
+msgid "Re-open for Additional Billing"
+msgstr ""
+
+#. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file__billing_status__reopened
+msgid "Re-opened for Additional Billing"
+msgstr "Réouvert pour facturation complémentaire"
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid ""
+"Re-opened for additional billing by %(user)s - %(why)s: %(note)s. Round %(round)s stays frozen; only new disbursements and new invoice lines can be added, and the file is now checked like a new one."
+msgstr ""
+"Réouvert pour facturation complémentaire par %(user)s - %(why)s : %(note)s. Le tour %(round)s reste gelé ; seuls de nouveaux débours et de nouvelles lignes de facture peuvent être ajoutés, et le dossier est désormais contrôlé comme un nouveau."
 
 #. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_logistics_billing_wizard__customs_fee_amount
@@ -6280,6 +6958,19 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:elite_clearance.view_clearance_turnaround_search
 msgid "Record"
 msgstr "Enregistrement"
+
+#. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__account_move__accounting__record_only
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_expense__accounting__record_only
+msgid "Record only"
+msgstr "Enregistrer seulement"
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_expense__accounting
+msgid ""
+"Record only: the payment is already in the general ledger loaded from Sage (paid on or before the cutoff), so the disbursement is kept for the file's history and nothing is posted."
+msgstr ""
+"Enregistrer seulement : le paiement est déjà dans le grand livre chargé depuis Sage (payé au plus tard à la date de bascule) ; le débours est conservé pour l'historique du dossier et rien n'est comptabilisé."
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__name
@@ -6584,6 +7275,16 @@ msgid "Responsible User"
 msgstr "Utilisateur responsable"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__debours_result
+msgid "Result (billed - incurred)"
+msgstr "Écart (facturé - engagé)"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__debours_result_posted
+msgid "Result Already Posted"
+msgstr "Écart déjà comptabilisé"
+
+#. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form
 msgid "Resume Billing"
 msgstr "Reprendre la facturation"
@@ -6646,6 +7347,46 @@ msgstr ""
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__message_has_sms_error
 msgid "SMS Delivery error"
 msgstr "Erreur d'envoi du SMS"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_sage_payment_wizard__sage_match
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__sage_match
+msgid "Sage Match"
+msgstr "Correspondance Sage"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_settings_wizard__clearance_sage_confirm_approver_ids
+#: model:ir.model.fields,field_description:elite_clearance.field_res_company__clearance_sage_confirm_approver_ids
+#: model:ir.model.fields,field_description:elite_clearance.field_res_config_settings__clearance_sage_confirm_approver_ids
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
+msgid "Sage Payment Confirmation Approvers"
+msgstr "Approbateurs de confirmation de paiement Sage"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__sage_payment_date
+msgid "Sage Payment Date"
+msgstr "Date du paiement Sage"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__sage_payment_ref
+msgid "Sage Payment Piece"
+msgstr "Pièce du paiement Sage"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_sage_payment_wizard__sage_payment_ref
+msgid "Sage Piece"
+msgstr "Pièce Sage"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_search_awaiting_payment
+msgid "Sage match"
+msgstr "Correspondance Sage"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_search_awaiting_payment
+msgid "Sage piece proposed"
+msgstr "Pièce Sage proposée"
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
@@ -6846,6 +7587,13 @@ msgid "Set a target"
 msgstr "Définir un objectif"
 
 #. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_file__skip_gain_loss
+msgid ""
+"Set by the migration for files whose result is not booked: files of 2025, files first billed before 25/02/2026, billed files with no approved expense in TEESE, documents with no file. The débours stay in 471100."
+msgstr ""
+"Défini par la migration pour les dossiers dont l'écart n'est pas comptabilisé : dossiers de 2025, dossiers facturés pour la première fois avant le 25/02/2026, dossiers facturés sans dépense approuvée dans TEESE, pièces sans dossier. Les débours restent au 471100."
+
+#. module: elite_clearance
 #. odoo-python
 #: code:addons/elite_clearance/models/logistics_expense.py:0
 msgid ""
@@ -6880,6 +7628,13 @@ msgid "Set the Last Legacy File Numbers"
 msgstr "Définir les derniers numéros de dossier de l'ancien système"
 
 #. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_file__completion_required
+msgid ""
+"Set when a legacy file is re-opened for additional billing: from then on it is checked like a new file."
+msgstr ""
+"Défini lorsqu'un dossier historique est réouvert pour facturation complémentaire : dès lors, il est contrôlé comme un nouveau dossier."
+
+#. module: elite_clearance
 #: model:ir.actions.act_window,name:elite_clearance.action_clearance_config_settings
 #: model:ir.actions.act_window,name:elite_clearance.action_clearance_settings_wizard
 #: model:ir.ui.menu,name:elite_clearance.menu_clearance_settings
@@ -6890,6 +7645,11 @@ msgstr "Paramètres"
 #: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_expense__state__settled
 msgid "Settled"
 msgstr "Réglé"
+
+#. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_expense__target_state__settled
+msgid "Settled (paid)"
+msgstr "Réglé (payé)"
 
 #. module: elite_clearance
 #: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_expense__state__settlement_approved
@@ -6931,6 +7691,11 @@ msgid "Settlement To Set (Finance)"
 msgstr "Règlement à préparer (Finance)"
 
 #. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_expense__target_state__settlement_approved
+msgid "Settlement approved"
+msgstr "Règlement approuvé"
+
+#. module: elite_clearance
 #. odoo-python
 #: code:addons/elite_clearance/models/logistics_expense.py:0
 msgid "Settlement approved: %(mode)s via %(journal)s%(holder)s."
@@ -6947,6 +7712,11 @@ msgstr "Règlement renvoyé à Finance par le Chef de Service Finance."
 #: code:addons/elite_clearance/models/logistics_expense.py:0
 msgid "Settlement sent to the Head of Service Finance for approval."
 msgstr "Règlement envoyé au Chef de Service Finance pour approbation."
+
+#. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_expense__target_state__settlement_submitted
+msgid "Settlement submitted"
+msgstr "Règlement soumis"
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.billing_wizard_view_form
@@ -7012,6 +7782,11 @@ msgstr ""
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__has_billable
 msgid "Something to bill"
 msgstr "Quelque chose à facturer"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__source
+msgid "Source"
+msgstr "Origine"
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.report_clearance_invoice_document
@@ -7081,6 +7856,11 @@ msgstr ""
 "Planifiées : activités futures."
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__target_state
+msgid "Status to Reach"
+msgstr "Statut à atteindre"
+
+#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_turnaround__step
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_turnaround_target__step
 #: model_terms:ir.ui.view,arch_db:elite_clearance.view_clearance_turnaround_search
@@ -7135,6 +7915,7 @@ msgstr "Envoyer pour revue"
 
 #. module: elite_clearance
 #: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_expense__state__submitted
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_expense__target_state__submitted
 msgid "Submitted"
 msgstr "Soumis"
 
@@ -7154,6 +7935,7 @@ msgstr ""
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__supplier_name
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_search_awaiting_payment
 msgid "Supplier"
 msgstr "Fournisseur"
 
@@ -7176,6 +7958,28 @@ msgstr "Pièces justificatives (demande)"
 #: model:ir.model.fields.selection,name:elite_clearance.selection__ir_attachment__clearance_kind__request
 msgid "Supporting document (request)"
 msgstr "Pièce justificative (demande)"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__teese_ref
+msgid "TEESE Advance Code"
+msgstr "Code d'avance TEESE"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__teese_channel
+msgid "TEESE Payment Channel"
+msgstr "Canal de paiement TEESE"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_account_bank_statement_line__teese_ref
+#: model:ir.model.fields,field_description:elite_clearance.field_account_move__teese_ref
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__teese_ref
+msgid "TEESE Reference"
+msgstr "Référence TEESE"
+
+#. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_expense__source__teese_migration
+msgid "TEESE migration"
+msgstr "Migration TEESE"
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.report_clearance_invoice_document
@@ -7296,6 +8100,13 @@ msgstr ""
 "Le nom de la catégorie commence par Transport : la date de livraison est donc demandée à la justification de l'avance."
 
 #. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_expense__teese_channel
+msgid ""
+"The channel named in the load; mapped to a journal under Legacy uploads -> Payment Channels."
+msgstr ""
+"Le canal nommé dans le chargement ; associé à un journal sous Chargements historiques -> Canaux de paiement."
+
+#. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_account_bank_statement_line__logistics_file_id
 #: model:ir.model.fields,help:elite_clearance.field_account_move__logistics_file_id
 #: model:ir.model.fields,help:elite_clearance.field_logistics_invoice_cancel_wizard__file_id
@@ -7386,6 +8197,13 @@ msgstr ""
 "Le type de dossier exactement tel que l'ancien système le libellait, conservé car la correspondance avec un type de service est une appréciation."
 
 #. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_file__debours_billed
+msgid ""
+"The débours lines of the file's posted invoices, Handling excluded, net of credit notes."
+msgstr ""
+"Les lignes de débours des factures comptabilisées du dossier, Handling exclu, nettes des avoirs."
+
+#. module: elite_clearance
 #. odoo-python
 #: code:addons/elite_clearance/wizard/invoice_reversal_wizard.py:0
 msgid "The entry it made has been reversed by %s."
@@ -7474,6 +8292,14 @@ msgstr ""
 "La nature en toutes lettres, pour les écrans qui ne peuvent afficher une sélection - la cloche de la barre d'état avant tout."
 
 #. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid ""
+"The legacy payment channel '%(name)s' is not mapped to a journal. Map it under Clearance -> Legacy uploads -> Payment Channels."
+msgstr ""
+"Le canal de paiement historique '%(name)s' n'est associé à aucun journal. Associez-le sous Clearance -> Chargements historiques -> Canaux de paiement."
+
+#. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_logistics_expense__legacy_reversal
 msgid ""
 "The legacy row carried a negative or zero amount - a return or correction. Kept with its absolute value, cancelled, so the audit trail is complete and no total counts it."
@@ -7485,6 +8311,14 @@ msgstr ""
 msgid "The legacy system's own justification flag, kept verbatim."
 msgstr ""
 "L'indicateur de justification propre à l'ancien système, conservé tel quel."
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid ""
+"The lines of %s belong to a billed and locked file and cannot be changed."
+msgstr ""
+"Les lignes de %s appartiennent à un dossier facturé et verrouillé et ne peuvent plus être modifiées."
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.invoice_credit_wizard_view_form
@@ -7504,6 +8338,11 @@ msgstr ""
 "Le membre du personnel au nom duquel l'avance est portée au 421101 et qui doit la justifier : le demandeur, défini à la saisie de l'avance. Finance peut le corriger."
 
 #. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_file__internal_note
+msgid "The one field that stays writable on a locked file."
+msgstr "Le seul champ qui reste modifiable sur un dossier verrouillé."
+
+#. module: elite_clearance
 #. odoo-python
 #: code:addons/elite_clearance/models/logistics_file.py:0
 msgid "The opening of %s is already approved."
@@ -7516,6 +8355,15 @@ msgid ""
 "                        starts the moment it is approved."
 msgstr ""
 "L'ouverture de ce dossier est entre les mains du Chef du Service Client. Le travail démarre dès qu'elle est approuvée."
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_sage_payment_wizard_view_form
+msgid ""
+"The payment is already in the general ledger loaded from Sage. The\n"
+"                    disbursement is marked paid with the piece you give, and nothing is\n"
+"                    posted here."
+msgstr ""
+"Le paiement est déjà dans le grand livre chargé depuis Sage. Le débours est marqué payé avec la pièce que vous indiquez, et rien n'est comptabilisé ici."
 
 #. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_logistics_payment_attribution_wizard__currency_id
@@ -7625,6 +8473,7 @@ msgstr ""
 
 #. module: elite_clearance
 #. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
 #: code:addons/elite_clearance/models/logistics_expense.py:0
 msgid ""
 "The settlement of %s has not been approved by the Head of Service Finance."
@@ -7654,6 +8503,23 @@ msgstr ""
 "Le bon signé, chargé par le Caissier. Tant qu'il n'est pas là, les opérations du dossier ne peuvent être clôturées."
 
 #. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
+msgid ""
+"The single débours account of files opened on or before the legacy cutoff: debited with the customer as partner, no accrual through the supplier, credited by the invoice."
+msgstr ""
+"Le compte de débours unique des dossiers ouverts au plus tard à la date de bascule : débité avec le client comme partenaire, sans engagement par le fournisseur, crédité par la facture."
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_clearance_settings_wizard__clearance_legacy_oop_account_id
+#: model:ir.model.fields,help:elite_clearance.field_res_company__clearance_legacy_oop_account_id
+#: model:ir.model.fields,help:elite_clearance.field_res_config_settings__clearance_legacy_oop_account_id
+msgid ""
+"The single débours account of files opened on or before the legacy cutoff: every disbursement on them is debited here with the CUSTOMER as partner, with no accrual through the supplier, and the invoice credits it. Files opened after the cutoff use the two-account scheme above."
+msgstr ""
+"Le compte de débours unique des dossiers ouverts au plus tard à la date de bascule : chaque débours y est débité avec le CLIENT comme partenaire, sans engagement par le fournisseur, et la facture le crédite. Les dossiers ouverts après la bascule utilisent le schéma à deux comptes ci-dessus."
+
+#. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_logistics_file__employee_id
 msgid ""
 "The staff member who followed the file in Teese. Kept for the imported files only: the owner removed it from the form on 10/10/2026, because the Responsible user already names who follows a file."
@@ -7666,6 +8532,13 @@ msgid ""
 "The third party is one of the company's manifesting vendors, so the manifesting date is asked for."
 msgstr ""
 "Le tiers est l'un des fournisseurs de manifeste de la société : la date de manifeste est donc demandée."
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_clearance_payment_channel__journal_id
+msgid ""
+"The till or bank the money left through. A load row naming a channel with no journal is refused."
+msgstr ""
+"La caisse ou la banque par laquelle l'argent est sorti. Une ligne de chargement nommant un canal sans journal est refusée."
 
 #. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_logistics_expense__cash_voucher_ids
@@ -7911,6 +8784,7 @@ msgstr "Tonnes par conteneur équivalent"
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.hr_employee_view_form_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_list
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_list_awaiting_payment
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form
 #: model_terms:ir.ui.view,arch_db:elite_clearance.view_clearance_invoice_list
 #: model_terms:ir.ui.view,arch_db:elite_clearance.view_clearance_task_list
@@ -8225,6 +9099,20 @@ msgstr "Renvoie habituellement le dossier"
 #: model_terms:ir.ui.view,arch_db:elite_clearance.view_clearance_invoice_list
 msgid "VAT"
 msgstr "TVA"
+
+#. module: elite_clearance
+#: model:ir.model.fields.selection,name:elite_clearance.selection__account_move_line__clearance_category__vat
+msgid "VAT (migrated)"
+msgstr "TVA (migrée)"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_settings_wizard__clearance_vat_account_id
+#: model:ir.model.fields,field_description:elite_clearance.field_res_company__clearance_vat_account_id
+#: model:ir.model.fields,field_description:elite_clearance.field_res_config_settings__clearance_vat_account_id
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
+msgid "VAT Collected (443100)"
+msgstr "TVA collectée (443100)"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_settings_wizard__clearance_invoice_vat_label
@@ -8633,6 +9521,21 @@ msgstr ""
 "Où elle est créditée. Vide se rabat sur le compte de produits d'honoraires de la société."
 
 #. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
+msgid "Where the VAT line of a migrated invoice is credited."
+msgstr "Où la ligne de TVA d'une facture migrée est créditée."
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_clearance_settings_wizard__clearance_vat_account_id
+#: model:ir.model.fields,help:elite_clearance.field_res_company__clearance_vat_account_id
+#: model:ir.model.fields,help:elite_clearance.field_res_config_settings__clearance_vat_account_id
+msgid ""
+"Where the VAT line of a migrated invoice is credited. The old system's VAT is not reproducible from a rate, so the load gives it as its own line and it lands here."
+msgstr ""
+"Où la ligne de TVA d'une facture migrée est créditée. La TVA de l'ancien système n'est pas reproductible à partir d'un taux, le chargement la fournit donc comme ligne propre et elle atterrit ici."
+
+#. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_clearance_settings_wizard__clearance_commission_account_id
 #: model:ir.model.fields,help:elite_clearance.field_res_company__clearance_commission_account_id
 #: model:ir.model.fields,help:elite_clearance.field_res_config_settings__clearance_commission_account_id
@@ -8916,6 +9819,23 @@ msgstr ""
 "Qui peut clôturer les opérations d'un dossier. Vide = tout Chef de Service Opérations."
 
 #. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
+msgid ""
+"Who may confirm that an approved disbursement nobody paid here was paid in Sage, or cancel its approval. Empty = any Head of Service Finance."
+msgstr ""
+"Qui peut confirmer qu'un débours approuvé que personne n'a payé ici a été payé dans Sage, ou annuler son approbation. Vide = tout Chef du Service Finance."
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_clearance_settings_wizard__clearance_sage_confirm_approver_ids
+#: model:ir.model.fields,help:elite_clearance.field_res_company__clearance_sage_confirm_approver_ids
+#: model:ir.model.fields,help:elite_clearance.field_res_config_settings__clearance_sage_confirm_approver_ids
+msgid ""
+"Who may confirm, on an approved disbursement nobody paid here, that its payment is in the Sage ledger - or cancel the approval. Empty = any Head of Service Finance."
+msgstr ""
+"Qui peut confirmer, sur un débours approuvé que personne n'a payé ici, que son paiement figure dans le grand livre Sage - ou annuler l'approbation. Vide = tout Chef du Service Finance."
+
+#. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_clearance_settings_wizard__clearance_cashier_approver_ids
 #: model:ir.model.fields,help:elite_clearance.field_res_company__clearance_cashier_approver_ids
 #: model:ir.model.fields,help:elite_clearance.field_res_config_settings__clearance_cashier_approver_ids
@@ -8958,18 +9878,18 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
 #: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
 msgid ""
-"Who may reopen a file that has been closed - for more billing, a credit note or any other adjustment. Empty = any Clearance Head of Service Operations."
+"Who may reopen a file that has been closed - for more billing, a credit note or any other adjustment. Empty = any Head of Customer Service."
 msgstr ""
-"Qui peut réouvrir un dossier clôturé - pour une facturation supplémentaire, un avoir ou tout autre ajustement. Vide = tout Chef de Service Opérations."
+"Qui peut réouvrir un dossier clôturé - pour une facturation complémentaire, un avoir ou tout autre ajustement. Vide = tout Chef du Service Clientèle."
 
 #. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_clearance_settings_wizard__clearance_reopen_approver_ids
 #: model:ir.model.fields,help:elite_clearance.field_res_company__clearance_reopen_approver_ids
 #: model:ir.model.fields,help:elite_clearance.field_res_config_settings__clearance_reopen_approver_ids
 msgid ""
-"Who may reopen a file that has been closed. Empty = any Clearance Head of Service Operations."
+"Who may reopen a file that has been closed. Empty = any Head of Customer Service."
 msgstr ""
-"Qui peut réouvrir un dossier clôturé. Vide = tout Chef de Service Opérations."
+"Qui peut réouvrir un dossier clôturé. Vide = tout Chef du Service Clientèle."
 
 #. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_clearance_settings_wizard__clearance_finance_approver_ids
@@ -9167,6 +10087,7 @@ msgstr ""
 
 #. module: elite_clearance
 #. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
 #: code:addons/elite_clearance/models/logistics_file.py:0
 msgid ""
 "Work cannot start on %(name)s: %(count)s mandatory document(s) are still missing and no waiver has been approved."
@@ -9182,6 +10103,7 @@ msgstr ""
 
 #. module: elite_clearance
 #. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
 #: code:addons/elite_clearance/models/logistics_file.py:0
 msgid ""
 "Work cannot start on %s until the Head of Customer Service has approved its opening."
@@ -9245,9 +10167,27 @@ msgid "against a cost of"
 msgstr "pour un coût de"
 
 #. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid "billed"
+msgstr "facturé"
+
+#. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.billing_wizard_view_form
 msgid "category name"
 msgstr "nom de la catégorie"
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid "closed"
+msgstr "clôturé"
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid "closed for operations"
+msgstr "clôturé pour les opérations"
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.report_clearance_invoice_document
@@ -9331,6 +10271,14 @@ msgid "invoice of the split bill is issued again."
 msgstr "de la facture scindée est émise à nouveau."
 
 #. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form_legacy_uploads
+msgid ""
+"is issued: the file, its disbursements and its invoice lines are read-only.\n"
+"                    The Head of Customer Service re-opens it for additional billing, with a reason."
+msgstr ""
+"est émis : le dossier, ses débours et ses lignes de facture sont en lecture seule. Le Chef du Service Clientèle le réouvre pour facturation complémentaire, avec un motif."
+
+#. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form
 msgid ""
 "mandatory document(s) still missing. Work cannot start until they are received or a manager approves a waiver."
@@ -9343,6 +10291,12 @@ msgid ""
 "of staff advances stays on 421101 against the holder and is not recharged to the client."
 msgstr ""
 "d'avances au personnel restent au 421101 à la charge du détenteur et ne sont pas refacturés au client."
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid "opened"
+msgstr "ouvert"
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.report_cash_voucher_document
@@ -9365,6 +10319,12 @@ msgstr "défini à l'ouverture du premier dossier"
 #: model_terms:ir.ui.view,arch_db:elite_clearance.billing_wizard_view_form
 msgid "stands and stays as it is. Only the"
 msgstr "est maintenue et reste telle quelle. Seule la partie"
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid "started"
+msgstr "démarré"
 
 #. module: elite_clearance
 #. odoo-python
@@ -9420,6 +10380,11 @@ msgstr "qui est payé - sans objet pour une avance au personnel"
 #: model_terms:ir.ui.view,arch_db:elite_clearance.billing_wizard_view_form
 msgid "why it differs from cost"
 msgstr "pourquoi il diffère du coût"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form_legacy_uploads
+msgid "writable even when the file is locked"
+msgstr "modifiable même lorsque le dossier est verrouillé"
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.expense_capture_wizard_view_form
