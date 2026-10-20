@@ -170,7 +170,9 @@
                 <field name="file_id"/>
                 <field name="vendor_id"/>
                 <field name="sage_match"/>
-                <filter name="over_60" string="Older than 60 days" domain="[('age_days', '>', 60)]"/>
+                <!-- age_days is computed, not searchable: the filter reads the approval date -->
+                <filter name="over_60" string="Older than 60 days"
+                        domain="[('date_approved', '&lt;', (context_today() - relativedelta(days=60)).strftime('%Y-%m-%d'))]"/>
                 <filter name="proposed" string="Sage piece proposed"
                         domain="[('sage_match', '!=', False), ('sage_match', 'not ilike', 'no match'), ('sage_match', 'not ilike', 'after sage')]"/>
                 <filter name="no_match" string="No Sage match" domain="[('sage_match', 'ilike', 'no match')]"/>
