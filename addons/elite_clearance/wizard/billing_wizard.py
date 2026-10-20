@@ -466,7 +466,9 @@ class LogisticsBillingWizard(models.TransientModel):
                     before = line.expense_id.recharge_amount or line.amount_engaged
                     if cur.compare_amounts(before, line.amount_recharged):
                         lines_moved = True
-                    line.expense_id.write({
+                    # the module's own write: the biller's intent may be
+                    # re-persisted on a frozen row when a half is re-issued
+                    line.expense_id.with_context(clearance_unlock=True).write({
                         'recharge_amount': line.amount_recharged,
                         'recharge_comment': (line.comment or "").strip() or False,
                         'billing_name_id': line.alternative_name_id.id,

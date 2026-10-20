@@ -413,7 +413,10 @@ class LogisticsFile(models.Model):
         'reopening_ids', 'last_reopen_reason_id', 'recharge_amount',
         'recharge_state', 'recharge_note', 'recharge_ops_approved_by_id',
         'recharge_gm_approved_by_id', 'billing_commission_skipped',
-        'client_advance_other', 'client_advance_had', 'client_advance_had_vat',
+        # the billing screen's own figures, persisted and re-persisted
+        # on a billed file (a half re-issued, the printed advances)
+        'advance_had_amount', 'advance_had_vat_amount', 'advance_other_amount',
+        'recharge_comment',
         'message_follower_ids', 'message_ids', 'message_main_attachment_id',
         'activity_ids', 'activity_user_id', 'activity_type_id',
         'activity_date_deadline', 'activity_summary', 'website_message_ids',
