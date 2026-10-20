@@ -175,10 +175,11 @@ class TestHandling(TransactionCase):
         self.assertTrue(wizard.service_line_ids.filtered('is_handling'),
                         "the screen knows the component is Handling")
         wizard.action_create_invoice()
-        invoice = file.invoice_id
+        # the live records, without the migration key the fixture carries
+        invoice = live.invoice_id
         self.assertEqual(invoice.state, 'draft')
         invoice.action_post()
-        return file, invoice
+        return live, invoice
 
     def _term_line(self, move):
         return move.line_ids.filtered(lambda l: l.display_type == 'payment_term')

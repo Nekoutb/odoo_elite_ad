@@ -332,8 +332,16 @@ class TestLegacyUploads(TransactionCase):
         self.assertEqual(inv.amount_total, 5869753)
         # the accounts came from the settings, never from the load
         self.assertEqual(
-            inv.invoice_line_ids.filtered(lambda l: l.clearance_category == 'debours')
+            inv.invoice_line_ids.filtered(
+                lambda l: l.clearance_category == 'debours' and not l.is_handling)
             .mapped('account_id'), self.legacy_oop)
+        # the Handling line is the customer's (Handling brief, 20/10/2026):
+        # credited to their receivable and matched inside the entry
+        handling = inv.invoice_line_ids.filtered('is_handling')
+        self.assertEqual(handling.account_id,
+                         self.client.property_account_receivable_id)
+        self.assertTrue(handling.reconciled)
+        self.assertEqual(inv.amount_residual, 5869753 - 300000)
         self.assertEqual(
             inv.invoice_line_ids.filtered(lambda l: l.clearance_category == 'vat')
             .account_id, self.vat)
