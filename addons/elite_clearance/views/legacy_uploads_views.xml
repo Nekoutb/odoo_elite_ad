@@ -315,28 +315,7 @@
         <field name="context">{'search_default_migrated': 1}</field>
     </record>
 
-    <!-- ============================================================
-         The tab: Clearance -> Legacy uploads
-         ============================================================ -->
-    <menuitem id="menu_clearance_legacy_uploads" name="Legacy uploads"
-              parent="menu_clearance_root" sequence="60"
-              groups="group_clearance_finance,group_clearance_admin"/>
-
-    <menuitem id="menu_clearance_legacy_files" name="Files Loaded from TEESE"
-              parent="menu_clearance_legacy_uploads"
-              action="action_logistics_file_legacy" sequence="10"/>
-
-    <menuitem id="menu_clearance_awaiting_payment" name="Approved Expenses Awaiting Payment"
-              parent="menu_clearance_legacy_uploads"
-              action="action_logistics_expense_awaiting_payment" sequence="20"/>
-
-    <menuitem id="menu_clearance_journal_entries" name="Journal Entries by File"
-              parent="menu_clearance_legacy_uploads"
-              action="action_clearance_journal_entries" sequence="30"/>
-
-    <menuitem id="menu_clearance_payment_channels" name="Payment Channels"
-              parent="menu_clearance_legacy_uploads"
-              action="action_clearance_payment_channel" sequence="40"
-              groups="group_clearance_manager,group_clearance_admin"/>
+    <!-- The menu items live in views/clearance_menus.xml, which loads
+         last: the Clearance root is defined there. -->
 
 </odoo>
