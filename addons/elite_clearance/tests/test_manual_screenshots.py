@@ -723,9 +723,11 @@ class TestManualScreenshots(HttpCase):
             # 12  closing, reopening, billing what arrived late
             scene_shot('file_closed', "39_file_closed", form,
                        wait=".o_form_view")
+            # a billed file is locked: its reopening is the "Re-open for
+            # Additional Billing" button, which opens the same wizard
             scene_shot('file_closed', "40_reopen_wizard", form,
                        wait=".o_form_view",
-                       clicks=[by_action % action('action_logistics_reopen_wizard')],
+                       clicks=["button[name='action_reopen_for_billing']"],
                        then=modal)
             scene_shot('file_partial', "41_billing_partial", form,
                        wait=".o_form_view",

@@ -284,7 +284,7 @@ class TestOwnerSpec1610(TransactionCase):
         log = file.reopening_ids
         self.assertEqual(len(log), 1)
         self.assertEqual((log.reason_id, log.from_state, log.target_state,
-                          log.user_id), (extra, 'ops_closed', 'in_progress', self.ops_head))
+                          log.user_id), (extra, 'ops_closed', 'in_progress', cs_head))
         self.assertIn("Additional expenditure", file.message_ids[0].body)
         # a closed file: the reason pre-selects where it goes back to
         file.state = 'done'

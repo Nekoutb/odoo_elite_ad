@@ -175,10 +175,15 @@ class LogisticsFile(models.Model):
          ('reopened', "Re-opened for Additional Billing")],
         string="Billing Status", default='not_billed', required=True,
         copy=False, tracking=True, index=True)
+    # Not stored: it follows bill_stands, which is not stored either. A
+    # bill withdrawn by Billing (cancelled, or a half cancelled) unlocks
+    # the file for the re-issue the module already allows; only a bill
+    # that STANDS locks it.
     is_locked = fields.Boolean(
-        string="Locked", compute='_compute_is_locked', store=True,
-        help="A billed file is read-only except for its chatter and "
-             "internal notes, until it is re-opened for additional billing.")
+        string="Locked", compute='_compute_is_locked', compute_sudo=True,
+        help="A billed file whose bill stands is read-only except for its "
+             "chatter and internal notes, until it is re-opened for "
+             "additional billing.")
     billing_round = fields.Integer(
         string="Billing Round", default=0, copy=False, readonly=True,
         help="Incremented at each billing. Items added after a re-opening "
@@ -229,10 +234,11 @@ class LogisticsFile(models.Model):
                 file.legacy_id or file.teese_ref
                 or (file.date_opened and file.date_opened <= cutoff))
 
-    @api.depends('billing_status')
+    @api.depends('billing_status', 'bill_stands')
     def _compute_is_locked(self):
         for file in self:
-            file.is_locked = file.billing_status == 'billed'
+            file.is_locked = (file.billing_status == 'billed'
+                              and file.bill_stands)
 
     @api.depends('move_ids')
     def _compute_entry_count(self):
@@ -304,8 +310,11 @@ class LogisticsFile(models.Model):
         for file in self:
             if file._mandatory_relieved():
                 continue
+            # the full list after a re-opening applies to a LEGACY file:
+            # a file opened under the strict rule passed it at the start
             missing = file._get_missing_mandatory_fields(
-                full=file.completion_required if full is None else full)
+                full=(file.completion_required and file.legacy_relief)
+                if full is None else full)
             if missing:
                 raise UserError(self.env._(
                     "%(name)s cannot be %(what)s until every mandatory "
@@ -319,8 +328,11 @@ class LogisticsFile(models.Model):
     def _check_ready_to_work(self):
         if self._mandatory_relieved():
             return
+        # the base gate first: its messages (regime, cargo, customer
+        # record) are the ones the teams know and the tests read
+        res = super()._check_ready_to_work()
         self._check_mandatory_complete(self.env._("opened"), full=True)
-        return super()._check_ready_to_work()
+        return res
 
     def _check_cargo_described(self):
         if self._mandatory_relieved():
@@ -452,8 +464,12 @@ class LogisticsFile(models.Model):
     # billing: the round, the freeze, the lock
     # ------------------------------------------------------------------
     def _billable_expenses(self):
-        # A frozen disbursement belongs to a round already billed.
-        return super()._billable_expenses().filtered(lambda e: not e.is_frozen)
+        # A frozen disbursement belongs to a round already billed. One
+        # billed HERE is tracked by its invoice line (is_billed), so a
+        # credited or cancelled line makes it billable again, as before;
+        # one loaded by the migration has no line, and stays out.
+        return super()._billable_expenses().filtered(
+            lambda e: not (e.is_frozen and not e.billed_line_id))
 
     def _create_client_invoice(self, debours, services, split=False):
         self._check_mandatory_complete(self.env._("billed"))

@@ -513,7 +513,9 @@ class LogisticsBillingWizard(models.TransientModel):
         file = self.file_id
         total_moves = 'recharge_amount' in vals and file.currency_id.compare_amounts(
             file.recharge_amount, vals['recharge_amount'] or 0.0)
-        file.write(vals)
+        # the module's own write: the billing figures may be persisted on
+        # a billed file (a half re-issued, a cancelled bill re-raised)
+        file.with_context(clearance_unlock=True).write(vals)
         if lines_moved and not total_moves:
             # the write hook syncs only when the total moves; the lines did
             file._sync_recharge_state()

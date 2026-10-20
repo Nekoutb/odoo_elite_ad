@@ -86,7 +86,7 @@
         <field name="arch" type="xml">
             <xpath expr="//search" position="inside">
                 <field name="teese_ref"/>
-                <filter name="locked" string="Billed - locked" domain="[('is_locked', '=', True)]"/>
+                <filter name="locked" string="Billed - locked" domain="[('billing_status', '=', 'billed')]"/>
                 <filter name="legacy_relief" string="Opened before the cutoff" domain="[('legacy_relief', '=', True)]"/>
                 <filter name="result_pending" string="Débours result pending" domain="[('result_status', '=', 'pending')]"/>
                 <filter name="result_due" string="Débours result due" domain="[('result_status', '=', 'due')]"/>
