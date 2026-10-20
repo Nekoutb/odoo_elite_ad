@@ -197,11 +197,51 @@ msgstr ""
 
 #. module: elite_clearance
 #. odoo-python
+#: code:addons/elite_clearance/models/handling.py:0
+msgid ""
+"%(inv)s carries a Handling line but %(client)s has no receivable account and no Handling account is set under Clearance -> Configuration -> Settings."
+msgstr ""
+"%(inv)s porte une ligne Handling mais %(client)s n'a pas de compte client et aucun compte Handling n'est défini sous Dédouanement -> Configuration -> Paramètres."
+
+#. module: elite_clearance
+#. odoo-python
 #: code:addons/elite_clearance/models/account_move.py:0
 msgid ""
 "%(inv)s is the invoice of clearance file %(file)s. Cancel it if it should not stand - the file keeps it as the record of what was billed."
 msgstr ""
 "%(inv)s est la facture du dossier de dédouanement %(file)s. Annulez-la si elle ne doit pas être maintenue - le dossier la conserve comme trace de ce qui a été facturé."
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/handling.py:0
+msgid ""
+"%(inv)s: after matching the Handling, the open balance reads %(residual)s and not %(expected)s (total %(total)s less Handling %(handling)s)."
+msgstr ""
+"%(inv)s : après lettrage du Handling, le solde dû indique %(residual)s et non %(expected)s (total %(total)s moins Handling %(handling)s)."
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/handling.py:0
+msgid ""
+"%(inv)s: the Handling line '%(line)s' carries VAT. Handling is not revenue and carries no VAT."
+msgstr ""
+"%(inv)s : la ligne Handling « %(line)s » porte de la TVA. Le Handling n'est pas un produit et ne porte pas de TVA."
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/handling.py:0
+msgid ""
+"%(inv)s: the Handling line '%(line)s' is posted to %(account)s. Handling is due back to the customer and may only be credited to %(expected)s - never to débours, revenue, VAT or the débours result."
+msgstr ""
+"%(inv)s : la ligne Handling « %(line)s » est imputée sur %(account)s. Le Handling est dû au client et ne peut être crédité que sur %(expected)s - jamais sur les débours, les produits, la TVA ou le résultat sur débours."
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/handling.py:0
+msgid ""
+"%(inv)s: the Handling line '%(line)s' names %(who)s; it must carry the invoice's customer, %(client)s."
+msgstr ""
+"%(inv)s : la ligne Handling « %(line)s » nomme %(who)s ; elle doit porter le client de la facture, %(client)s."
 
 #. module: elite_clearance
 #. odoo-python
@@ -316,6 +356,14 @@ msgid ""
 "%(ref)s is not a %(service)s file number. It reads as the year, the service code and the number, e.g. %(example)s."
 msgstr ""
 "%(ref)s n'est pas un numéro de dossier %(service)s. Il se lit : l'année, le code du service et le numéro, par ex. %(example)s."
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/handling.py:0
+msgid ""
+"%(ref)s is not a disbursement reference. It reads as FA, the year, the month and the number, e.g. %(example)s."
+msgstr ""
+"%(ref)s n'est pas une référence de débours. Elle se lit FA, l'année, le mois et le numéro, par ex. %(example)s."
 
 #. module: elite_clearance
 #. odoo-python
@@ -440,6 +488,14 @@ msgstr ""
 #. module: elite_clearance
 #. odoo-python
 #: code:addons/elite_clearance/models/logistics_file.py:0
+msgid ""
+"%s has no receivable account, so the Handling cannot be credited to it. Set one on the customer, or a Handling account under Clearance -> Configuration -> Settings."
+msgstr ""
+"%s n'a pas de compte client, le Handling ne peut donc pas y être crédité. Définissez-en un sur le client, ou un compte Handling sous Dédouanement -> Configuration -> Paramètres."
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/logistics_file.py:0
 msgid "%s has no unjustified staff advance — nothing to waive."
 msgstr "%s n'a aucune avance au personnel non justifiée — rien à déroger."
 
@@ -473,6 +529,14 @@ msgstr "%s n'a pas été soumis pour approbation."
 #: code:addons/elite_clearance/models/logistics_expense.py:0
 msgid "%s has not been submitted for justification approval."
 msgstr "%s n'a pas été soumis pour approbation de la justification."
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/handling.py:0
+msgid ""
+"%s is a Handling component. Handling is billed to the customer and due back to them; nothing is ever paid for it, so no disbursement can be keyed under it."
+msgstr ""
+"%s est une composante Handling. Le Handling est facturé au client et lui est dû ; rien n'est jamais payé pour lui, aucun débours ne peut donc être saisi dessous."
 
 #. module: elite_clearance
 #. odoo-python
@@ -854,6 +918,29 @@ msgstr ""
 "<strong>L'ajustement de refacturation est approuvé.</strong> La facturation peut reprendre : cliquez sur <em>Reprendre la facturation</em> ci-dessus pour émettre la facture à"
 
 #. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_billing_service__is_handling
+#: model:ir.model.fields,help:elite_clearance.field_logistics_billing_wizard_service__is_handling
+msgid ""
+"A Handling component: printed on the invoice, due back to the customer, credited to their receivable account (or the Handling account in Settings) with no VAT. The income account above is not used for it."
+msgstr ""
+"Une composante Handling : imprimée sur la facture, due au client, créditée sur son compte client (ou sur le compte Handling des paramètres) sans TVA. Le compte de produits ci-dessus n'est pas utilisé pour elle."
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_expense_category__is_handling
+msgid ""
+"A Handling component: printed on the invoice, due back to the customer, credited to their receivable account. No disbursement can be keyed under it - nothing is ever paid for Handling."
+msgstr ""
+"Une composante Handling : imprimée sur la facture, due au client, créditée sur son compte client. Aucun débours ne peut être saisi dessous - rien n'est jamais payé pour le Handling."
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/handling.py:0
+msgid ""
+"A Handling line carries no VAT: Handling is due back to the customer, it is not revenue."
+msgstr ""
+"Une ligne Handling ne porte pas de TVA : le Handling est dû au client, ce n'est pas un produit."
+
+#. module: elite_clearance
 #. odoo-python
 #: code:addons/elite_clearance/wizard/invoice_reversal_wizard.py:0
 msgid "A bill was cancelled"
@@ -899,6 +986,14 @@ msgstr "Un débours facturé dans un tour clos n'est jamais supprimé."
 
 #. module: elite_clearance
 #. odoo-python
+#: code:addons/elite_clearance/models/handling.py:0
+msgid ""
+"A disbursement numbered %(n)04d has already been keyed here in %(year)s, so the series cannot go back to %(ref)s. Key that number or a later one."
+msgstr ""
+"Un débours numéroté %(n)04d a déjà été saisi ici en %(year)s ; la série ne peut donc pas revenir à %(ref)s. Saisissez ce numéro ou un numéro ultérieur."
+
+#. module: elite_clearance
+#. odoo-python
 #: code:addons/elite_clearance/wizard/expense_capture_wizard.py:0
 msgid ""
 "A disbursement of nothing is not a disbursement. Key what was actually paid."
@@ -923,13 +1018,6 @@ msgid ""
 "A document waiver is waiting to be signed; signing it starts the work."
 msgstr ""
 "Une dérogation documentaire attend d'être signée ; la signer démarre le travail."
-
-#. module: elite_clearance
-#: model:ir.model.fields,help:elite_clearance.field_account_move_line__is_handling
-msgid ""
-"A débours line whose description contains Handling: posted to 471100 like any débours, left out of the débours result, and kept in 471100 for the customer."
-msgstr ""
-"Une ligne de débours dont le libellé contient Handling : comptabilisée au 471100 comme tout débours, exclue de l'écart sur débours, et conservée au 471100 pour le client."
 
 #. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_logistics_service_type_document__is_mandatory
@@ -2502,6 +2590,7 @@ msgstr "Catégorie de débours"
 #: model:ir.model,name:elite_clearance.model_logistics_file
 #: model:ir.model.fields,field_description:elite_clearance.field_account_bank_statement_line__logistics_file_id
 #: model:ir.model.fields,field_description:elite_clearance.field_account_move__logistics_file_id
+#: model:ir.model.fields,field_description:elite_clearance.field_account_move_line__clearance_file_id
 #: model:ir.model.fields,field_description:elite_clearance.field_account_payment__logistics_file_id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_wizard__file_id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_capture_wizard__file_id
@@ -2511,7 +2600,7 @@ msgstr "Catégorie de débours"
 #: model_terms:ir.ui.view,arch_db:elite_clearance.view_account_payment_form_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.view_clearance_invoice_search
 msgid "Clearance File"
-msgstr "Dossier de dédouanement"
+msgstr "Dossier"
 
 #. module: elite_clearance
 #: model:ir.model,name:elite_clearance.model_logistics_file_document
@@ -3146,6 +3235,7 @@ msgstr "Actuellement imputé à"
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_turnaround__partner_id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_payment_attribution_wizard__partner_id
+#: model_terms:ir.ui.view,arch_db:elite_clearance.account_move_line_view_search_handling
 #: model_terms:ir.ui.view,arch_db:elite_clearance.view_clearance_turnaround_search
 msgid "Customer"
 msgstr "Client"
@@ -3227,8 +3317,9 @@ msgstr ""
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopening__date
+#: model_terms:ir.ui.view,arch_db:elite_clearance.account_move_line_view_search_handling
 msgid "Date"
-msgstr ""
+msgstr "Date"
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.report_cash_voucher_document
@@ -3412,6 +3503,13 @@ msgid "Disbursements are keyed on a file that is in progress. %s is not."
 msgstr "Les débours se saisissent sur un dossier en cours. %s ne l'est pas."
 
 #. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
+msgid ""
+"Disbursements are numbered FA, the year, the month, then the running number of the year - FA26051022. Key the last reference the old system issued and the next disbursement keyed here takes the number after it, with its own month."
+msgstr ""
+"Les débours sont numérotés FA, l'année, le mois, puis le numéro courant de l'année - FA26051022. Saisissez la dernière référence émise par l'ancien système et le prochain débours saisi ici prend le numéro suivant, avec son propre mois."
+
+#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_wizard__split_debours_total
 msgid "Disbursements invoice"
 msgstr "Facture de débours"
@@ -3486,6 +3584,12 @@ msgstr "Nom affiché"
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_wizard__skip_commission
 msgid "Do not bill the commission"
 msgstr "Ne pas facturer la commission"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.account_move_line_view_list_handling
+#: model_terms:ir.ui.view,arch_db:elite_clearance.account_move_line_view_search_handling
+msgid "Document"
+msgstr "Document"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__document_ids
@@ -3772,7 +3876,16 @@ msgstr "Conteneurs équivalents"
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form
 msgid "Evaluate Débours Result"
+msgstr "Évaluer le résultat sur débours"
+
+#. module: elite_clearance
+#: model_terms:ir.actions.act_window,help:elite_clearance.action_clearance_handling_due
+msgid ""
+"Every Handling line of a posted invoice or credit note lands\n"
+"               here: what is due back to each customer, by file, document\n"
+"               and month."
 msgstr ""
+"Chaque ligne Handling d'une facture ou d'un avoir comptabilisé arrive ici : ce qui est dû à chaque client, par dossier, document et mois."
 
 #. module: elite_clearance
 #: model_terms:ir.actions.act_window,help:elite_clearance.action_clearance_customers
@@ -4041,6 +4154,12 @@ msgstr "Explication"
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
 #: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
+msgid "FA26051022"
+msgstr ""
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
 msgid ""
 "Fallback for fee lines, used only where the two accounts below are left empty."
 msgstr ""
@@ -4073,6 +4192,7 @@ msgstr "Compte de produits d'honoraires (par défaut)"
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_document_date_wizard__file_id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopen_wizard__file_id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file_reopening__file_id
+#: model_terms:ir.ui.view,arch_db:elite_clearance.account_move_line_view_search_handling
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_search
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_search_awaiting_payment
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form
@@ -4456,8 +4576,63 @@ msgstr "Remettre les espèces à"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_account_move_line__is_handling
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_wizard_service__is_handling
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__handling_billed
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_list_legacy_uploads
 msgid "Handling"
 msgstr "Handling"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_settings_wizard__clearance_handling_account_id
+#: model:ir.model.fields,field_description:elite_clearance.field_res_company__clearance_handling_account_id
+#: model:ir.model.fields,field_description:elite_clearance.field_res_config_settings__clearance_handling_account_id
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
+msgid "Handling Account"
+msgstr "Compte Handling"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_account_move_line__clearance_handling_amount
+msgid "Handling Due"
+msgstr "Handling dû"
+
+#. module: elite_clearance
+#: model:ir.actions.act_window,name:elite_clearance.action_clearance_handling_due
+#: model:ir.ui.menu,name:elite_clearance.menu_clearance_handling_due
+#: model_terms:ir.ui.view,arch_db:elite_clearance.account_move_line_view_graph_handling
+#: model_terms:ir.ui.view,arch_db:elite_clearance.account_move_line_view_list_handling
+#: model_terms:ir.ui.view,arch_db:elite_clearance.account_move_line_view_pivot_handling
+#: model_terms:ir.ui.view,arch_db:elite_clearance.account_move_line_view_search_handling
+msgid "Handling Due to Customers"
+msgstr "Handling dû aux clients"
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_account_move_line__is_handling
+msgid ""
+"Handling billed and due back to the customer: credited to the customer's receivable account (or the Handling account in Settings), no VAT, matched against the invoice inside the entry, and outside the débours result on both sides."
+msgstr ""
+"Handling facturé et dû au client : crédité sur le compte client (ou sur le compte Handling des paramètres), sans TVA, lettré avec la facture dans l'écriture, et hors du résultat sur débours des deux côtés."
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_logistics_file__handling_billed
+msgid ""
+"Handling billed on this file and due back to the customer: the Handling lines of its posted invoices, credit notes deducted. Outside the débours result on both sides."
+msgstr ""
+"Handling facturé sur ce dossier et dû au client : les lignes Handling de ses factures comptabilisées, avoirs déduits. Hors du résultat sur débours des deux côtés."
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.account_move_line_view_search_handling
+msgid ""
+"Handling credited to a dedicated Handling account and not yet refunded or offset."
+msgstr ""
+"Handling crédité sur un compte Handling dédié et pas encore remboursé ni compensé."
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_service__is_handling
+#: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense_category__is_handling
+#: model:ir.model.fields.selection,name:elite_clearance.selection__account_move_line__clearance_service_kind__handling
+msgid "Handling – due to customer"
+msgstr "Handling – dû au client"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_service__has_message
@@ -4842,6 +5017,7 @@ msgstr "Notes internes"
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_invoice_cancel_wizard__invoice_id
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_invoice_credit_wizard__invoice_id
 #: model:ir.model.fields.selection,name:elite_clearance.selection__account_move__document_type__invoice
+#: model_terms:ir.ui.view,arch_db:elite_clearance.account_move_line_view_list_handling
 msgid "Invoice"
 msgstr "Facture"
 
@@ -4872,10 +5048,25 @@ msgid "Invoice Layout"
 msgstr "Présentation de la facture"
 
 #. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_account_move_line__clearance_invoice_payment_state
+msgid "Invoice Payment"
+msgstr "Paiement de la facture"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.account_move_line_view_search_handling
+msgid "Invoice Settled"
+msgstr "Facture réglée"
+
+#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__invoice_state
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_invoice_cancel_wizard__invoice_state
 msgid "Invoice Status"
 msgstr "Statut de la facture"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.account_move_line_view_search_handling
+msgid "Invoice Still Open"
+msgstr "Facture encore ouverte"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_settings_wizard__clearance_invoice_title
@@ -5222,6 +5413,11 @@ msgstr ""
 "Kribi, Douala, Tiko, Yaoundé. Chaque dossier de dédouanement indique le port par lequel il est dédouané."
 
 #. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.account_move_line_view_search_handling
+msgid "Label"
+msgstr "Libellé"
+
+#. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_clearance_task__date_landed
 msgid "Landed"
 msgstr "Arrivé le"
@@ -5235,6 +5431,14 @@ msgstr "Langue"
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_service_type__legacy_last_file_ref
 msgid "Last File Number in Legacy System"
 msgstr "Dernier numéro de dossier de l'ancien système"
+
+#. module: elite_clearance
+#: model:ir.model.fields,field_description:elite_clearance.field_clearance_settings_wizard__clearance_legacy_last_expense_ref
+#: model:ir.model.fields,field_description:elite_clearance.field_res_company__clearance_legacy_last_expense_ref
+#: model:ir.model.fields,field_description:elite_clearance.field_res_config_settings__clearance_legacy_last_expense_ref
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
+msgid "Last Legacy Disbursement Reference"
+msgstr "Dernière référence de débours de l'ancien système"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__last_reopen_reason_id
@@ -5313,6 +5517,11 @@ msgid "Last Updated on"
 msgstr "Dernière mise à jour le"
 
 #. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
+msgid "Last legacy disbursement reference"
+msgstr "Dernière référence de débours de l'ancien système"
+
+#. module: elite_clearance
 #: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_service_type__transit_start_rule__later
 msgid "Later of the manifesting date and all documents received"
 msgstr ""
@@ -5332,6 +5541,11 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:elite_clearance.invoice_cancel_wizard_view_form
 msgid "Leave it"
 msgstr "Laisser"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.account_move_line_view_list_handling
+msgid "Ledger Label"
+msgstr "Libellé au grand livre"
 
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_expense__is_legacy
@@ -5529,6 +5743,11 @@ msgstr ""
 "Associez chaque canal de paiement de l'ancien système à une caisse ou une banque."
 
 #. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.account_move_line_view_list_handling
+msgid "Matched"
+msgstr "Lettré"
+
+#. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.report_clearance_invoice_document
 msgid "Max period for complaints regarding invoices:"
 msgstr ""
@@ -5592,6 +5811,7 @@ msgid "Montant"
 msgstr ""
 
 #. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.account_move_line_view_search_handling
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_reopening_view_search
 msgid "Month"
 msgstr "Mois"
@@ -5698,6 +5918,11 @@ msgstr "Type de la prochaine activité"
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__skip_gain_loss
 msgid "No Débours Result"
 msgstr "Sans écart sur débours"
+
+#. module: elite_clearance
+#: model_terms:ir.actions.act_window,help:elite_clearance.action_clearance_handling_due
+msgid "No Handling billed yet"
+msgstr "Aucun Handling facturé pour l'instant"
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_search_awaiting_payment
@@ -5831,6 +6056,11 @@ msgstr "Non facturé"
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_file__not_containerised
 msgid "Not Containerised"
 msgstr "Non conteneurisé"
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.account_move_line_view_search_handling
+msgid "Not Matched"
+msgstr "Non lettré"
 
 #. module: elite_clearance
 #: model:ir.model.fields.selection,name:elite_clearance.selection__account_move__legacy_payment_state__not_paid
@@ -6598,6 +6828,7 @@ msgstr "Imprimer le bon de caisse"
 #. module: elite_clearance
 #: model:ir.model.fields,field_description:elite_clearance.field_account_move_line__clearance_print_name
 #: model:ir.model.fields,field_description:elite_clearance.field_logistics_billing_wizard_debours__alternative_name_id
+#: model_terms:ir.ui.view,arch_db:elite_clearance.account_move_line_view_list_handling
 msgid "Printed As"
 msgstr "Imprimé comme"
 
@@ -6789,7 +7020,7 @@ msgstr ""
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form
 msgid "Re-open for Additional Billing"
-msgstr ""
+msgstr "Réouvrir pour facturation complémentaire"
 
 #. module: elite_clearance
 #: model:ir.model.fields.selection,name:elite_clearance.selection__logistics_file__billing_status__reopened
@@ -8068,6 +8299,14 @@ msgstr ""
 "La facture %(side)s %(inv)s est maintenue à %(was)s et l'écran arrive maintenant à %(now)s. Annulez-la aussi pour facturer %(side)s différemment, ou remettez le montant."
 
 #. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/handling.py:0
+msgid ""
+"The Handling flag of a posted invoice line cannot be changed (%s). Correct it with a credit note."
+msgstr ""
+"L'indicateur Handling d'une ligne de facture comptabilisée ne peut pas être modifié (%s). Corrigez-le par un avoir."
+
+#. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_logistics_billing_wizard__advance_had_vat_amount
 msgid "The VAT on that fee, at the rate configured in Settings."
 msgstr "La TVA sur ces honoraires, au taux configuré dans les Paramètres."
@@ -8109,6 +8348,7 @@ msgstr ""
 #. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_account_bank_statement_line__logistics_file_id
 #: model:ir.model.fields,help:elite_clearance.field_account_move__logistics_file_id
+#: model:ir.model.fields,help:elite_clearance.field_account_move_line__clearance_file_id
 #: model:ir.model.fields,help:elite_clearance.field_logistics_invoice_cancel_wizard__file_id
 #: model:ir.model.fields,help:elite_clearance.field_logistics_invoice_credit_wizard__file_id
 msgid ""
@@ -8426,6 +8666,16 @@ msgid ""
 "The recharge on %s differs from what was disbursed and has not been approved. Send it for review first."
 msgstr ""
 "La refacturation sur %s diffère de ce qui a été décaissé et n'a pas été approuvée. Envoyez-la d'abord pour revue."
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_clearance_settings_wizard__clearance_legacy_last_expense_ref
+#: model:ir.model.fields,help:elite_clearance.field_res_company__clearance_legacy_last_expense_ref
+#: model:ir.model.fields,help:elite_clearance.field_res_config_settings__clearance_legacy_last_expense_ref
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
+msgid ""
+"The reference of the last disbursement keyed in the old system, e.g. FA26051022 - FA, the year, the month, then the running number of the year. The next disbursement keyed here takes the number after it, with its own month."
+msgstr ""
+"La référence du dernier débours saisi dans l'ancien système, par ex. FA26051022 - FA, l'année, le mois, puis le numéro courant de l'année. Le prochain débours saisi ici prend le numéro suivant, avec son propre mois."
 
 #. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_logistics_service_type__legacy_last_file_ref
@@ -8782,6 +9032,7 @@ msgid "Tonnes per equivalent container"
 msgstr "Tonnes par conteneur équivalent"
 
 #. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.account_move_line_view_list_handling
 #: model_terms:ir.ui.view,arch_db:elite_clearance.hr_employee_view_form_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_list
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_expense_view_list_awaiting_payment
@@ -9462,6 +9713,23 @@ msgstr "Quand l'équipe d'origine l'a envoyé pour approbation."
 #: model:ir.model.fields,help:elite_clearance.field_logistics_expense__date_approved
 msgid "When the team manager approved it."
 msgstr "Quand le chef d'équipe l'a approuvé."
+
+#. module: elite_clearance
+#: model:ir.model.fields,help:elite_clearance.field_clearance_settings_wizard__clearance_handling_account_id
+#: model:ir.model.fields,help:elite_clearance.field_res_company__clearance_handling_account_id
+#: model:ir.model.fields,help:elite_clearance.field_res_config_settings__clearance_handling_account_id
+msgid ""
+"Where a Handling line is credited, with the invoice's customer as partner. Empty = the customer's own receivable account (411100), matched against the invoice inside the same entry so the invoice's open balance is its total less the Handling."
+msgstr ""
+"Compte crédité par une ligne Handling, avec le client de la facture comme partenaire. Vide = le compte client lui-même (411100), lettré avec la facture dans la même écriture, de sorte que le solde dû de la facture est son total moins le Handling."
+
+#. module: elite_clearance
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
+#: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_settings_wizard_view_form
+msgid ""
+"Where a Handling line is credited, with the invoice's customer as partner. Empty = the customer's own receivable account (411100), matched against the invoice inside the same entry so the open balance is the total less the Handling."
+msgstr ""
+"Compte crédité par une ligne Handling, avec le client de la facture comme partenaire. Vide = le compte client lui-même (411100), lettré avec la facture dans la même écriture, de sorte que le solde dû est le total moins le Handling."
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.clearance_res_config_settings_view_form
