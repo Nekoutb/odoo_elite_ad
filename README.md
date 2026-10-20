@@ -220,6 +220,45 @@ what they need:
   posted) and *Cancel Approval* (reason required). The list *Approved
   Expenses Awaiting Payment* shows them, older than 60 days in red.
 
+### Handling due to the customer (19.0.56, brief of 20/10/2026)
+
+Some files are billed with a **Handling** component. It is printed on
+the invoice, but it is not revenue, carries no VAT and is never
+incurred: it is due back to the customer and reduces what they owe.
+
+- **The component.** A billable service or an expense category ticked
+  *Handling – due to customer*. The billable service *HAND — Handling
+  (dû au client)* is seeded and approved; the biller picks it in the
+  service section of the billing screen. No disbursement can be keyed
+  under a Handling category. The invoice line carries the flag from the
+  moment it is billed; a migrated line brings it from the load file;
+  the description is never read.
+- **The entry.** The invoice debits the customer's receivable for its
+  full total, Handling included. Each Handling line is credited to the
+  *Handling Account* named in Settings - empty, which is the default,
+  means the customer's own receivable account - with the customer as
+  partner and the ledger label `<file> | <invoice> | Handling – dû au
+  client`. When that account is the receivable, the credit is matched
+  against the invoice's debit inside the entry: the open balance of the
+  invoice is its total less the Handling, the invoice still reads *Not
+  Paid*, and the customer statement shows both. A customer who pays the
+  gross amount is left with the excess as a credit, to refund or offset.
+- **Controls.** A Handling line posted anywhere else, carrying VAT, or
+  naming another partner is refused at posting. A credit note on a
+  Handling line reverses the credit, matched the same way, so the open
+  balance does not move. Handling is outside the débours result on both
+  sides.
+- **Reporting.** *Reporting → Handling Due to Customers* lists every
+  Handling line of a posted invoice or credit note by customer, file,
+  document and month, with filters on whether the invoice is still
+  open. The file's Débours Result group and list carry a *Handling*
+  figure.
+
+**Disbursement references** read `FA` + year + month + the running
+number of the year (FA26051022) since the same build. *Settings → File
+Numbering* takes the last reference the old system issued and the next
+disbursement keyed here takes the number after it, with its own month.
+
 ## Repository layout
 
 ```

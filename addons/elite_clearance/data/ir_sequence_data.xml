@@ -8,11 +8,18 @@
              (kind, service type, company) on first use. Only the expense
              sequence is a single global counter. -->
 
+        <!-- FA, the year, the month, then the running number of the
+             year: FA26051022 (owner, 20/10/2026). The number continues
+             through the year whatever the month; Settings > File
+             Numbering points it after the last legacy reference. An
+             upgraded database is brought to this shape by
+             hooks.configure_expense_sequence. -->
         <record id="seq_logistics_expense" model="ir.sequence">
             <field name="name">Clearance Expense</field>
             <field name="code">logistics.expense</field>
-            <field name="prefix">EXP/%(year)s/</field>
-            <field name="padding">5</field>
+            <field name="prefix">FA%(y)s%(month)s</field>
+            <field name="padding">4</field>
+            <field name="use_date_range" eval="True"/>
             <field name="company_id" eval="False"/>
         </record>
 

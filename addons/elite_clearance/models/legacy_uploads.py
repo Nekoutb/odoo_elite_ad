@@ -1288,22 +1288,16 @@ class AccountMove(models.Model):
 class AccountMoveLine(models.Model):
     _inherit = 'account.move.line'
 
+    # Only the flag counts (Handling brief, 20/10/2026): a billing
+    # component carries it, billing copies it on to the line, a migrated
+    # line brings it from the load file. The description is never read.
     is_handling = fields.Boolean(
-        string="Handling", compute='_compute_is_handling', store=True,
-        readonly=False, copy=False,
-        help="A débours line whose description contains Handling: posted "
-             "to 471100 like any débours, left out of the débours result, "
-             "and kept in 471100 for the customer.")
+        string="Handling", copy=False, index=True,
+        help="Handling billed and due back to the customer: credited to "
+             "the customer's receivable account (or the Handling account "
+             "in Settings), no VAT, matched against the invoice inside "
+             "the entry, and outside the débours result on both sides.")
     legacy_id = fields.Integer(string="Legacy Line ID", index=True, copy=False)
-
-    @api.depends('name', 'clearance_category')
-    def _compute_is_handling(self):
-        for line in self:
-            if line.is_handling:
-                continue
-            line.is_handling = bool(
-                line.clearance_category == 'debours'
-                and line.name and 'handling' in line.name.lower())
 
     def _clearance_migration_accounts(self):
         """The account per line category, from the settings."""
@@ -1314,7 +1308,13 @@ class AccountMoveLine(models.Model):
             file = line.move_id.logistics_file_id
             account = False
             cat = line.clearance_category
-            if cat == 'debours':
+            if line.is_handling:
+                # due back to the customer, whatever block it was billed in
+                account = company._clearance_handling_account(
+                    line.move_id.partner_id)
+                if line.tax_ids:
+                    line.tax_ids = [fields.Command.clear()]
+            elif cat == 'debours':
                 account = (company.clearance_legacy_oop_account_id
                            if file.legacy_relief
                            else company.clearance_oop_account_id)

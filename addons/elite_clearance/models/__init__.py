@@ -18,5 +18,8 @@ from . import logistics_file
 from . import logistics_expense
 # after the file, the expense and account.move: it inherits all three
 from . import legacy_uploads
+# after legacy_uploads: it redefines is_handling on the line and the
+# accounts of a migrated line
+from . import handling
 from . import clearance_turnaround
 from . import clearance_task

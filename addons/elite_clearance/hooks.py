@@ -11,6 +11,49 @@ def seed_transit_rules(env):
                        'transit_end_rule': 'vendor_paid'})
 
 
+def seed_handling_service(env):
+    """The Handling component (owner's brief, 20/10/2026): one billable
+    service per company, flagged Handling and approved, so Billing can
+    pick it on the billing screen. Created where missing by name; a
+    company that already has it is left alone."""
+    from odoo.addons.elite_clearance.models.handling import HANDLING_SERVICE_NAME
+    Service = env['logistics.billing.service'].with_context(active_test=False)
+    for company in env['res.company'].search([]):
+        if Service.search([('name', '=', HANDLING_SERVICE_NAME),
+                           ('company_id', '=', company.id)], limit=1):
+            continue
+        Service.with_context(mail_create_nolog=True, mail_notrack=True).create({
+            'name': HANDLING_SERVICE_NAME,
+            'company_id': company.id,
+            'is_handling': True,
+            'state': 'approved',
+            'description': "Handling billed to the customer and due back "
+                           "to them: not revenue, no VAT, credited to the "
+                           "customer's receivable account.",
+        })
+
+
+def configure_expense_sequence(env):
+    """Disbursements are numbered FA + year + month + a running number
+    of the year, FA26051022 (owner, 20/10/2026). The seeded sequence is
+    noupdate, so an upgraded database is brought to it here."""
+    sequence = env.ref('elite_clearance.seq_logistics_expense',
+                       raise_if_not_found=False)
+    if not sequence:
+        return
+    vals = {}
+    if sequence.prefix != 'FA%(y)s%(month)s':
+        vals['prefix'] = 'FA%(y)s%(month)s'
+    if sequence.suffix:
+        vals['suffix'] = ''
+    if sequence.padding != 4:
+        vals['padding'] = 4
+    if not sequence.use_date_range:
+        vals['use_date_range'] = True
+    if vals:
+        sequence.sudo().write(vals)
+
+
 def seed_clearance_master_data(env):
     """Seed Elite Advisors' real service types, document checklists and
     expense categories. Create-if-missing by code, so it is safe on fresh
@@ -164,3 +207,6 @@ def seed_clearance_master_data(env):
             Cat.create({'code': code, 'name': name, 'sequence': seq * 10})
     # transit rules per service (owner 16/10/2026)
     seed_transit_rules(env)
+    # the Handling component and the disbursement series (owner 20/10/2026)
+    seed_handling_service(env)
+    configure_expense_sequence(env)

@@ -565,6 +565,7 @@ class AccountMoveLine(models.Model):
         [('commission', "Commission on disbursements"),
          ('customs_fee', "Honoraires Agréés en Douane"),
          ('file_fee', "Frais de dossier"),
+         ('handling', "Handling – due to customer"),
          ('other', "Other billable service")],
         string="Clearance Service", copy=False,
         help="Which standing service line this is, so the billing screen "

@@ -33,6 +33,10 @@
                                  help="Where the VAT line of a migrated invoice is credited.">
                             <field name="clearance_vat_account_id"/>
                         </setting>
+                        <setting string="Handling Account"
+                                 help="Where a Handling line is credited, with the invoice's customer as partner. Empty = the customer's own receivable account (411100), matched against the invoice inside the same entry so the open balance is the total less the Handling.">
+                            <field name="clearance_handling_account_id"/>
+                        </setting>
                         <setting string="Employee Advances Account"
                                  help="Where cash advances sit until justified with supporting documents.">
                             <field name="clearance_advance_account_id"/>
@@ -95,6 +99,10 @@
                         <setting string="Undisclosed Invoice Numbering"
                                  help="The same, for the invoices of an undisclosed account. Credit notes keep their own AV series either way.">
                             <field name="clearance_undisclosed_invoice_sequence_id"/>
+                        </setting>
+                        <setting string="Last Legacy Disbursement Reference"
+                                 help="The reference of the last disbursement keyed in the old system, e.g. FA26051022 - FA, the year, the month, then the running number of the year. The next disbursement keyed here takes the number after it, with its own month.">
+                            <field name="clearance_legacy_last_expense_ref" placeholder="FA26051022"/>
                         </setting>
                         <setting string="VAT on Service Fees"
                                  help="Applied to commission, customs fees and any other

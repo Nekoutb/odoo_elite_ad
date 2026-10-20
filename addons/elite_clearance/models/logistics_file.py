@@ -2143,7 +2143,8 @@ class LogisticsFile(models.Model):
         # rather than inherited from whichever account a line lands on, so
         # the invoice does not change meaning when an account does.
         service_taxes = self.company_id._clearance_service_taxes(self.partner_id)
-        if (services and not service_taxes
+        taxable = [line for line in services if not line.get('is_handling')]
+        if (taxable and not service_taxes
                 and not self.partner_id.commercial_partner_id.clearance_vat_exempt):
             raise UserError(self.env._(
                 "No VAT is configured, so %(client)s would be billed without "
@@ -2153,6 +2154,36 @@ class LogisticsFile(models.Model):
                 "tick Exempt from VAT on the customer.",
                 client=self.partner_id.display_name))
         for line in services:
+            if line.get('is_handling'):
+                # Handling (owner's brief, 20/10/2026): printed with the
+                # services, but not revenue and never incurred - credited
+                # to the customer's own receivable (or the Handling
+                # account), no VAT, and matched against the invoice's
+                # receivable debit when it posts. The ledger label is set
+                # at posting; the client's document keeps this wording.
+                handling_account = self.company_id._clearance_handling_account(
+                    self.partner_id)
+                if not handling_account:
+                    raise UserError(self.env._(
+                        "%s has no receivable account, so the Handling "
+                        "cannot be credited to it. Set one on the customer, "
+                        "or a Handling account under Clearance -> "
+                        "Configuration -> Settings.",
+                        self.partner_id.display_name))
+                service_lines.append(fields.Command.create({
+                    'name': line['name'],
+                    'quantity': 1.0,
+                    'price_unit': line['amount'],
+                    'account_id': handling_account.id,
+                    'tax_ids': [fields.Command.clear()],
+                    'is_handling': True,
+                    'clearance_category': 'prestation',
+                    'clearance_unit': line.get('unit') or "Par dossier",
+                    'clearance_service_kind': 'handling',
+                    'clearance_print_name': line['name'],
+                    'analytic_distribution': analytic,
+                }))
+                continue
             service_lines.append(fields.Command.create({
                 'name': line['name'],
                 'quantity': 1.0,

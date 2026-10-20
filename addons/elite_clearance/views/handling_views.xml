@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Handling due to customers (owner's change brief, 20/10/2026):
+         the Handling lines of posted invoices and credit notes - by
+         customer, file, invoice and date, with totals per customer and
+         per period. The menu item is in clearance_menus.xml. -->
+
+    <record id="account_move_line_view_list_handling" model="ir.ui.view">
+        <field name="name">account.move.line.list.handling</field>
+        <field name="model">account.move.line</field>
+        <field name="priority">200</field>
+        <field name="arch" type="xml">
+            <list string="Handling Due to Customers" create="0" edit="0" delete="0"
+                  default_order="date desc, id desc">
+                <field name="partner_id"/>
+                <field name="clearance_file_id"/>
+                <field name="move_id" string="Document"/>
+                <field name="date"/>
+                <field name="clearance_print_name" string="Printed As" optional="show"/>
+                <field name="name" string="Ledger Label" optional="hide"/>
+                <field name="account_id" optional="show"/>
+                <field name="clearance_handling_amount" sum="Total"/>
+                <field name="clearance_invoice_payment_state" string="Invoice"/>
+                <field name="reconciled" string="Matched" optional="hide"/>
+                <field name="company_currency_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="account_move_line_view_pivot_handling" model="ir.ui.view">
+        <field name="name">account.move.line.pivot.handling</field>
+        <field name="model">account.move.line</field>
+        <field name="priority">200</field>
+        <field name="arch" type="xml">
+            <pivot string="Handling Due to Customers" disable_linking="1">
+                <field name="partner_id" type="row"/>
+                <field name="date" interval="month" type="col"/>
+                <field name="clearance_handling_amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="account_move_line_view_graph_handling" model="ir.ui.view">
+        <field name="name">account.move.line.graph.handling</field>
+        <field name="model">account.move.line</field>
+        <field name="priority">200</field>
+        <field name="arch" type="xml">
+            <graph string="Handling Due to Customers" type="bar">
+                <field name="partner_id"/>
+                <field name="clearance_handling_amount" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="account_move_line_view_search_handling" model="ir.ui.view">
+        <field name="name">account.move.line.search.handling</field>
+        <field name="model">account.move.line</field>
+        <field name="priority">200</field>
+        <field name="arch" type="xml">
+            <search string="Handling Due to Customers">
+                <field name="partner_id"/>
+                <field name="clearance_file_id"/>
+                <field name="move_id" string="Document"/>
+                <field name="name" string="Label"/>
+                <filter name="invoice_open" string="Invoice Still Open"
+                        domain="[('move_id.payment_state', 'not in', ('paid', 'in_payment', 'reversed'))]"/>
+                <filter name="invoice_settled" string="Invoice Settled"
+                        domain="[('move_id.payment_state', 'in', ('paid', 'in_payment'))]"/>
+                <separator/>
+                <filter name="unmatched" string="Not Matched"
+                        domain="[('reconciled', '=', False)]"
+                        help="Handling credited to a dedicated Handling account and not yet refunded or offset."/>
+                <separator/>
+                <filter name="date" string="Date" date="date"/>
+                <group>
+                    <filter name="group_partner" string="Customer" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_file" string="File" context="{'group_by': 'clearance_file_id'}"/>
+                    <filter name="group_move" string="Document" context="{'group_by': 'move_id'}"/>
+                    <filter name="group_month" string="Month" context="{'group_by': 'date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_clearance_handling_due" model="ir.actions.act_window">
+        <field name="name">Handling Due to Customers</field>
+        <field name="res_model">account.move.line</field>
+        <field name="view_mode">list,pivot,graph</field>
+        <field name="domain">[('is_handling', '=', True), ('parent_state', '=', 'posted'), ('display_type', '=', 'product')]</field>
+        <field name="context">{'search_default_group_partner': 1}</field>
+        <field name="search_view_id" ref="account_move_line_view_search_handling"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No Handling billed yet</p>
+            <p>Every Handling line of a posted invoice or credit note lands
+               here: what is due back to each customer, by file, document
+               and month.</p>
+        </field>
+    </record>
+
+    <record id="action_clearance_handling_due_list" model="ir.actions.act_window.view">
+        <field name="sequence" eval="1"/>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="account_move_line_view_list_handling"/>
+        <field name="act_window_id" ref="action_clearance_handling_due"/>
+    </record>
+    <record id="action_clearance_handling_due_pivot" model="ir.actions.act_window.view">
+        <field name="sequence" eval="2"/>
+        <field name="view_mode">pivot</field>
+        <field name="view_id" ref="account_move_line_view_pivot_handling"/>
+        <field name="act_window_id" ref="action_clearance_handling_due"/>
+    </record>
+    <record id="action_clearance_handling_due_graph" model="ir.actions.act_window.view">
+        <field name="sequence" eval="3"/>
+        <field name="view_mode">graph</field>
+        <field name="view_id" ref="account_move_line_view_graph_handling"/>
+        <field name="act_window_id" ref="action_clearance_handling_due"/>
+    </record>
+</odoo>

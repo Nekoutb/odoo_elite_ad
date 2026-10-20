@@ -33,6 +33,7 @@
                             <field name="clearance_oop_gain_account_id" string="Gain on Débours (758801)" help="Credited with the débours result of a fully paid legacy file when what was billed exceeds what was incurred."/>
                             <field name="clearance_oop_loss_account_id" string="Loss on Débours (658801)" help="Debited with the débours result of a fully paid legacy file when what was incurred exceeds what was billed."/>
                             <field name="clearance_vat_account_id" string="VAT Collected (443100)" help="Where the VAT line of a migrated invoice is credited."/>
+                            <field name="clearance_handling_account_id" string="Handling Account" help="Where a Handling line is credited, with the invoice's customer as partner. Empty = the customer's own receivable account (411100), matched against the invoice inside the same entry so the open balance is the total less the Handling."/>
                             <field name="clearance_advance_account_id" string="Employee Advances Account" help="Where cash advances sit until justified with supporting documents."/>
                             <field name="clearance_fee_account_id" string="Fee Income Account (default)" help="Fallback for fee lines, used only where the two accounts below are left empty."/>
                             <field name="clearance_oop_undercharge_account_id" string="Disbursement Undercharge Account" help="Expense account for what was disbursed for the client but deliberately not recharged. 47xx still clears in full; the shortfall is booked here as a cost."/>
@@ -71,6 +72,10 @@
                             <p class="text-muted">For each service, the reference of the last file opened in the old system - for example 2026IM0019. The next file opened here for that service takes the number after it: 2026IM0020.</p>
                             <group>
                             <button name="action_open_file_numbering" type="object" string="Set the Last Legacy File Numbers" class="btn-link" icon="fa-arrow-right"/>
+                            </group>
+                            <p class="text-muted">Disbursements are numbered FA, the year, the month, then the running number of the year - FA26051022. Key the last reference the old system issued and the next disbursement keyed here takes the number after it, with its own month.</p>
+                            <group>
+                            <field name="clearance_legacy_last_expense_ref" string="Last legacy disbursement reference" placeholder="FA26051022"/>
                             </group>
                         </page>
                         <page string="Turnaround Targets">

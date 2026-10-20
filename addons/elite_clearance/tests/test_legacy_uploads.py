@@ -143,9 +143,11 @@ class TestLegacyUploads(TransactionCase):
     def _load_invoice(self, file, number, debours, services=(), vat=0.0,
                       when="2026-09-15", teese_ref=None, refund=False):
         lines = []
-        for name, amount in debours:
+        for row in debours:
+            name, amount = row[0], row[1]
             lines.append((0, 0, {'name': name, 'quantity': 1, 'price_unit': amount,
                                  'clearance_category': 'debours',
+                                 'is_handling': bool(row[2]) if len(row) > 2 else False,
                                  'tax_ids': [(5, 0, 0)]}))
         for name, amount, kind in services:
             lines.append((0, 0, {'name': name, 'quantity': 1, 'price_unit': amount,
@@ -408,16 +410,24 @@ class TestLegacyUploads(TransactionCase):
         self.assertFalse(file._result_moves())
         self.assertTrue(file.is_locked)
 
-    def test_09_handling_goes_to_471100_and_not_into_the_result(self):
+    def test_09_handling_goes_to_the_customer_and_not_into_the_result(self):
+        # Handling brief (20/10/2026): the flag comes from the load file,
+        # the credit goes to the customer's receivable, matched inside
+        # the entry - and the description is never read.
         file = self._file("2026IM0409", "2026-04-01")
         file.write({'state': 'in_progress'})
         self._load_expense(file, 1000000, 'settled', "FA-T9", paid_on="2026-09-05")
         inv = self._load_invoice(file, "EL26IM909",
-                                 debours=[("KCT", 1000000), ("Handling conteneur", 250000)])
+                                 debours=[("KCT", 1000000),
+                                          ("Handling conteneur", 250000, True)])
         file.action_migration_finalize()
         handling = inv.invoice_line_ids.filtered('is_handling')
         self.assertEqual(len(handling), 1)
-        self.assertEqual(handling.account_id, self.legacy_oop)
+        self.assertEqual(handling.account_id,
+                         self.client.property_account_receivable_id)
+        self.assertTrue(handling.reconciled)
+        self.assertEqual(inv.amount_residual, 1000000)
+        self.assertEqual(file.handling_billed, 250000)
         self.assertEqual(file.debours_billed, 1000000)
         self.assertEqual(file.debours_result, 0)
         self.assertEqual(file.result_status, 'posted')

@@ -83,6 +83,11 @@ class ClearanceSettingsWizard(models.TransientModel):
         related='company_id.clearance_oop_loss_account_id', readonly=False)
     clearance_vat_account_id = fields.Many2one(
         related='company_id.clearance_vat_account_id', readonly=False)
+    # Handling (owner's brief, 20/10/2026) and the disbursement series
+    clearance_handling_account_id = fields.Many2one(
+        related='company_id.clearance_handling_account_id', readonly=False)
+    clearance_legacy_last_expense_ref = fields.Char(
+        related='company_id.clearance_legacy_last_expense_ref', readonly=False)
     clearance_file_open_approver_ids = fields.Many2many(
         related='company_id.clearance_file_open_approver_ids', readonly=False)
     clearance_file_close_approver_ids = fields.Many2many(
@@ -175,6 +180,9 @@ class ClearanceSettingsWizard(models.TransientModel):
         'clearance_oop_gain_account_id',
         'clearance_oop_loss_account_id',
         'clearance_vat_account_id',
+        # Handling and the disbursement series (owner, 20/10/2026)
+        'clearance_handling_account_id',
+        'clearance_legacy_last_expense_ref',
     )
 
     def _check_manager(self):

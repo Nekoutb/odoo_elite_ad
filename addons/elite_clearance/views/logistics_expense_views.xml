@@ -343,6 +343,7 @@
                         </group>
                         <group>
                             <field name="justification"/>
+                            <field name="is_handling"/>
                             <field name="active"/>
                         </group>
                     </group>

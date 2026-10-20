@@ -13,6 +13,7 @@
         <field name="unit_label"/>
         <field name="default_amount"/>
         <field name="account_id" optional="show"/>
+        <field name="is_handling" optional="show"/>
         <field name="requested_by_id" optional="hide"/>
         <field name="approved_by_id" optional="show"/>
         <field name="state" widget="badge"
@@ -56,7 +57,8 @@
             <group>
               <field name="unit_label"/>
               <field name="default_amount"/>
-              <field name="account_id"/>
+              <field name="account_id" invisible="is_handling"/>
+              <field name="is_handling"/>
               <field name="active" invisible="1"/>
               <field name="currency_id" invisible="1"/>
               <field name="company_id" groups="base.group_multi_company"/>

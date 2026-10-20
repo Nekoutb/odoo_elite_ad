@@ -51,6 +51,14 @@
               parent="menu_clearance_reporting"
               action="action_logistics_file_reopening" sequence="40"/>
 
+    <!-- Handling due to customers (owner's brief, 20/10/2026): journal
+         items, so Billing and Finance only - the operations heads have
+         no accounting rights. -->
+    <menuitem id="menu_clearance_handling_due" name="Handling Due to Customers"
+              parent="menu_clearance_reporting"
+              action="action_clearance_handling_due" sequence="50"
+              groups="group_clearance_billing,group_clearance_finance,group_clearance_admin"/>
+
     <!-- Legacy uploads (owner's brief v3, 19/10/2026): what the two
          migration loads need, and the accountant's queue. -->
     <menuitem id="menu_clearance_legacy_uploads" name="Legacy uploads"

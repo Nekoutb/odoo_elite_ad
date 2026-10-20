@@ -15,7 +15,7 @@ working memory that is *not* obvious from the code.
   <in the Odoo.sh project settings — never in this repository, it is public>, Custom plan). The old Odoo Online db (elite-advisors,
   saas~19.3) holds no data and will lapse. Never build against 19.3 minor APIs.
 
-## The module: addons/elite_clearance (v19.0.55.0.0)
+## The module: addons/elite_clearance (v19.0.56.0.0)
 Customs clearance job files for a logistics/clearance services provider.
 - `logistics.file` — one file = one clearance job. States:
   draft → in_progress → ops_closed → done (+cancel, +imported). `imported`
@@ -960,6 +960,74 @@ Customs clearance job files for a logistics/clearance services provider.
      contradicts acceptance test 1); D3/D4/D5/D6 as the brief says.
      `migrations/19.0.55.0.0/post-migrate.py` marks files already billed
      under earlier builds as round 1, locked, frozen.
+- **Handling due to the customer (owner's change brief, 20/10/2026;
+  version 19.0.56; `models/handling.py`, tests `test_handling.py` = the
+  seven acceptance tests of its section 7).** A Handling component is
+  printed on the invoice but is NOT revenue, carries no VAT and is never
+  incurred: it is due back to the customer.
+  1. **Only the flag counts.** `is_handling` on `logistics.expense.
+     category` and on `logistics.billing.service` (the seeded, approved
+     "HAND — Handling (dû au client)" - `hooks.seed_handling_service`,
+     also run by the 19.0.56 migration); the billing screen's service
+     line carries it (related) and `_service_lines_for_invoice` passes
+     `is_handling` + kind `handling` to `_create_client_invoice`, which
+     credits `res.company._clearance_handling_account(partner)` - the
+     setting `clearance_handling_account_id`, else the customer's
+     `property_account_receivable_id` - with no tax, category
+     `prestation`, `clearance_print_name` = the component's name. The
+     line's `is_handling` is a PLAIN stored Boolean now (it was computed
+     from the description on 20/10 morning): a migrated line brings it
+     from the load; `_clearance_migration_accounts` reads it before the
+     category. Not editable on a posted line (`write` guard).
+  2. **A product line on a receivable account.** Odoo's
+     `_check_payable_receivable` refuses it ("Any journal item on a
+     receivable account must have a due date and vice versa"), so the
+     constraint is overridden in `handling.py` to exempt `is_handling`
+     lines. Everything else in core works as a product line:
+     `_compute_amount` counts it in the untaxed total, so the
+     payment-term debit is the FULL total, Handling included (brief 3).
+  3. **Matched inside the entry.** `account.move._post` (handling.py,
+     first in the MRO): `_clearance_handling_check()` BEFORE super
+     (account = the Handling account, partner = the customer, no tax -
+     refused otherwise), then `_clearance_handling_label()` (ledger
+     label `<file> | <invoice> | Handling – dû au client`, written under
+     `clearance_unlock`; the printed wording stays in
+     `clearance_print_name`) and `_clearance_handling_reconcile()`: the
+     Handling line and the payment-term lines of the SAME move on the
+     same account with opposite signs are reconciled, so
+     `amount_residual` = total - Handling; control 1 of the brief is
+     then asserted over the lines that matched. Odoo's
+     `_compute_payment_state` already ignores partials whose counterpart
+     is the same move, so the invoice reads Not Paid;
+     `_get_all_reconciled_invoice_partials` is overridden to drop them
+     too, or the "Less Payment" widget showed the invoice paying itself.
+     A dedicated Handling account (not the receivable) is credited and
+     left for the accountant to clear. A negative total cannot be
+     posted in Odoo: a Handling correction is a CREDIT NOTE (the load's
+     `document_type = credit_note`), where the sides swap by themselves;
+     `_clearance_credit_line_vals` copies the flag, so a credit note on
+     a Handling line reverses the credit, matched the same way, and the
+     invoice's open balance does not move (test_06).
+  4. `logistics.file.handling_billed` (compute_sudo) beside the débours
+     figures; `_debours_lines_billed` excludes the flag (already did).
+     `logistics.expense._check_not_handling_category` refuses a
+     disbursement under a flagged category. Report: `account.move.line`
+     action `action_clearance_handling_due` (list/pivot/graph on
+     `clearance_handling_amount` = -balance of a flagged line, grouped
+     by `clearance_file_id`, a STORED related to `move_id.
+     logistics_file_id`), menu under Reporting for Billing, Finance and
+     the Clearance Admin only - journal items need accounting rights.
+  5. **Disbursement references** (owner, 20/10/2026): `FA%(y)s%(month)s`
+     + 4 digits, `use_date_range` (a running number per YEAR - the
+     owner's example FA26051022 is read as the 1,022nd of 2026, keyed in
+     May; flagged as the reading). The seeded sequence is noupdate, so
+     `hooks.configure_expense_sequence` reshapes an upgraded database.
+     `res.company.clearance_legacy_last_expense_ref` (Settings -> File
+     Numbering, in the three settings places) ->
+     `_continue_legacy_expense_numbering()`: parses FA yy mm nnnn,
+     refuses a number behind one already keyed here that year, and
+     restarts that year's date range at last + 1 (create, THEN write).
+     Tests: `test_expense_numbering.py`.
 - **Payment evidence (owner, 01/10/2026).** `ir.attachment.clearance_kind`
   ('request' / 'payment', NULL = request) tells a disbursement's documents
   apart: `logistics.expense.request_document_ids` and

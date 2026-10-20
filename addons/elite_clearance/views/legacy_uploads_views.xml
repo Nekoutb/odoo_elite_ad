@@ -56,6 +56,7 @@
                         <field name="skip_gain_loss" readonly="1"/>
                         <field name="debours_incurred"/>
                         <field name="debours_billed"/>
+                        <field name="handling_billed"/>
                         <field name="debours_result"/>
                         <field name="debours_result_posted"/>
                     </group>
@@ -73,6 +74,7 @@
                 <field name="billing_status" optional="hide"/>
                 <field name="is_locked" optional="hide"/>
                 <field name="result_status" optional="hide"/>
+                <field name="handling_billed" optional="hide" sum="Handling"/>
                 <field name="legacy_relief" optional="hide"/>
                 <field name="teese_ref" optional="hide"/>
             </xpath>

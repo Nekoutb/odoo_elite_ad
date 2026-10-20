@@ -154,7 +154,8 @@
                         <field name="service_id" options="{'no_create': True}"/>
                         <field name="name" placeholder="e.g. Frais d'ouverture de dossier"/>
                         <field name="unit_label"/>
-                        <field name="account_id" options="{'no_create': True}"/>
+                        <field name="account_id" options="{'no_create': True}" invisible="is_handling"/>
+                        <field name="is_handling" readonly="1" optional="show"/>
                         <field name="amount" sum="Services"/>
                         <field name="currency_id" column_invisible="1"/>
                     </list>

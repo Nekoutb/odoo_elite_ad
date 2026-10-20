@@ -352,7 +352,10 @@ class LogisticsBillingWizard(models.TransientModel):
                 'amount': line.amount,
                 'unit': line.unit_label or "Par dossier",
                 'account_id': (line.account_id or fallback).id,
-                'kind': 'other',
+                'kind': 'handling' if line.is_handling else 'other',
+                # due back to the customer: the invoice builder credits
+                # the receivable, not the income account above
+                'is_handling': bool(line.is_handling),
             })
         return services
 
