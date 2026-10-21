@@ -751,7 +751,9 @@ Customs clearance job files for a logistics/clearance services provider.
      were demanded at billing). `_check_client_complete()` runs inside
      `_check_ready_to_work()` - request for opening and waiver - and
      lists what is missing (`CLIENT_ESSENTIALS`: full name, address,
-     e-mail, NIU, RC); the draft shows the same list in a banner
+     NIU, RC - the e-mail was on it until 21/10/2026, when the owner
+     said it must never block a file or a bill); the draft shows the
+     same list in a banner
      (`client_missing_details`, compute_sudo); Teese history exempt.
      `group_clearance_customer_service` now implies
      `base.group_partner_manager` and `group_clearance_billing` no

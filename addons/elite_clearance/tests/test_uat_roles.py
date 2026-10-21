@@ -761,16 +761,20 @@ class TestUatRoles(TransactionCase):
             self.check(w.advance_had_amount == 256974 and w.advance_had_vat_amount > 0,
                        "the HAD figure replicated into the advance and its VAT")
             missing = self._ready(self._working())
-            missing.partner_id.sudo().write({'email': False})
+            # the NIU is a condition of billing; the e-mail is not (owner
+            # 21/10/2026)
+            old_vat = missing.partner_id.vat
+            missing.partner_id.sudo().write({'vat': False, 'email': False})
             w2 = self._wizard(missing)
             self.check(w2.client_details_missing, "missing client details are flagged")
             # the client block is read-only (owner 14/10/2026): Customer
             # Service completes the record, and the screen then reads it
             self.refused(lambda: w2.action_create_invoice(), "no invoice while the record is incomplete")
-            missing.partner_id.with_user(self.cs).write({'email': "imports@sonicam.example"})
+            missing.partner_id.with_user(self.cs).write({'vat': old_vat or "M000000000999X"})
             w3 = self._wizard(missing)
-            self.check(not w3.client_details_missing and w3.client_email == "imports@sonicam.example",
-                       "completed by Customer Service, read by the screen")
+            self.check(not w3.client_details_missing and w3.client_vat == missing.partner_id.vat
+                       and not w3.client_email,
+                       "completed by Customer Service, read by the screen; no e-mail needed")
 
         with self.case('UAT-19', "Recharging at other than cost needs approval", 'BILL, OPSM, GM'):
             file = self._ready()

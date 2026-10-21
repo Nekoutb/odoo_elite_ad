@@ -1568,10 +1568,11 @@ class LogisticsFile(models.Model):
         ('goods_description', "Produits (the goods being cleared)"),
         ('cargo_value', "Valeur RVC"),
     ]
+    # The e-mail address is NOT on this list (owner, 21/10/2026): it is
+    # useful, it is not a condition of opening a file or billing it.
     CLIENT_ESSENTIALS = [
         ('clearance_invoice_name', "full name, as it must print on the invoice"),
         ('street', "postal address"),
-        ('email', "e-mail address"),
         ('vat', "Tax ID (NIU)"),
         ('company_registry', "Company ID (RC)"),
     ]

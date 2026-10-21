@@ -72,10 +72,9 @@
                 <separator/>
                 <filter name="clearance_incomplete"
                         string="Missing invoice details"
-                        domain="['|', '|', '|', '|',
+                        domain="['|', '|', '|',
                                  ('clearance_invoice_name', '=', False),
-                                 ('street', '=', False),
-                                 ('email', '=', False), ('vat', '=', False),
+                                 ('street', '=', False), ('vat', '=', False),
                                  ('company_registry', '=', False)]"/>
                 <filter name="clearance_from_teese" string="Imported from Teese"
                         domain="[('legacy_id', '!=', 0)]"/>
