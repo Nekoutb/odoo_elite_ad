@@ -48,9 +48,11 @@
                 <div class="alert alert-warning" role="alert"
                      invisible="not client_details_missing">
                     This client's record is missing details the invoice
-                    prints. Customer Service completes the customer record
-                    (Clearance → Configuration → Customers); the invoice
-                    cannot be issued before.
+                    prints. Customer Service completes the customer record;
+                    the invoice cannot be issued before.
+                    <button name="action_open_customer_record" type="object"
+                            class="btn btn-link p-0 ms-1" icon="fa-external-link"
+                            string="Open the Customer Record"/>
                 </div>
                 <div class="alert alert-warning" role="alert"
                      invisible="not shipment_details_missing">

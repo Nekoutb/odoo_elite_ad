@@ -254,6 +254,13 @@ incurred: it is due back to the customer and reduces what they owe.
   open. The file's Débours Result group and list carry a *Handling*
   figure.
 
+**The customer record** (21/10/2026): an incomplete record never stops
+a file from opening or being worked; the banner on the file says what
+the invoice will need, and the invoice is refused until Customer
+Service completes it. The refusal, on the file and on the billing
+screen, carries a button straight to the customer record. The e-mail
+address is shown but never demanded.
+
 **Disbursement references** read `FA` + year + month + the running
 number of the year (FA26051022) since the same build. *Settings → File
 Numbering* takes the last reference the old system issued and the next

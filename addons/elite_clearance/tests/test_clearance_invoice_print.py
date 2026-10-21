@@ -375,7 +375,7 @@ class TestClearanceInvoicePrint(TransactionCase):
         file.action_close_operations()
         with self.assertRaises(UserError) as caught:
             file.action_create_invoice()
-        for expected in ("postal address", "e-mail", "Tax ID", "Company ID"):
+        for expected in ("postal address", "Tax ID", "Company ID"):
             self.assertIn(expected, str(caught.exception), expected)
 
     def test_23_the_billing_screen_reads_the_customer(self):

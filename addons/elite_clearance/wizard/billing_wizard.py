@@ -359,14 +359,19 @@ class LogisticsBillingWizard(models.TransientModel):
             })
         return services
 
-    @api.depends('client_name', 'client_street', 'client_email',
-                 'client_vat', 'client_registry')
+    @api.depends('client_name', 'client_street', 'client_vat',
+                 'client_registry')
     def _compute_client_details_missing(self):
+        # the e-mail is shown, never demanded (owner, 21/10/2026)
         for wizard in self:
             wizard.client_details_missing = not all(
                 (wizard.client_name, wizard.client_street,
-                 wizard.client_email, wizard.client_vat,
-                 wizard.client_registry))
+                 wizard.client_vat, wizard.client_registry))
+
+    def action_open_customer_record(self):
+        """The customer record, one click from the warning."""
+        self.ensure_one()
+        return self.file_id.sudo()._customer_record_action()
 
     @api.depends('shipment_bl_awb_ref', 'shipment_goods',
                  'shipment_cargo_value')

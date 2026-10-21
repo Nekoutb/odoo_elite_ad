@@ -1,7 +1,7 @@
 from odoo import api, fields, models
 
 from .logistics_expense import UNJUSTIFIED_ADVANCE_STATES
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import RedirectWarning, UserError, ValidationError
 
 
 class LogisticsFile(models.Model):
@@ -1266,7 +1266,9 @@ class LogisticsFile(models.Model):
                 "Work cannot start on %s until its customs regime is "
                 "chosen.", self.name))
         self._check_cargo_described()
-        self._check_client_complete()
+        # The customer record is NOT asked for here any more (owner,
+        # 21/10/2026): an incomplete record never stops a file from
+        # opening, it stops the invoice - _check_client_billable().
 
     def _client_missing_details(self):
         """The client details the invoice prints and the record lacks."""
@@ -1276,13 +1278,13 @@ class LogisticsFile(models.Model):
                 if not partner[name]]
 
     def _check_client_complete(self):
-        """A file is not opened for a client whose record is incomplete.
+        """Refuse while the customer record is incomplete.
 
-        Owner's instruction of 14/10/2026, reversing 06/09/2026: Customer
-        Service owns the customer record and is the team that opens the
-        file, so the moment they ask for the opening is the moment the
-        record is completed - not months later at billing, by somebody
-        who cannot change it. Teese history is exempt, as everywhere.
+        Written on 14/10/2026 as the opening gate; since 21/10/2026
+        (owner) it is called by NOTHING at the opening - an incomplete
+        record never stops a file from opening, it stops the invoice.
+        Kept for callers that want the check on demand. Teese history is
+        exempt, as everywhere.
         """
         self.ensure_one()
         if self.legacy_id or self.env.context.get('legacy_import'):
@@ -1949,14 +1951,38 @@ class LogisticsFile(models.Model):
         partner = self.partner_id
         missing = self._client_missing_details()
         if missing:
-            raise UserError(self.env._(
-                "%(client)s cannot be invoiced until these are on record - "
-                "the invoice prints every one of them:%(gap)s  - %(missing)s"
-                "%(gap)sCustomer Service completes the customer record "
-                "(Clearance -> Configuration -> Customers).",
-                client=partner.display_name,
-                gap=chr(10) * 2,
-                missing=(chr(10) + "  - ").join(missing)))
+            # A RedirectWarning: the dialog carries a button straight to
+            # the customer record (owner, 21/10/2026), so whoever is
+            # refused is one click from the screen that fixes it.
+            raise RedirectWarning(
+                self.env._(
+                    "%(client)s cannot be invoiced until these are on "
+                    "record - the invoice prints every one of them:%(gap)s"
+                    "  - %(missing)s%(gap)sCustomer Service completes the "
+                    "customer record.",
+                    client=partner.display_name,
+                    gap=chr(10) * 2,
+                    missing=(chr(10) + "  - ").join(missing)),
+                self._customer_record_action(),
+                self.env._("Open the Customer Record"))
+
+    def _customer_record_action(self):
+        """The customer's own form, as an action."""
+        self.ensure_one()
+        partner = self.partner_id.commercial_partner_id or self.partner_id
+        return {
+            'type': 'ir.actions.act_window',
+            'name': partner.display_name,
+            'res_model': 'res.partner',
+            'res_id': partner.id,
+            'view_mode': 'form',
+            'views': [(False, 'form')],
+            'target': 'current',
+        }
+
+    def action_open_customer_record(self):
+        """The button beside the banner: the customer record."""
+        return self._customer_record_action()
 
     def _check_shipment_billable(self):
         """The shipment box on the invoice cannot be printed blank either.

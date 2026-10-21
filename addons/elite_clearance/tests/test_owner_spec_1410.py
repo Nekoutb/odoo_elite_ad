@@ -284,26 +284,32 @@ class TestOwnerSpec1410(TransactionCase):
 
     # =================================================================
     # 2. the customer record is Customer Service's, complete before opening
-    def test_04_a_file_is_not_opened_until_the_customer_record_is_complete(self):
+    def test_04_an_incomplete_customer_record_opens_the_file_and_blocks_the_bill(self):
+        # Owner 21/10/2026, reversing the opening gate of 14/10/2026: the
+        # file opens and is worked; the record is demanded at billing.
         file = self._file(user=self.cs_agent, partner_id=self.bare_client.id)
         self.assertTrue(file.client_missing_details)
         self.assertIn("full name", file.client_missing_details)
         self.assertIn("Tax ID (NIU)", file.client_missing_details)
-        with self.assertRaises(UserError) as caught:
-            file.with_user(self.cs_agent).action_request_opening()
-        self.assertIn("Customer Service", str(caught.exception))
-        self.assertIn("Tax ID (NIU)", str(caught.exception))
-        # Customer Service completes the record, and only they may
-        self.bare_client.with_user(self.cs_agent).write({
-            'clearance_invoice_name': "NKONGSAMBA NEGOCE SARL",
-            'street': "BP 3 Nkongsamba", 'email': "negoce@test.cm",
-            'vat': "M000000000081D",
-            'company_registry': "RC/NKS/2026/B/0081"})
-        self.assertFalse(file.client_missing_details)
+        self.assertNotIn("e-mail", file.client_missing_details)
         file.with_user(self.cs_agent).action_request_opening()
         self.assertEqual(file.opening_state, 'requested')
         file.with_user(self.cs_head).action_approve_opening()
         self.assertEqual(file.state, 'in_progress')
+        self.assertTrue(file.client_missing_details, "the banner stays up")
+        with self.assertRaises(UserError) as caught:
+            file._check_client_billable()
+        self.assertIn("Customer Service", str(caught.exception))
+        self.assertIn("Tax ID (NIU)", str(caught.exception))
+        self.assertEqual(caught.exception.args[1]['res_id'], self.bare_client.id,
+                         "the refusal carries the customer record")
+        # Customer Service completes the record, and only they may
+        self.bare_client.with_user(self.cs_agent).write({
+            'clearance_invoice_name': "NKONGSAMBA NEGOCE SARL",
+            'street': "BP 3 Nkongsamba", 'vat': "M000000000081D",
+            'company_registry': "RC/NKS/2026/B/0081"})
+        self.assertFalse(file.client_missing_details, "no e-mail needed")
+        file._check_client_billable()
 
     def test_05_only_customer_service_changes_the_customer_record(self):
         for who in (self.biller, self.ops_agent, self.finance):

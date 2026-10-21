@@ -753,7 +753,17 @@ Customs clearance job files for a logistics/clearance services provider.
      lists what is missing (`CLIENT_ESSENTIALS`: full name, address,
      NIU, RC - the e-mail was on it until 21/10/2026, when the owner
      said it must never block a file or a bill); the draft shows the
-     same list in a banner
+     same list in a banner. **REVERSED AGAIN on 21/10/2026 (owner): an
+     incomplete customer record never stops a file from opening - it
+     stops the invoice.** `_check_ready_to_work()` no longer calls
+     `_check_client_complete()` (kept, called by nothing at the
+     opening); `_check_client_billable()` raises a `RedirectWarning`
+     whose button opens the customer record
+     (`_customer_record_action()`), and the file form's banner stays up
+     in every live state with an "Open the Customer Record" button;
+     the billing screen's warning carries the same button. The legacy
+     mandatory list takes the customer items only with `client=True`:
+     the banner and the "billed" gate, never the opening or the start
      (`client_missing_details`, compute_sudo); Teese history exempt.
      `group_clearance_customer_service` now implies
      `base.group_partner_manager` and `group_clearance_billing` no

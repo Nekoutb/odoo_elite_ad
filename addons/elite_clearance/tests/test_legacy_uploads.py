@@ -209,15 +209,17 @@ class TestLegacyUploads(TransactionCase):
             file.action_start_work()
         self.assertIn("Weight", str(caught.exception))
         self.assertEqual(file.state, 'draft')
-        # an incomplete customer blocks it the same way
+        # an incomplete customer is listed but never blocks the start
+        # (owner 21/10/2026): it blocks the bill
         file.write({'weight_kg': 500.0, 'partner_id': self.incomplete.id})
-        with self.assertRaises(UserError) as caught:
-            file.action_start_work()
-        self.assertIn("Customer:", str(caught.exception))
-        file.write({'partner_id': self.client.id})
-        self.assertFalse(file.missing_fields_display)
+        self.assertIn("Customer:", file.missing_fields_display)
         file.action_start_work()
         self.assertEqual(file.state, 'in_progress')
+        with self.assertRaises(UserError) as caught:
+            file._check_client_billable()
+        self.assertIn("Tax ID (NIU)", str(caught.exception))
+        file.write({'partner_id': self.client.id})
+        self.assertFalse(file.missing_fields_display)
 
     def test_03_billed_file_refuses_edit_and_delete_everywhere(self):
         file = self._file("2026IM0403", "2026-10-01")

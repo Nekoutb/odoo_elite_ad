@@ -328,6 +328,18 @@ class AccountMove(models.Model):
         with_handling._clearance_handling_reconcile()
         return posted
 
+    def _reconcile_reversed_moves(self, reverse_moves, move_reverse_cancel):
+        """Odoo's _post matches a credit note with the invoice it reverses
+        across every reconcilable account BEFORE the module's own code
+        runs after super()._post - and on the receivable that match
+        could pair the credit note's receivable credit with the INVOICE
+        instead of with the credit note's own Handling debit (cost one
+        CI cycle, 21/10/2026). So the Handling of the credit note is
+        matched inside its own entry first; the reversal then only has
+        the two payment-term lines left to match."""
+        reverse_moves._clearance_handling_reconcile()
+        return super()._reconcile_reversed_moves(reverse_moves, move_reverse_cancel)
+
     def _get_all_reconciled_invoice_partials(self):
         """The Handling match inside the entry is not a payment: keep it
         out of the 'Less Payment' widget and of everything else that

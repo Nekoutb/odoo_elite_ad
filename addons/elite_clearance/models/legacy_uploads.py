@@ -264,7 +264,7 @@ class LogisticsFile(models.Model):
         ('weight_kg', "Weight (kg)"),
     ]
 
-    def _get_missing_mandatory_fields(self, full=True):
+    def _get_missing_mandatory_fields(self, full=True, client=False):
         """The labels of what a new file must carry and this one lacks.
         `full` adds the cargo figures and the customer record: what the
         START of work and the opening demand, and what a re-opened
@@ -277,6 +277,9 @@ class LogisticsFile(models.Model):
                         if not self[name]]
             if not self.not_containerised and not self.container_count:
                 missing.append("Containers (or tick Not Containerised)")
+        if client:
+            # the customer record: listed in the banner and demanded at
+            # billing, never at the opening (owner, 21/10/2026)
             missing += ["Customer: %s" % label
                         for label in self._client_missing_details()]
         return missing
@@ -285,11 +288,10 @@ class LogisticsFile(models.Model):
                  'cargo_value', 'package_count', 'weight_kg',
                  'not_containerised', 'container_count', 'partner_id',
                  'partner_id.clearance_invoice_name', 'partner_id.street',
-                 'partner_id.email', 'partner_id.vat',
-                 'partner_id.company_registry')
+                 'partner_id.vat', 'partner_id.company_registry')
     def _compute_missing_fields(self):
         for file in self:
-            missing = file._get_missing_mandatory_fields()
+            missing = file._get_missing_mandatory_fields(client=True)
             file.missing_fields_display = (
                 "\n".join("- %s" % m for m in missing) if missing else False)
 
@@ -302,7 +304,7 @@ class LogisticsFile(models.Model):
             return True
         return self.legacy_relief and not self.completion_required
 
-    def _check_mandatory_complete(self, what, full=None):
+    def _check_mandatory_complete(self, what, full=None, client=False):
         """The server-side gate every state-changing button runs. The
         full list applies at the start of work and to a file re-opened
         for additional billing; a file that started under the full check
@@ -314,7 +316,7 @@ class LogisticsFile(models.Model):
             # a file opened under the strict rule passed it at the start
             missing = file._get_missing_mandatory_fields(
                 full=(file.completion_required and file.legacy_relief)
-                if full is None else full)
+                if full is None else full, client=client)
             if missing:
                 raise UserError(self.env._(
                     "%(name)s cannot be %(what)s until every mandatory "
@@ -475,7 +477,7 @@ class LogisticsFile(models.Model):
             lambda e: not (e.is_frozen and not e.billed_line_id))
 
     def _create_client_invoice(self, debours, services, split=False):
-        self._check_mandatory_complete(self.env._("billed"))
+        self._check_mandatory_complete(self.env._("billed"), client=True)
         invoices = super()._create_client_invoice(debours, services, split=split)
         self._after_billing(invoices)
         return invoices
