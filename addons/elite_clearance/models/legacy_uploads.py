@@ -477,7 +477,9 @@ class LogisticsFile(models.Model):
             lambda e: not (e.is_frozen and not e.billed_line_id))
 
     def _create_client_invoice(self, debours, services, split=False):
-        self._check_mandatory_complete(self.env._("billed"), client=True)
+        # the customer record is _check_client_billable()'s to refuse,
+        # with the button to the record (owner 21/10/2026)
+        self._check_mandatory_complete(self.env._("billed"))
         invoices = super()._create_client_invoice(debours, services, split=split)
         self._after_billing(invoices)
         return invoices

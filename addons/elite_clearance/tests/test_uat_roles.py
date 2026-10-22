@@ -24,7 +24,7 @@ import re
 
 import odoo.tools
 from odoo import fields
-from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.exceptions import AccessError, RedirectWarning, UserError, ValidationError
 from odoo.tests import Form, TransactionCase, tagged
 
 from .holding import give_holding_account
@@ -32,7 +32,7 @@ from .holding import give_holding_account
 _logger = logging.getLogger(__name__)
 
 RECEIPT = base64.b64encode(b"%PDF-1.4 recu de caisse")
-REFUSED = (UserError, ValidationError, AccessError)
+REFUSED = (UserError, ValidationError, AccessError, RedirectWarning)
 
 
 @tagged('post_install', '-at_install', 'uat')

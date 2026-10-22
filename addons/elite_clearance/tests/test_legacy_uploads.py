@@ -5,7 +5,7 @@ files 2026IM0436, 2026IM0433 and 2025IM0691."""
 from datetime import date
 
 from odoo import fields
-from odoo.exceptions import UserError
+from odoo.exceptions import RedirectWarning, UserError
 from odoo.tests import TransactionCase, tagged
 
 from .holding import give_holding_account
@@ -215,7 +215,7 @@ class TestLegacyUploads(TransactionCase):
         self.assertIn("Customer:", file.missing_fields_display)
         file.action_start_work()
         self.assertEqual(file.state, 'in_progress')
-        with self.assertRaises(UserError) as caught:
+        with self.assertRaises(RedirectWarning) as caught:
             file._check_client_billable()
         self.assertIn("Tax ID (NIU)", str(caught.exception))
         file.write({'partner_id': self.client.id})

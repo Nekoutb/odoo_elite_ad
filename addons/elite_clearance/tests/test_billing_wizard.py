@@ -1,4 +1,4 @@
-from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.exceptions import AccessError, RedirectWarning, UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -323,7 +323,9 @@ class TestBillingWizard(TransactionCase):
         self.client.clearance_invoice_name = False
         wizard = self._wizard()
         self.assertTrue(wizard.client_details_missing)
-        with self.assertRaises(UserError) as caught:
+        # a RedirectWarning (NOT a UserError in Odoo 19): the dialog
+        # carries the button to the customer record (owner 21/10/2026)
+        with self.assertRaises(RedirectWarning) as caught:
             wizard.action_create_invoice()
         self.assertIn("full name", str(caught.exception))
         self.assertIn("Customer Service", str(caught.exception))

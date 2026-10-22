@@ -763,7 +763,13 @@ Customs clearance job files for a logistics/clearance services provider.
      in every live state with an "Open the Customer Record" button;
      the billing screen's warning carries the same button. The legacy
      mandatory list takes the customer items only with `client=True`:
-     the banner and the "billed" gate, never the opening or the start
+     the banner only, never a gate - the customer is
+     `_check_client_billable()`'s to refuse. **`RedirectWarning` is NOT
+     a `UserError` in Odoo 19** (it subclasses `Exception` directly, and
+     the web client dispatches on the exact class name, so no subclass
+     of our own would get its dialog): every test and every `except`
+     that expects the billing refusal catches `RedirectWarning`; the
+     UAT `REFUSED` tuple carries it. Cost one CI cycle, 21/10/2026
      (`client_missing_details`, compute_sudo); Teese history exempt.
      `group_clearance_customer_service` now implies
      `base.group_partner_manager` and `group_clearance_billing` no

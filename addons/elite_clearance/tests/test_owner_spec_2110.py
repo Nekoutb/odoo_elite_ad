@@ -2,7 +2,7 @@
 """Owner, 21/10/2026: the customer's e-mail address is never a blocking
 point; an incomplete customer record never stops a file from opening -
 it stops the invoice, and the refusal carries the customer record."""
-from odoo.exceptions import RedirectWarning, UserError
+from odoo.exceptions import RedirectWarning
 from odoo.tests import TransactionCase, tagged
 
 
@@ -56,7 +56,6 @@ class TestOwnerSpec2110(TransactionCase):
         self.assertTrue(file.client_missing_details, "the banner stays up")
         with self.assertRaises(RedirectWarning) as caught:
             file._check_client_billable()
-        self.assertIsInstance(caught.exception, UserError)
         message, action, button = caught.exception.args[:3]
         self.assertIn("Tax ID (NIU)", message)
         self.assertEqual(action['res_model'], 'res.partner')

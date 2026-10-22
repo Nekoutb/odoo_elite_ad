@@ -4,7 +4,7 @@ the customer record is Customer Service's and a file is not opened
 until it is complete; each expense category carries the wording the
 client's invoice prints."""
 
-from odoo.exceptions import AccessError, UserError
+from odoo.exceptions import AccessError, RedirectWarning, UserError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -297,7 +297,7 @@ class TestOwnerSpec1410(TransactionCase):
         file.with_user(self.cs_head).action_approve_opening()
         self.assertEqual(file.state, 'in_progress')
         self.assertTrue(file.client_missing_details, "the banner stays up")
-        with self.assertRaises(UserError) as caught:
+        with self.assertRaises(RedirectWarning) as caught:
             file._check_client_billable()
         self.assertIn("Customer Service", str(caught.exception))
         self.assertIn("Tax ID (NIU)", str(caught.exception))

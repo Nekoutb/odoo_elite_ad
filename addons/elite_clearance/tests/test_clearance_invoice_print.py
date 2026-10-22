@@ -1,4 +1,4 @@
-from odoo.exceptions import UserError
+from odoo.exceptions import RedirectWarning, UserError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -373,7 +373,7 @@ class TestClearanceInvoicePrint(TransactionCase):
         self.assertTrue(file.name, "opening the file is not blocked")
         file.state = 'in_progress'
         file.action_close_operations()
-        with self.assertRaises(UserError) as caught:
+        with self.assertRaises(RedirectWarning) as caught:
             file.action_create_invoice()
         for expected in ("postal address", "Tax ID", "Company ID"):
             self.assertIn(expected, str(caught.exception), expected)
@@ -396,7 +396,7 @@ class TestClearanceInvoicePrint(TransactionCase):
         wizard = self.env['logistics.billing.wizard'].with_context(
             active_id=file.id).create({})
         self.assertTrue(wizard.client_details_missing)
-        with self.assertRaises(UserError, msg="read-only client block"):
+        with self.assertRaises(RedirectWarning, msg="read-only client block"):
             wizard.action_create_invoice()
         bare.write({
             'clearance_invoice_name': "BARE CLIENT TRADING LTD",
