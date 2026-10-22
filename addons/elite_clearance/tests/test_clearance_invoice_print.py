@@ -396,6 +396,7 @@ class TestClearanceInvoicePrint(TransactionCase):
         wizard = self.env['logistics.billing.wizard'].with_context(
             active_id=file.id).create({})
         self.assertTrue(wizard.client_details_missing)
+        wizard.customs_fee_amount = 100000        # something to bill
         with self.assertRaises(RedirectWarning, msg="read-only client block"):
             wizard.action_create_invoice()
         bare.write({
