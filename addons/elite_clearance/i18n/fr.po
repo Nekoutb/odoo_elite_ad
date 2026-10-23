@@ -383,6 +383,14 @@ msgstr ""
 
 #. module: elite_clearance
 #. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid ""
+"%(refs)s: the payment mode cannot be changed by a reload once the settlement entry is posted. Reverse the entry first, or reload on a fresh database."
+msgstr ""
+"%(refs)s : le mode de paiement ne peut être changé par un rechargement une fois l'écriture de règlement comptabilisée. Extournez d'abord l'écriture, ou rechargez sur une base vierge."
+
+#. module: elite_clearance
+#. odoo-python
 #: code:addons/elite_clearance/models/logistics_expense.py:0
 msgid ""
 "%(vendor)s has no e-mail address. Add one on the contact and try again."
@@ -5772,6 +5780,13 @@ msgid "Method"
 msgstr "Méthode"
 
 #. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid "Migrated staff advance closed without documents: %(why)s. %(posted)s"
+msgstr ""
+"Avance au personnel migrée clôturée sans justificatifs : %(why)s. %(posted)s"
+
+#. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_clearance_sage_payment_wizard__sage_match
 #: model:ir.model.fields,help:elite_clearance.field_logistics_expense__sage_match
 msgid ""
@@ -6129,6 +6144,12 @@ msgstr "Rien n'attend votre intervention."
 #: model_terms:ir.actions.act_window,help:elite_clearance.action_clearance_turnaround
 msgid "Nothing measured yet"
 msgstr "Rien n'est encore mesuré"
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid "Nothing posted: the entry is in the loaded general ledger."
+msgstr "Rien de comptabilisé : l'écriture est dans le grand livre chargé."
 
 #. module: elite_clearance
 #. odoo-python
@@ -7191,6 +7212,14 @@ msgid ""
 "Recharging BELOW what was disbursed - %(amount)s on the total, or on any one line - has to be explained in writing before anyone can approve it (%(file)s)."
 msgstr ""
 "Refacturer EN DESSOUS de ce qui a été décaissé - %(amount)s sur le total, ou sur une ligne - doit être expliqué par écrit avant que quiconque puisse l'approuver (%(file)s)."
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid ""
+"Reclassified from 421101 to the legacy débours account at the payment date."
+msgstr ""
+"Reclassée du 421101 vers le compte de débours de l'ancien système à la date du paiement."
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.view_clearance_turnaround_list
@@ -10574,6 +10603,12 @@ msgid "opened"
 msgstr "ouvert"
 
 #. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid "paid on or before the ledger cutoff"
+msgstr "payée au plus tard à la date d'arrêté du grand livre"
+
+#. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.report_cash_voucher_document
 msgid "par"
 msgstr ""
@@ -10606,6 +10641,12 @@ msgstr "démarré"
 #: code:addons/elite_clearance/models/logistics_expense.py:0
 msgid "the disbursement was refused"
 msgstr "le débours a été refusé"
+
+#. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/legacy_uploads.py:0
+msgid "the file is billed"
+msgstr "le dossier est facturé"
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.res_partner_view_form_clearance
