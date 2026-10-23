@@ -43,6 +43,10 @@ from odoo.exceptions import UserError, ValidationError
 CUTOFF_PARAM = 'clearance.legacy_cutoff_date'
 CUTOFF_DEFAULT = '2026-10-16'
 MIGRATION = 'clearance_migration'
+# The general-ledger cutoff of the Sage load (brief v3): a payment on or
+# before it is in the loaded ledger. A migrated staff advance paid on or
+# before it is never asked for documents (owner, 23/10/2026).
+LEDGER_CUTOFF = date(2026, 8, 31)
 
 # What a disbursement must have reached for the file's débours result to
 # count it as incurred, and what counts as paid.
@@ -780,7 +784,13 @@ class LogisticsFile(models.Model):
                     file.write({'state': 'done',
                                 'date_closed': file.date_closed
                                 or fields.Date.context_today(file)})
-            # 3. the result
+            # 3. migrated staff advances that are closed without documents:
+            #    on a billed file, or paid on or before the ledger cutoff
+            file.expense_ids.filtered(
+                lambda e: e.state == 'settled'
+                and e._migrated_advance_closes_without_documents()
+            )._close_migrated_advance()
+            # 4. the result
             file._evaluate_debours_result(post=True)
         return True
 
@@ -869,6 +879,22 @@ class LogisticsExpense(models.Model):
         # (The first build had two `write` methods in this class and the
         # second silently replaced the first - cost one CI cycle.)
         self._check_not_frozen(vals)
+        if _migrating(self.env) and 'payment_mode' in vals:
+            # A reload may not turn a posted payment into an advance (or
+            # back): the settlement entry stands on the wrong account and
+            # the replay would post the justification on top of it
+            # (owner, 23/10/2026: 5,557 advances loaded as payments).
+            posted = self.filtered(
+                lambda e: e.settlement_move_id
+                and e.settlement_move_id.state == 'posted'
+                and e.payment_mode != vals['payment_mode'])
+            if posted:
+                raise UserError(self.env._(
+                    "%(refs)s: the payment mode cannot be changed by a "
+                    "reload once the settlement entry is posted. Reverse "
+                    "the entry first, or reload on a fresh database.",
+                    refs=", ".join(posted.mapped(
+                        lambda e: e.teese_ref or e.name))))
         res = super().write(vals)
         if _migrating(self.env) and ('target_state' in vals or 'state' in vals):
             self._migration_replay([vals] * len(self))
@@ -997,10 +1023,59 @@ class LogisticsExpense(models.Model):
         move.action_post()
         return move
 
+    # ------------------------------------------------------------------
+    # migrated staff advances closed without documents (owner 23/10/2026)
+    # ------------------------------------------------------------------
+    def _migrated_advance_closes_without_documents(self, paid_on=None):
+        """A migrated staff advance is asked for documents only when its
+        file is still open AND it was paid after the general-ledger
+        cutoff. On a billed file, or paid on or before the cutoff, it is
+        closed: justified with nobody asked, the reclassification posted
+        at the payment date (nothing for record_only)."""
+        self.ensure_one()
+        if (self.source != 'teese_migration'
+                or self.payment_mode != 'advance'
+                or not self.justification_required):
+            return False
+        if self.file_id.billing_status != 'not_billed':
+            return True
+        paid = paid_on or (fields.Date.to_date(self.date_settled)
+                           if self.date_settled else None)
+        return bool(paid and paid <= LEDGER_CUTOFF)
+
+    def _close_migrated_advance(self, when=None):
+        """Settled -> justified without documents. Posts the legacy
+        justification (Dr 471100 customer / Cr 421101 holder) at the
+        payment date unless record_only."""
+        for exp in self:
+            if exp.state != 'settled':
+                continue
+            paid = (when or (fields.Date.to_date(exp.date_settled)
+                             if exp.date_settled else None))
+            move = exp._post_legacy_justification(when=paid)
+            stamp = exp.date_settled or fields.Datetime.now()
+            exp.sudo().with_context(clearance_unlock=True).write({
+                'justification_move_id': move.id or False,
+                'state': 'justified',
+                'date_justified': stamp})
+            exp.message_post(body=self.env._(
+                "Migrated staff advance closed without documents: %(why)s. "
+                "%(posted)s",
+                why=(self.env._("the file is billed")
+                     if exp.file_id.billing_status != 'not_billed'
+                     else self.env._("paid on or before the ledger cutoff")),
+                posted=(self.env._("Reclassified from 421101 to the legacy "
+                                   "débours account at the payment date.")
+                        if move else
+                        self.env._("Nothing posted: the entry is in the "
+                                   "loaded general ledger."))))
+        return True
+
     def action_settle(self):
         """A disbursement keyed in Odoo on a legacy file pays through the
         single 471100 (owner 20/10/2026); every other file keeps the
-        two-account scheme of the base action."""
+        two-account scheme of the base action. A migrated staff advance on
+        a billed file is closed on the spot (owner 23/10/2026)."""
         legacy = self.filtered(lambda e: e._legacy_scheme())
         for exp in legacy:
             exp._check_disburser()
@@ -1022,6 +1097,9 @@ class LogisticsExpense(models.Model):
             })
             if exp.journal_id.type == 'cash':
                 exp._issue_cash_voucher()
+            if exp._migrated_advance_closes_without_documents():
+                exp._close_migrated_advance()
+                exp.file_id._evaluate_debours_result()
         rest = self - legacy
         return super(LogisticsExpense, rest).action_settle() if rest else True
 
@@ -1082,19 +1160,25 @@ class LogisticsExpense(models.Model):
             if not ref or not when:
                 raise UserError(self.env._(
                     "Give the Sage piece and its date."))
+            stamp = fields.Datetime.to_datetime(when)
+            # a migrated advance on a billed file, or paid on or before
+            # the ledger cutoff, is closed without documents; an advance
+            # keyed in Odoo on a billed file likewise (brief 6.5)
             advance = (exp.payment_mode == 'advance'
                        and exp.justification_required)
             billed = exp.file_id.billing_status != 'not_billed'
-            stamp = fields.Datetime.to_datetime(when)
+            closes = advance and (
+                billed or exp._migrated_advance_closes_without_documents(
+                    paid_on=fields.Date.to_date(when)))
             vals = {
                 'accounting': 'record_only',
                 'sage_payment_ref': ref,
                 'sage_payment_date': when,
-                'state': 'justified' if advance and billed else 'settled',
+                'state': 'justified' if closes else 'settled',
                 'date_settled': stamp,
                 'settled_by_id': self.env.user.id,
             }
-            if advance and billed:
+            if closes:
                 vals['date_justified'] = stamp
             exp.with_context(clearance_unlock=True).write(vals)
             exp.message_post(body=self.env._(

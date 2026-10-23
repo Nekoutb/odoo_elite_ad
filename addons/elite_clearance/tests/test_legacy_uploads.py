@@ -93,6 +93,7 @@ class TestLegacyUploads(TransactionCase):
         cls.cs_agent = user("CS Agent L", 'customer_service')
         cls.cs_head = user("CS Head L", 'customer_service_manager')
         cls.ops_head = user("Ops Head L", 'ops_manager')
+        cls.cashier = user("Cashier L", 'cashier')
         cls.finance = user("Finance L", 'finance')
         cls.finance_head = user("Finance Head L", 'finance_manager')
         cls.biller = user("Biller L", 'billing')
@@ -513,6 +514,86 @@ class TestLegacyUploads(TransactionCase):
             inv.invoice_line_ids.filtered(lambda l: l.clearance_category == 'vat')
             .account_id, self.vat)
         self.assertEqual(inv.amount_residual, 1696250 - 100000)
+
+    def test_13_migrated_advances_on_billed_files_close_without_documents(self):
+        # Owner, 23/10/2026: a migrated staff advance is asked for
+        # documents only on an OPEN file and when paid after the ledger
+        # cutoff (31/08/2026). Billed file, or paid before: closed.
+        billed = self._file("2026IM0413", "2026-04-01")
+        billed.write({'state': 'in_progress'})
+        adv = self._load_expense(billed, 80000, 'settled', "FA-T13a", advance=True,
+                                 paid_on="2026-09-22")
+        self.assertEqual(adv.state, 'settled')
+        self._load_invoice(billed, "EL26IM913", debours=[("KCT", 80000)])
+        open_file = self._file("2026IM0414", "2026-04-02")
+        open_file.write({'state': 'in_progress'})
+        recent = self._load_expense(open_file, 50000, 'settled', "FA-T13b", advance=True,
+                                    paid_on="2026-09-22")
+        old = self._load_expense(open_file, 30000, 'settled', "FA-T13c", advance=True,
+                                 accounting='record_only', paid_on="2026-08-15")
+        (billed + open_file).action_migration_finalize()
+        # billed file: closed, reclassified at the payment date
+        self.assertEqual(adv.state, 'justified')
+        just = adv.justification_move_id
+        self.assertTrue(just)
+        self.assertEqual(just.date, date(2026, 9, 22))
+        self.assertEqual(just.line_ids.filtered(lambda l: l.debit).account_id, self.legacy_oop)
+        self.assertEqual(just.line_ids.filtered(lambda l: l.credit).account_id, self.advance)
+        self.assertEqual(billed.unjustified_advance_total, 0)
+        self.assertEqual(billed.result_status, 'posted')
+        # open file: the recent one is still the holder's to justify
+        self.assertEqual(recent.state, 'settled')
+        self.assertEqual(open_file.unjustified_advance_total, 50000)
+        # open file, paid before the cutoff: closed, nothing posted
+        self.assertEqual(old.state, 'justified')
+        self.assertFalse(old.justification_move_id)
+        # finalize again: nothing twice
+        (billed + open_file).action_migration_finalize()
+        self.assertEqual(self.env['account.move'].search_count(
+            [('logistics_file_id', '=', billed.id),
+             ('clearance_entry_type', '=', 'justification')]), 1)
+
+    def test_14_an_approved_migrated_advance_paid_later_on_a_billed_file_closes(self):
+        file = self._file("2026IM0415", "2026-05-01")
+        file.write({'state': 'in_progress'})
+        sage = self._load_expense(file, 40000, 'approved', "FA-T14a", channel=None,
+                                  advance=True)
+        cash = self._load_expense(file, 60000, 'approved', "FA-T14b", advance=True)
+        self.assertEqual(cash.journal_id, self.till, "the channel names the till")
+        self._load_invoice(file, "EL26IM915", debours=[("KCT", 100000)])
+        file.action_migration_finalize()
+        self.assertEqual(file.billing_status, 'billed')
+        self.assertEqual(file.result_status, 'pending')
+        # paid in Sage: confirmed -> justified, nothing posted
+        sage.with_user(self.finance_head).action_confirm_sage_payment(
+            "AFD-2026", date(2026, 8, 27))
+        self.assertEqual(sage.state, 'justified')
+        self.assertFalse(sage.settlement_move_id)
+        self.assertFalse(sage.justification_move_id)
+        # paid through the till in Odoo: settled AND justified on the spot
+        cash.sudo().with_context(**MIG).write({'state': 'settlement_approved'})
+        cash.with_user(self.cashier).action_settle()
+        self.assertEqual(cash.state, 'justified')
+        pay = cash.settlement_move_id
+        self.assertEqual(pay.line_ids.filtered(lambda l: l.debit).account_id, self.advance)
+        just = cash.justification_move_id
+        self.assertTrue(just)
+        self.assertEqual(just.line_ids.filtered(lambda l: l.debit).account_id, self.legacy_oop)
+        self.assertEqual(just.line_ids.filtered(lambda l: l.credit).account_id, self.advance)
+        self.assertEqual(file.unjustified_advance_total, 0)
+        self.assertEqual(file.result_status, 'posted')
+
+    def test_15_a_reload_cannot_change_the_mode_of_a_posted_payment(self):
+        file = self._file("2026IM0416", "2026-05-01")
+        file.write({'state': 'in_progress'})
+        paid = self._load_expense(file, 70000, 'settled', "FA-T15", paid_on="2026-09-10")
+        self.assertTrue(paid.settlement_move_id)
+        with self.assertRaises(UserError):
+            paid.with_context(**MIG).write({'payment_mode': 'advance',
+                                            'employee_id': self.employee.id,
+                                            'target_state': 'justified'})
+        self.assertEqual(paid.state, 'settled')
+        self.assertFalse(paid.justification_move_id)
 
     def test_11_loading_twice_duplicates_nothing(self):
         Expense = self.env['logistics.expense'].with_context(**MIG)
