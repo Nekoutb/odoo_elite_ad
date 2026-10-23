@@ -481,6 +481,39 @@ class TestLegacyUploads(TransactionCase):
         self.assertEqual(just.line_ids.filtered(lambda l: l.debit).account_id, self.legacy_oop)
         self.assertEqual(just.line_ids.filtered(lambda l: l.credit).account_id, self.advance)
 
+    def test_12_a_default_tax_on_the_fee_account_adds_nothing(self):
+        # Owner, 23/10/2026: the TEESE VAT is loaded as one `vat` line
+        # and nothing may be added on top - not VAT on Service Fees
+        # (set in this suite), not the fee account's own default taxes,
+        # which Odoo applies whenever finalize moves a line onto it.
+        self.fee.tax_ids = [(6, 0, [self.tax.id])]
+        self.commission.tax_ids = [(6, 0, [self.tax.id])]
+        file = self._file("2026IM0412", "2026-04-01")
+        file.write({'state': 'in_progress'})
+        self._load_expense(file, 1000000, 'settled', "FA-T12", paid_on="2026-09-05")
+        inv = self._load_invoice(
+            file, "EL26IM912",
+            debours=[("KCT", 1000000), ("Handling", 100000, True)],
+            services=[("HAD", 450000, 'customs_fee'),
+                      ("Commission", 50000, 'commission')],
+            vat=96250)
+        file.action_migration_finalize()
+        self.assertEqual(inv.state, 'posted')
+        self.assertFalse(inv.invoice_line_ids.tax_ids,
+                         "no tax on any migrated line")
+        self.assertEqual(inv.amount_tax, 0)
+        self.assertEqual(inv.amount_total, 1000000 + 100000 + 450000 + 50000 + 96250)
+        self.assertEqual(
+            inv.invoice_line_ids.filtered(lambda l: l.clearance_service_kind == 'customs_fee')
+            .account_id, self.fee)
+        self.assertEqual(
+            inv.invoice_line_ids.filtered(lambda l: l.clearance_service_kind == 'commission')
+            .account_id, self.commission)
+        self.assertEqual(
+            inv.invoice_line_ids.filtered(lambda l: l.clearance_category == 'vat')
+            .account_id, self.vat)
+        self.assertEqual(inv.amount_residual, 1696250 - 100000)
+
     def test_11_loading_twice_duplicates_nothing(self):
         Expense = self.env['logistics.expense'].with_context(**MIG)
         file = self._file("2026IM0411", "2026-06-01")

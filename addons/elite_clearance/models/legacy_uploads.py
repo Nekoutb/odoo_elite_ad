@@ -1304,7 +1304,12 @@ class AccountMoveLine(models.Model):
     legacy_id = fields.Integer(string="Legacy Line ID", index=True, copy=False)
 
     def _clearance_migration_accounts(self):
-        """The account per line category, from the settings."""
+        """The account per line category, from the settings - and NO tax
+        on any line: a migrated invoice carries its TEESE VAT as its own
+        `vat` line, so the entry totals exactly what TEESE invoiced.
+        The clearing comes AFTER the account is set, because Odoo
+        recomputes a line's taxes from the account's default taxes
+        whenever the account changes (owner, 23/10/2026)."""
         for line in self:
             if line.display_type in ('line_section', 'line_note'):
                 continue
@@ -1316,8 +1321,6 @@ class AccountMoveLine(models.Model):
                 # due back to the customer, whatever block it was billed in
                 account = company._clearance_handling_account(
                     line.move_id.partner_id)
-                if line.tax_ids:
-                    line.tax_ids = [fields.Command.clear()]
             elif cat == 'debours':
                 account = (company.clearance_legacy_oop_account_id
                            if file.legacy_relief
@@ -1333,7 +1336,9 @@ class AccountMoveLine(models.Model):
                     else False) or company.clearance_fee_account_id
             if account and line.account_id != account:
                 line.account_id = account
-            if cat in ('debours', 'vat') and line.tax_ids:
+            # reading tax_ids here runs Odoo's recompute from the new
+            # account first; the clearing then wins
+            if line.tax_ids:
                 line.tax_ids = [fields.Command.clear()]
 
     def write(self, vals):
