@@ -52,9 +52,9 @@ msgstr "%(body)s Motif : %(reason)s"
 #. odoo-python
 #: code:addons/elite_clearance/models/logistics_file.py:0
 msgid ""
-"%(client)s cannot be invoiced until these are on record - the invoice prints every one of them:%(gap)s  - %(missing)s%(gap)sCustomer Service completes the customer record (Clearance -> Configuration -> Customers)."
+"%(client)s cannot be invoiced until these are on record - the invoice prints every one of them:%(gap)s  - %(missing)s%(gap)sCustomer Service completes the customer record."
 msgstr ""
-"%(client)s ne peut être facturé tant que ces informations ne sont pas enregistrées - la facture les imprime toutes :%(gap)s  - %(missing)s%(gap)sLe Service Client complète la fiche client (Dédouanement -> Configuration -> Clients)."
+"%(client)s ne peut être facturé tant que ces informations ne sont pas enregistrées - la facture les imprime toutes :%(gap)s  - %(missing)s%(gap)sLe Service Client complète la fiche client."
 
 #. module: elite_clearance
 #. odoo-python
@@ -773,18 +773,18 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form
 msgid ""
 ".\n"
-"                        Customer Service completes it under Configuration → Customers before the opening is requested."
+"                        It cannot be billed until the adjustment is approved. Below cost it needs a written\n"
+"                        reason, a supporting document, the Head of Service Operations and the General Manager."
 msgstr ""
-". Le Service Client la complète sous Configuration → Clients avant de demander l'ouverture."
+". Il ne peut être facturé tant que l'ajustement n'est pas approuvé. En dessous du coût, il faut un motif écrit, une pièce justificative, le Chef de Service Opérations et le Directeur Général."
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form
 msgid ""
 ".\n"
-"                        It cannot be billed until the adjustment is approved. Below cost it needs a written\n"
-"                        reason, a supporting document, the Head of Service Operations and the General Manager."
+"                        The file may be opened and worked; no invoice can be issued until Customer Service completes it."
 msgstr ""
-". Il ne peut être facturé tant que l'ajustement n'est pas approuvé. En dessous du coût, il faut un motif écrit, une pièce justificative, le Chef de Service Opérations et le Directeur Général."
+". Le dossier peut être ouvert et traité ; aucune facture ne peut être émise tant que le Service Client ne l'a pas complétée."
 
 #. module: elite_clearance
 #: model:ir.model.fields,help:elite_clearance.field_clearance_settings_wizard__clearance_advance_account_id
@@ -6340,6 +6340,14 @@ msgid "Open files for this customer"
 msgstr "Dossiers ouverts pour ce client"
 
 #. module: elite_clearance
+#. odoo-python
+#: code:addons/elite_clearance/models/logistics_file.py:0
+#: model_terms:ir.ui.view,arch_db:elite_clearance.billing_wizard_view_form
+#: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form
+msgid "Open the Customer Record"
+msgstr "Ouvrir la fiche client"
+
+#. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.logistics_file_view_form
 msgid "Open the expense"
 msgstr "Ouvrir le débours"
@@ -8838,11 +8846,10 @@ msgstr "Cette catégorie porte déjà ce libellé alternatif."
 #: model_terms:ir.ui.view,arch_db:elite_clearance.billing_wizard_view_form
 msgid ""
 "This client's record is missing details the invoice\n"
-"                    prints. Customer Service completes the customer record\n"
-"                    (Clearance → Configuration → Customers); the invoice\n"
-"                    cannot be issued before."
+"                    prints. Customer Service completes the customer record;\n"
+"                    the invoice cannot be issued before."
 msgstr ""
-"La fiche de ce client ne comporte pas toutes les informations imprimées sur la facture. Le Service Client complète la fiche client (Dédouanement → Configuration → Clients) ; la facture ne peut être émise avant."
+"La fiche de ce client ne comporte pas toutes les informations imprimées sur la facture. Le Service Client complète la fiche client ; la facture ne peut être émise avant."
 
 #. module: elite_clearance
 #: model_terms:ir.ui.view,arch_db:elite_clearance.payment_attribution_wizard_view_form
