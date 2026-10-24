@@ -660,7 +660,9 @@ class TestManualScreenshots(HttpCase):
                            when="2026-09-21")
             legacy_invoice(several, "AV26IM0203", debours=[("Droits et taxes", 100000)],
                            when="2026-09-25", refund=True)
-            open_file = legacy_file("2026IM0241", "2026-06-02")
+            # below the numbering scene's 2026IM0214: a later name would
+            # block the series from continuing (CI, 24/10/2026)
+            open_file = legacy_file("2026IM0141", "2026-03-02")
             legacy_expense(open_file, "Droits et taxes de douane", 3310000,
                            'settled', "FA26060712", paid_on="2026-08-28",
                            accounting='record_only')
@@ -1105,11 +1107,12 @@ class TestManualScreenshots(HttpCase):
                        scroll=".o_field_widget[name='handling_billed']")
             scene_shot('file_gap', "66_customer_banner", form,
                        wait=".o_form_view")
+            # the refusal is raised at the Billing button itself: the
+            # dialog that opens is the warning, not the billing screen
             scene_shot('file_gap_ready', "67_billing_refused", form,
                        wait=".o_form_view",
-                       clicks=["button[name='action_open_billing']",
-                               "%s button[name='action_create_invoice']" % modal],
-                       then=".o_error_dialog")
+                       clicks=["button[name='action_open_billing']"],
+                       then=".modal")
 
             # 17  section O: the legacy files, their result, the Sage
             #     actions, the migrated advances, the re-opened file
