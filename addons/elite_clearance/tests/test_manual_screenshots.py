@@ -525,6 +525,285 @@ class TestManualScreenshots(HttpCase):
                 'datas': RECEIPT, 'clearance_kind': 'signed'})
             return {'exp_voucher': printed, 'exp_signed': signed}
 
+        # --- UAT v12 (owner, 24/10/2026) ------------------------------------
+        MIG = {'clearance_migration': True}
+
+        def legacy_settings():
+            """The four migration accounts, the miscellaneous journal and
+            the TEESE payment channels - what Settings asks for before a
+            load (19.0.55)."""
+            Account = self.env['account.account']
+
+            def account(code, name, kind, reconcile=False):
+                return Account.create({'code': code, 'name': name,
+                                       'account_type': kind,
+                                       'reconcile': reconcile})
+            legacy_oop = account('M471100', "Debours ancien systeme",
+                                 'asset_current', True)
+            vat = account('M443100', "TVA collectee", 'liability_current')
+            gain = account('M758801', "Gain sur debours", 'income_other')
+            loss = account('M658801', "Perte sur debours", 'expense')
+            misc = self.env['account.journal'].create({
+                'name': "Operations diverses", 'type': 'general',
+                'code': 'MJOD'})
+            self.env.company.write({
+                'clearance_legacy_oop_account_id': legacy_oop.id,
+                'clearance_vat_account_id': vat.id,
+                'clearance_oop_gain_account_id': gain.id,
+                'clearance_oop_loss_account_id': loss.id,
+                'clearance_misc_journal_id': misc.id,
+            })
+            Channel = self.env['clearance.payment.channel']
+            Channel.create({'name': "CAISSE PRINCIPALE", 'journal_id': cls.cash.id})
+            Channel.create({'name': "AFRILAND", 'journal_id': cls.bank.id})
+            return {'legacy_settings': self.env.company}
+
+        def legacy_file(name, opened, **extra):
+            vals = {'name': name, 'partner_id': cls.client.id,
+                    'service_type_id': cls.service.id,
+                    'date_opened': opened, 'customs_regime': 'im4',
+                    'bl_awb_ref': "MSCU" + name[-4:] + "118",
+                    'goods_description': "PIECES DETACHEES AUTOMOBILES",
+                    'cargo_value': 18500000.0, 'package_count': 120,
+                    'weight_kg': 9800.0, 'shipment_type': 'container',
+                    'container_count': 1, 'container_type': "20",
+                    'importer_name': "SONICAM", 'port_id': cls.port.id,
+                    'cargo_value_currency_id': self.env.company.currency_id.id,
+                    'incoterm_id': self.env['account.incoterms'].search(
+                        [('code', '=', 'CIF')], limit=1).id or False}
+            vals.update(extra)
+            file = self.env['logistics.file'].with_context(**MIG).create(vals)
+            file.write({'state': 'in_progress'})
+            return file
+
+        def legacy_expense(file, description, amount, target, teese_ref,
+                           paid_on="2026-09-10", channel="CAISSE PRINCIPALE",
+                           accounting='post', advance=False, **extra):
+            vals = {'file_id': file.id, 'category_id': cls.category.id,
+                    'description': description, 'amount': amount,
+                    'teese_ref': teese_ref, 'target_state': target,
+                    'accounting': accounting,
+                    'date_requested': "2026-09-01",
+                    'date_submitted': "2026-09-01 08:00:00",
+                    'date_approved': "2026-09-02 08:00:00"}
+            if advance:
+                vals.update({'payment_mode': 'advance',
+                             'employee_id': cls.holder.id})
+            else:
+                vals['vendor_id'] = cls.vendor.id
+            if channel:
+                vals['teese_channel'] = channel
+            if target in ('settled', 'justified'):
+                vals['date_settled'] = paid_on + " 10:00:00"
+            if target == 'justified':
+                vals['date_justified'] = paid_on + " 12:00:00"
+            vals.update(extra)
+            return self.env['logistics.expense'].with_context(**MIG).create(vals)
+
+        def legacy_invoice(file, number, debours, services=(), vat=0.0,
+                           when="2026-09-15", refund=False):
+            lines = []
+            for row in debours:
+                lines.append((0, 0, {
+                    'name': row[0], 'quantity': 1, 'price_unit': row[1],
+                    'clearance_category': 'debours',
+                    'is_handling': bool(row[2]) if len(row) > 2 else False,
+                    'tax_ids': [(5, 0, 0)]}))
+            for name, amount, kind in services:
+                lines.append((0, 0, {
+                    'name': name, 'quantity': 1, 'price_unit': amount,
+                    'clearance_category': 'prestation',
+                    'clearance_service_kind': kind, 'tax_ids': [(5, 0, 0)]}))
+            if vat:
+                lines.append((0, 0, {
+                    'name': "TVA", 'quantity': 1, 'price_unit': vat,
+                    'clearance_category': 'vat', 'tax_ids': [(5, 0, 0)]}))
+            return self.env['account.move'].with_context(**MIG).create({
+                'move_type': 'out_refund' if refund else 'out_invoice',
+                'journal_id': cls.sale_journal.id,
+                'partner_id': file.partner_id.id, 'name': number,
+                'invoice_date': when, 'invoice_date_due': when,
+                'logistics_file_id': file.id, 'teese_ref': number,
+                'invoice_line_ids': lines})
+
+        def legacy():
+            """Files loaded from TEESE and finalized: one billed and fully
+            paid (its result a gain, its staff advance closed without
+            documents), one with three documents (one result entry), one
+            open with costs awaiting payment and advances on both sides
+            of the cutoff, one billed with a cost awaiting the Sage
+            confirmation, one re-opened for additional billing."""
+            paid = legacy_file("2026IM0188", "2026-04-07")
+            legacy_expense(paid, "Droits et taxes de douane", 4120000,
+                           'settled', "FA26040911", paid_on="2026-08-12",
+                           accounting='record_only')
+            legacy_expense(paid, "Frais de magasinage", 365000, 'settled',
+                           "FA26041004", paid_on="2026-09-05")
+            adv = legacy_expense(paid, "Frais de transit portuaire", 150000,
+                                 'settled', "FA26041009", paid_on="2026-09-08",
+                                 advance=True)
+            inv_paid = legacy_invoice(
+                paid, "EL26IM0188",
+                debours=[("Droits et taxes", 4120000), ("Magasinage", 400000),
+                         ("Transit portuaire", 165000),
+                         ("Handling", 120000, True)],
+                services=[("Honoraires Agrees en Douane", 310000, 'customs_fee'),
+                          ("Commission sur debours", 46850, 'commission')],
+                vat=68694, when="2026-09-16")
+            several = legacy_file("2026IM0203", "2026-04-21")
+            legacy_expense(several, "Droits et taxes de douane", 2600000,
+                           'settled', "FA26041122", paid_on="2026-08-20",
+                           accounting='record_only')
+            legacy_invoice(several, "EL26IM0203A", debours=[("Droits et taxes", 1500000)],
+                           when="2026-09-10")
+            legacy_invoice(several, "EL26IM0203B", debours=[("Droits et taxes", 1300000)],
+                           when="2026-09-21")
+            legacy_invoice(several, "AV26IM0203", debours=[("Droits et taxes", 100000)],
+                           when="2026-09-25", refund=True)
+            open_file = legacy_file("2026IM0241", "2026-06-02")
+            legacy_expense(open_file, "Droits et taxes de douane", 3310000,
+                           'settled', "FA26060712", paid_on="2026-08-28",
+                           accounting='record_only')
+            waiting = legacy_expense(
+                open_file, "Frais de scanner", 285000, 'approved', "FA26060818",
+                channel=None, sage_match="AFB-2214 03/09/2026 proposed")
+            legacy_expense(open_file, "Timbres et photocopies", 22500, 'settled',
+                           "FA26060820", paid_on="2026-08-15",
+                           accounting='record_only', advance=True)
+            recent = legacy_expense(open_file, "Transport des plis en douane",
+                                    40000, 'settled', "FA26060902",
+                                    paid_on="2026-09-22", advance=True)
+            pending = legacy_file("2026IM0197", "2026-04-14")
+            legacy_expense(pending, "Droits et taxes de douane", 1980000,
+                           'settled', "FA26041030", paid_on="2026-08-19",
+                           accounting='record_only')
+            sage = legacy_expense(
+                pending, "Surestaries", 412000, 'approved', "FA26041101",
+                channel=None, sage_match="AFB-2237 09/09/2026 proposed")
+            legacy_invoice(pending, "EL26IM0197",
+                           debours=[("Droits et taxes", 1980000), ("Surestaries", 412000)],
+                           when="2026-09-12")
+            reopened = legacy_file("2026IM0176", "2026-03-30")
+            legacy_expense(reopened, "Droits et taxes de douane", 1450000,
+                           'settled', "FA26040402", paid_on="2026-08-05",
+                           accounting='record_only')
+            legacy_invoice(reopened, "EL26IM0176",
+                           debours=[("Droits et taxes", 1500000)], when="2026-09-03")
+            files = paid | several | open_file | pending | reopened
+            files.action_migration_finalize()
+            self.env['logistics.file.reopen.wizard'].create({
+                'file_id': reopened.id,
+                'reason_id': self.env.ref(
+                    'elite_clearance.reopen_reason_additional_expenditure').id,
+                'reason': "Facture de scanner recue apres la facturation TEESE.",
+                'target_state': 'in_progress'}).action_reopen()
+            result_move = paid._result_moves()[:1]
+            return {'legacy_paid': paid, 'legacy_invoice': inv_paid,
+                    'legacy_several': several, 'legacy_open': open_file,
+                    'legacy_waiting': waiting, 'legacy_recent': recent,
+                    'legacy_sage': sage, 'legacy_reopened': reopened,
+                    'legacy_advance': adv, 'legacy_result': result_move}
+
+        def handling():
+            """A new bill carrying the Handling component (19.0.56)."""
+            file = cls._ready_to_bill("MSKU9931270", DEBOURS[:2])
+            hand = self.env['logistics.billing.service'].search(
+                [('is_handling', '=', True)], limit=1)
+            wizard = self.env['logistics.billing.wizard'].with_context(
+                active_id=file.id).create({
+                    'service_line_ids': [(0, 0, {
+                        'service_id': hand.id, 'name': hand.name,
+                        'amount': 300000})]})
+            wizard.action_create_invoice()
+            invoice = file.invoice_id
+            invoice.invoice_date = fields.Date.context_today(invoice)
+            invoice.action_post()
+            return {'file_handling': file, 'invoice_handling': invoice}
+
+        def customer_gap():
+            """A customer with no NIU: the file opens, the invoice is
+            refused (owner, 21/10/2026)."""
+            partner = self.env['res.partner'].create({
+                'name': "CAMEROUN TEXTILES INDUSTRIES", 'is_company': True,
+                'street': "BP 1133 DOUALA - BONABERI",
+                'company_registry': "RC/DLA/2011/B/0309"})
+            file = cls._new_file("TEMU8820034")
+            file.write({'partner_id': partner.id, 'importer_name': partner.name})
+            cls._receive(file)
+            cls._open(file)
+            ready = cls._new_file("OOLU6610722")
+            ready.write({'partner_id': partner.id, 'importer_name': partner.name})
+            cls._receive(ready)
+            cls._open(ready)
+            cls._settle(cls._disbursement(ready, *DEBOURS[1]))
+            ready.customs_fee_amount = 256974
+            ready.action_close_operations()
+            return {'file_gap': file, 'file_gap_ready': ready}
+
+        def bank():
+            """A disbursement paid by the Treasury from the bank, and the
+            bank's statement lines as the bank exports them."""
+            paid = cls._disbursement(cls.file_work, "Frais de relevage", 212000,
+                                     journal_id=cls.bank.id)
+            cls._settle(paid)
+            Line = self.env['account.bank.statement.line']
+            today = fields.Date.context_today(self.env.user)
+            lines = Line.create([
+                {'journal_id': cls.bank.id, 'date': today,
+                 'payment_ref': "VIR DOUALA INTERNATIONAL TERMINAL FACT 2026-0413",
+                 'partner_id': cls.vendor.id, 'amount': -212000},
+                {'journal_id': cls.bank.id, 'date': today,
+                 'payment_ref': "FRAIS TENUE DE COMPTE",
+                 'amount': -15000},
+                {'journal_id': cls.bank.id, 'date': today,
+                 'payment_ref': "VIR SONICAM REGLEMENT EL26IM0019",
+                 'partner_id': cls.client.id, 'amount': 2500000},
+            ])
+            action = self.env['ir.actions.act_window'].create({
+                'name': "Transactions - AFRILAND FIRST BANK",
+                'res_model': 'account.bank.statement.line',
+                'view_mode': 'list',
+                'domain': "[('journal_id', '=', %d)]" % cls.bank.id})
+            return {'bank_paid': paid, 'bank_lines': lines,
+                    'bank_transactions': action}
+
+        def till():
+            """The till's own movements outside the application, grouped
+            in the day's cash register with the counted balance."""
+            Line = self.env['account.bank.statement.line']
+            today = fields.Date.context_today(self.env.user)
+            lines = Line.create([
+                {'journal_id': cls.cash.id, 'date': today,
+                 'payment_ref': "Approvisionnement caisse depuis AFB",
+                 'amount': 500000},
+                {'journal_id': cls.cash.id, 'date': today,
+                 'payment_ref': "Carburant vehicule de service - recu n 117",
+                 'amount': -25000},
+            ])
+            register = self.env['account.bank.statement'].create({
+                'name': "Caisse du %s" % today.strftime('%d/%m/%Y'),
+                'journal_id': cls.cash.id,
+                'line_ids': [(6, 0, lines.ids)],
+                'balance_end_real': lines[0].amount + lines[1].amount})
+            action = self.env['ir.actions.act_window'].create({
+                'name': "Transactions - Caisse principale",
+                'res_model': 'account.bank.statement.line',
+                'view_mode': 'list',
+                'domain': "[('journal_id', '=', %d)]" % cls.cash.id})
+            return {'till_register': register, 'till_transactions': action}
+
+        def cash_receipt():
+            """A customer's advance brought in cash: a receipt on the till,
+            then put against the file."""
+            payment = self.env['account.payment'].create({
+                'payment_type': 'inbound', 'partner_type': 'customer',
+                'partner_id': cls.client.id, 'amount': 1000000,
+                'journal_id': cls.cash.id,
+                'memo': "Avance dossier - recu n 118 - remis par M. NGO",
+                'date': fields.Date.context_today(self.env.user)})
+            payment.action_post()
+            return {'cash_payment': payment}
+
         def numbering():
             """The last Teese reference, so numbering continues from it.
             Built LAST: every file opened after it takes the next number."""
@@ -537,7 +816,12 @@ class TestManualScreenshots(HttpCase):
                             ("closed", closed), ("partial", partial),
                             ("void", void), ("credit", credit),
                             ("receipt", receipt), ("review", review),
-                            ("voucher", voucher), ("numbering", numbering)):
+                            ("voucher", voucher),
+                            ("legacy_settings", legacy_settings),
+                            ("legacy", legacy), ("handling", handling),
+                            ("customer_gap", customer_gap), ("bank", bank),
+                            ("till", till), ("cash_receipt", cash_receipt),
+                            ("numbering", numbering)):
             scene(name, build)
         return scenes, skipped
 
@@ -791,6 +1075,97 @@ class TestManualScreenshots(HttpCase):
             shot("56_customer_vat", "/odoo/res.partner/%d" % self.client.id,
                  wait=".o_form_view",
                  scroll=".o_field_widget[name='clearance_vat_exempt']")
+
+            # 16  UAT v12 (24/10/2026): reopening reasons, the migration
+            #     settings, Handling, the customer gap
+            shot("57_reopen_reasons", "/odoo/action-%d"
+                 % action('action_logistics_reopen_reason'))
+            shot("58_reopenings", "/odoo/action-%d"
+                 % action('action_logistics_file_reopening'))
+            if scenes.get('legacy_settings'):
+                shot("59_legacy_settings", "/odoo/action-%d"
+                     % action('action_clearance_settings_wizard'),
+                     wait=".o_form_view",
+                     scroll=".o_field_widget[name='clearance_legacy_oop_account_id']")
+                shot("60_payment_channels", "/odoo/action-%d"
+                     % action('action_clearance_payment_channel'))
+            shot("61_expense_numbering", "/odoo/action-%d" % expenses)
+            scene_shot('invoice_handling', "62_invoice_handling",
+                       "/odoo/account.move/%d", wait=".o_form_view",
+                       scroll=".o_field_widget[name='invoice_line_ids']")
+            scene_shot('invoice_handling', "63_handling_entry",
+                       "/odoo/account.move/%d", wait=".o_form_view",
+                       clicks=["a[name='aml_tab']"],
+                       scroll=".o_field_widget[name='line_ids']")
+            if scenes.get('invoice_handling'):
+                shot("64_handling_report", "/odoo/action-%d"
+                     % action('action_clearance_handling_due'))
+            scene_shot('file_handling', "65_file_handling", form,
+                       wait=".o_form_view",
+                       scroll=".o_field_widget[name='handling_billed']")
+            scene_shot('file_gap', "66_customer_banner", form,
+                       wait=".o_form_view")
+            scene_shot('file_gap_ready', "67_billing_refused", form,
+                       wait=".o_form_view",
+                       clicks=["button[name='action_open_billing']",
+                               "%s button[name='action_create_invoice']" % modal],
+                       then=".o_error_dialog")
+
+            # 17  section O: the legacy files, their result, the Sage
+            #     actions, the migrated advances, the re-opened file
+            if scenes.get('legacy_paid'):
+                shot("68_legacy_files", "/odoo/action-%d"
+                     % action('action_logistics_file_legacy'))
+                shot("74_awaiting_payment", "/odoo/action-%d"
+                     % action('action_logistics_expense_awaiting_payment'))
+            scene_shot('legacy_paid', "69_legacy_file", form,
+                       wait=".o_form_view",
+                       scroll=".o_field_widget[name='billing_status']")
+            scene_shot('legacy_invoice', "70_legacy_invoice",
+                       "/odoo/account.move/%d", wait=".o_form_view",
+                       scroll=".o_field_widget[name='invoice_line_ids']")
+            scene_shot('legacy_paid', "71_debours_result", form,
+                       wait=".o_form_view",
+                       scroll=".o_field_widget[name='debours_result']")
+            scene_shot('legacy_result', "72_result_entry",
+                       "/odoo/account.move/%d", wait=".o_form_view",
+                       scroll=".o_field_widget[name='line_ids']")
+            scene_shot('legacy_several', "73_result_several", form,
+                       wait=".o_form_view",
+                       scroll=".o_field_widget[name='debours_result']")
+            scene_shot('legacy_sage', "75_sage_wizard", expense_form,
+                       wait=".o_form_view",
+                       clicks=["button[name='action_open_sage_payment_wizard']"],
+                       then=modal)
+            scene_shot('legacy_advance', "76_migrated_advance", expense_form,
+                       wait=".o_form_view")
+            scene_shot('legacy_recent', "77_migrated_advance_open", expense_form,
+                       wait=".o_form_view")
+            scene_shot('legacy_reopened', "78_legacy_reopened", form,
+                       wait=".o_form_view",
+                       scroll=".o_field_widget[name='billing_status']")
+
+            # 18  section P: the bank statement, the till, a cash receipt
+            shot("79_dashboard", "/odoo/action-%d"
+                 % action('open_account_journal_dashboard_kanban', 'account'),
+                 wait=".o_kanban_view")
+            scene_shot('bank_transactions', "80_bank_transactions",
+                       "/odoo/action-%d")
+            scene_shot('bank_paid', "81_bank_payment", expense_form,
+                       wait=".o_form_view")
+            scene_shot('till_transactions', "82_till_transactions",
+                       "/odoo/action-%d")
+            scene_shot('till_register', "83_cash_register",
+                       "/odoo/account.bank.statement/%d", wait=".o_form_view")
+            scene_shot('invoice_posted', "84_register_payment",
+                       "/odoo/account.move/%d", wait=".o_form_view",
+                       clicks=["button[name='action_register_payment']"],
+                       then=modal)
+            scene_shot('cash_payment', "85_cash_receipt",
+                       "/odoo/account.payment/%d", wait=".o_form_view")
+            scene_shot('cash_payment', "86_payment_receipt_document",
+                       "/report/html/account.report_payment_receipt/%d",
+                       wait="div.page")
 
             time.sleep(2.0)
 
