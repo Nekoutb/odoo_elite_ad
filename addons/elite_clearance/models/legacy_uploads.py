@@ -629,7 +629,11 @@ class LogisticsFile(models.Model):
     def _evaluate_debours_result(self, post=True):
         """Where the result stands, and post it when it is due
         (brief, 6.4). Idempotent: only the CHANGE since the last posting
-        is booked, so running it twice books nothing the second time."""
+        is booked, so running it twice books nothing the second time.
+        One result per billing round (owner, 24/10/2026): a file
+        re-opened for additional billing waits for that bill, so a cost
+        paid or justified in between is never booked as a loss that the
+        next invoice then books back as a gain."""
         for file in self:
             if file.skip_gain_loss or not file.legacy_relief:
                 # a file opened after the cutoff books its variance at
@@ -639,7 +643,8 @@ class LogisticsFile(models.Model):
                     lambda m: m.state == 'posted' and m._clearance_stands()
                     and not m.is_legacy and m.move_type == 'out_invoice'):
                 status = 'not_billed'
-            elif file._unpaid_approved_expenses():
+            elif (file.billing_status == 'reopened'
+                    or file._unpaid_approved_expenses()):
                 status = 'pending'
             else:
                 status = 'due'
@@ -747,7 +752,11 @@ class LogisticsFile(models.Model):
     def action_migration_finalize(self):
         """Called through the API after the load, idempotent: a billed
         file is billed, frozen and locked; its invoices are posted; its
-        débours result is evaluated and posted when due."""
+        débours result is evaluated and posted when due - ONCE, after
+        every invoice and credit note of the file is posted (owner,
+        24/10/2026: posting it after each invoice swung a file with
+        several invoices between a loss and a gain). `_post` does not
+        evaluate it under the migration context; step 4 here does."""
         Move = self.env['account.move'].sudo()
         for file in self.with_context(**{MIGRATION: True}):
             invoices = file.invoice_ids.sudo().filtered(
@@ -790,7 +799,7 @@ class LogisticsFile(models.Model):
                 lambda e: e.state == 'settled'
                 and e._migrated_advance_closes_without_documents()
             )._close_migrated_advance()
-            # 4. the result
+            # 4. the result, once, with every document of the file posted
             file._evaluate_debours_result(post=True)
         return True
 
@@ -1346,8 +1355,12 @@ class AccountMove(models.Model):
                 move.clearance_entry_type = 'invoice'
             if move.move_type in ('out_invoice', 'out_refund'):
                 files |= move.logistics_file_id
-        for file in files:
-            file._evaluate_debours_result()
+        # Under the migration, finalize posts every invoice of a file
+        # and THEN evaluates the result once: evaluating here would book
+        # a loss after the first invoice and a gain after the next.
+        if not _migrating(self.env):
+            for file in files:
+                file._evaluate_debours_result()
         return posted
 
     def button_draft(self):

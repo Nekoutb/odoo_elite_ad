@@ -260,7 +260,7 @@ class TestLegacyUploads(TransactionCase):
         file.customs_fee_amount = 50000
         file.action_close_operations()
         file.action_create_invoice()
-        file.invoice_id.action_post()
+        file.invoice_id.with_context(clearance_migration=False).action_post()
         file.action_mark_complete()
         self.assertEqual(file.state, 'done')
         self.assertEqual(file.result_status, 'posted', "fully paid: result booked")
@@ -306,7 +306,9 @@ class TestLegacyUploads(TransactionCase):
             lambda l: l.clearance_category == 'debours')
         self.assertEqual(len(debours_lines), 1, "only the new round's line")
         self.assertEqual(debours_lines.price_unit, 100000)
-        second.action_post()
+        self.assertEqual(file.result_status, 'pending',
+                         "re-opened: the result waits for the next bill")
+        second.with_context(clearance_migration=False).action_post()
         self.assertTrue(file.is_locked)
         # only the CHANGE in the result is posted: everything was billed at
         # cost, so the result is nil and nothing is booked twice
@@ -594,6 +596,71 @@ class TestLegacyUploads(TransactionCase):
                                             'target_state': 'justified'})
         self.assertEqual(paid.state, 'settled')
         self.assertFalse(paid.justification_move_id)
+
+    def test_16_several_invoices_give_one_result_on_one_side(self):
+        # Owner, 24/10/2026: a file with several invoices got a result
+        # after each posting, swinging between loss and gain. Expected:
+        # one entry per file, after every document is posted, net.
+        file = self._file("2026IM0416", "2026-04-01")
+        file.write({'state': 'in_progress'})
+        self._load_expense(file, 1000000, 'settled', "FA-T16", paid_on="2026-09-05")
+        self._load_invoice(file, "EL26IM916A", debours=[("KCT", 600000)],
+                           when="2026-09-10")
+        self._load_invoice(file, "EL26IM916B", debours=[("Scanner", 800000)],
+                           when="2026-09-20")
+        self._load_invoice(file, "AV26IM916C", debours=[("Scanner", 100000)],
+                           when="2026-09-25", refund=True)
+        file.action_migration_finalize()
+        self.assertEqual(file.debours_billed, 1300000, "credit note deducted")
+        self.assertEqual(file.debours_result, 300000)
+        self.assertEqual(file.result_status, 'posted')
+        moves, totals = self._result_lines(file)
+        self.assertEqual(len(moves), 1, "one result entry per file")
+        self.assertEqual(totals['gain'], 300000)
+        self.assertEqual(totals['loss'], 0, "never both sides")
+        self.assertEqual(moves.date, date(2026, 9, 25),
+                         "dated the last document, every one posted first")
+        file.action_migration_finalize()
+        self.assertEqual(len(file._result_moves()), 1)
+
+    def test_17_a_reopened_file_books_nothing_before_its_next_bill(self):
+        # Normal billing after the migration: the second invoice posts
+        # only the difference, on one side; a cost confirmed while the
+        # file is re-opened is not booked as a loss in between.
+        file = self._file("2026IM0417", "2026-04-01")
+        file.write({'state': 'in_progress'})
+        self._load_expense(file, 1000000, 'settled', "FA-T17a", paid_on="2026-09-05")
+        self._load_invoice(file, "EL26IM917", debours=[("KCT", 1200000)])
+        file.action_migration_finalize()
+        moves, totals = self._result_lines(file)
+        self.assertEqual(totals['gain'], 200000)
+        self.assertEqual(len(moves), 1)
+        reason = self.env.ref('elite_clearance.reopen_reason_additional_expenditure')
+        self.env['logistics.file.reopen.wizard'].with_context(
+            clearance_migration=False).create({
+                'file_id': file.id, 'reason_id': reason.id,
+                'reason': "Frais de scanner reçus tard",
+                'target_state': 'in_progress'}).with_user(self.cs_head).action_reopen()
+        self.assertEqual(file.billing_status, 'reopened')
+        late = self._load_expense(file, 100000, 'approved', "FA2609917", channel=None,
+                                  sage_match="AFD-2001 02/10/2026 proposed")
+        late.with_user(self.finance_head).action_confirm_sage_payment(
+            "AFD-2001", date(2026, 10, 2))
+        self.assertEqual(late.state, 'settled')
+        self.assertEqual(file.result_status, 'pending',
+                         "re-opened: nothing booked before the next bill")
+        self.assertEqual(len(file._result_moves()), 1, "no loss in between")
+        live = file.with_context(clearance_migration=False)
+        live.customs_fee_amount = 50000
+        live.action_close_operations()
+        live.action_create_invoice()
+        live.invoice_id.action_post()
+        self.assertEqual(file.billing_round, 2)
+        # billed at cost: the result is unchanged and nothing is booked
+        self.assertEqual(file.debours_result, 200000)
+        self.assertEqual(file._result_already_posted(), 200000)
+        self.assertEqual(len(file._result_moves()), 1)
+        self.assertEqual(file.result_status, 'posted')
 
     def test_11_loading_twice_duplicates_nothing(self):
         Expense = self.env['logistics.expense'].with_context(**MIG)
