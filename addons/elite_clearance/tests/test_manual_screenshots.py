@@ -73,6 +73,8 @@ class TestManualScreenshots(HttpCase):
             'email': "contact@elimelec-cm.example",
             'vat': "M051612521065D",
             'company_registry': "RC/DLA/2018/B/2056",
+            # the printed receipts carry the country (24/10/2026)
+            'country_id': env.ref('base.cm').id,
         })
         env.ref('base.user_admin').write({
             'name': "A. MBARGA", 'password': 'admin'})
