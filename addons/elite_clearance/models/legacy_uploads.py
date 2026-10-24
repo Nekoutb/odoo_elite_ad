@@ -681,8 +681,11 @@ class LogisticsFile(models.Model):
                 "débours result of %s can be posted.", self.name))
         amount = abs(change)
         partner = self.partner_id.commercial_partner_id
+        # invoices AND credit notes: the result is known once the last
+        # document is posted
         billing_dates = self.invoice_ids.sudo().filtered(
-            lambda m: m.state == 'posted' and m.move_type == 'out_invoice'
+            lambda m: m.state == 'posted'
+            and m.move_type in ('out_invoice', 'out_refund')
         ).mapped('invoice_date')
         payment_dates = [fields.Date.to_date(e.date_settled)
                          for e in self.expense_ids
